@@ -1,0 +1,310 @@
+import { useEffect, useState, useCallback } from 'react'
+import { Search, Eye, Building2, User } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+import { useToast } from '@/hooks/use-toast'
+import { Client, Delivery, Invoice, Interaction, STATUS_CONFIG, PLANO_CONFIG, formatCurrency, formatDate } from '@/types'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Progress } from '@/components/ui/progress'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+
+function getHealthColor(score: number) {
+  if (score >= 75) return 'bg-success'
+  if (score >= 50) return 'bg-warning'
+  return 'bg-danger'
+}
+
+export default function Clients() {
+  const { toast } = useToast()
+  const [clients, setClients] = useState<Client[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null)
+  const [clientDeliveries, setClientDeliveries] = useState<Delivery[]>([])
+  const [clientInvoices, setClientInvoices] = useState<Invoice[]>([])
+  const [clientInteractions, setClientInteractions] = useState<Interaction[]>([])
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [planoFilter, setPlanoFilter] = useState('all')
+
+  const fetchClients = useCallback(async () => {
+    const { data } = await supabase.from('clients').select('*').order('mrr', { ascending: false })
+    setClients(data || [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { fetchClients() }, [fetchClients])
+
+  const openClient = async (client: Client) => {
+    setSelectedClient(client)
+    const [{ data: deliveries }, { data: invoices }, { data: interactions }] = await Promise.all([
+      supabase.from('deliveries').select('*').eq('client_id', client.id).order('prazo'),
+      supabase.from('invoices').select('*').eq('client_id', client.id).order('vencimento', { ascending: false }),
+      supabase.from('interactions').select('*').eq('client_id', client.id).order('created_at', { ascending: false }),
+    ])
+    setClientDeliveries(deliveries || [])
+    setClientInvoices(invoices || [])
+    setClientInteractions(interactions || [])
+  }
+
+  const saveNotes = async () => {
+    if (!selectedClient) return
+    await supabase.from('clients').update({ notes: selectedClient.notes }).eq('id', selectedClient.id)
+    toast({ title: 'Notas salvas!', description: 'Anotações atualizadas com sucesso.' })
+    fetchClients()
+  }
+
+  const filtered = clients.filter(c => {
+    if (statusFilter !== 'all' && c.status !== statusFilter) return false
+    if (planoFilter !== 'all' && c.plano !== planoFilter) return false
+    if (search && !c.name.toLowerCase().includes(search.toLowerCase()) && !c.company.toLowerCase().includes(search.toLowerCase())) return false
+    return true
+  })
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+    </div>
+  )
+
+  return (
+    <div className="space-y-4 animate-fade-in">
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-48">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Buscar clientes..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-40"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos status</SelectItem>
+            <SelectItem value="ativo">Ativo</SelectItem>
+            <SelectItem value="risco">Em Risco</SelectItem>
+            <SelectItem value="inadimplente">Inadimplente</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={planoFilter} onValueChange={setPlanoFilter}>
+          <SelectTrigger className="w-36"><SelectValue placeholder="Plano" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos planos</SelectItem>
+            <SelectItem value="starter">Starter</SelectItem>
+            <SelectItem value="growth">Growth</SelectItem>
+            <SelectItem value="pro">Pro</SelectItem>
+            <SelectItem value="enterprise">Enterprise</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Table */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-border hover:bg-transparent">
+              <TableHead>Cliente</TableHead>
+              <TableHead>Plano</TableHead>
+              <TableHead>MRR</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Health Score</TableHead>
+              <TableHead>Início</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.map((client) => {
+              const statusConf = STATUS_CONFIG[client.status]
+              const planoConf = PLANO_CONFIG[client.plano]
+              return (
+                <TableRow key={client.id} className="border-border hover:bg-muted/30">
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className="bg-primary/15 text-primary text-xs font-bold">
+                          {client.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium text-sm">{client.name}</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Building2 className="h-3 w-3" />{client.company}
+                        </p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={`text-xs capitalize ${planoConf?.className}`}>
+                      {planoConf?.label || client.plano}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-bold text-success text-sm">{formatCurrency(client.mrr)}</span>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={`text-xs ${statusConf?.className}`}>
+                      {statusConf?.label || client.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Score</span>
+                        <span className={`font-bold ${client.health_score >= 75 ? 'text-success' : client.health_score >= 50 ? 'text-warning' : 'text-danger'}`}>
+                          {client.health_score}
+                        </span>
+                      </div>
+                      <div className="w-24 h-2 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${getHealthColor(client.health_score)}`}
+                          style={{ width: `${client.health_score}%` }}
+                        />
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{formatDate(client.inicio_contrato)}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="sm" onClick={() => openClient(client)} className="gap-1 text-xs">
+                      <Eye className="h-3 w-3" /> Ver
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
+        {filtered.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground">
+            <User className="h-8 w-8 mx-auto mb-2 opacity-30" />
+            <p>Nenhum cliente encontrado</p>
+          </div>
+        )}
+      </div>
+
+      {/* Client Detail Modal */}
+      <Dialog open={!!selectedClient} onOpenChange={() => setSelectedClient(null)}>
+        <DialogContent className="max-w-2xl bg-card border-border max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <Avatar className="h-9 w-9">
+                <AvatarFallback className="bg-primary/15 text-primary font-bold">
+                  {selectedClient?.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p>{selectedClient?.name}</p>
+                <p className="text-sm text-muted-foreground font-normal">{selectedClient?.company}</p>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          {selectedClient && (
+            <Tabs defaultValue="info">
+              <TabsList className="w-full bg-muted">
+                <TabsTrigger value="info" className="flex-1 text-xs">Informações</TabsTrigger>
+                <TabsTrigger value="history" className="flex-1 text-xs">Histórico</TabsTrigger>
+                <TabsTrigger value="deliveries" className="flex-1 text-xs">Entregas</TabsTrigger>
+                <TabsTrigger value="invoices" className="flex-1 text-xs">Faturas</TabsTrigger>
+                <TabsTrigger value="notes" className="flex-1 text-xs">Notas</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="info" className="space-y-3 mt-4">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {[
+                    { label: 'Email', value: selectedClient.email || '—' },
+                    { label: 'Telefone', value: selectedClient.phone || '—' },
+                    { label: 'Segmento', value: selectedClient.segment },
+                    { label: 'Plano', value: PLANO_CONFIG[selectedClient.plano]?.label || selectedClient.plano },
+                    { label: 'MRR', value: formatCurrency(selectedClient.mrr) },
+                    { label: 'Início Contrato', value: formatDate(selectedClient.inicio_contrato) },
+                  ].map(item => (
+                    <div key={item.label} className="p-3 bg-muted/50 rounded-lg">
+                      <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
+                      <p className="font-medium">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-2">Health Score</p>
+                  <div className="flex items-center gap-3">
+                    <Progress value={selectedClient.health_score} className="flex-1 h-3" />
+                    <span className={`font-bold ${selectedClient.health_score >= 75 ? 'text-success' : selectedClient.health_score >= 50 ? 'text-warning' : 'text-danger'}`}>
+                      {selectedClient.health_score}/100
+                    </span>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="history" className="mt-4">
+                {clientInteractions.length === 0 ? (
+                  <p className="text-center py-8 text-muted-foreground text-sm">Nenhuma interação registrada</p>
+                ) : (
+                  <div className="space-y-3">
+                    {clientInteractions.map(i => (
+                      <div key={i.id} className="flex gap-3 p-3 bg-muted/30 rounded-lg border-l-2 border-primary/40">
+                        <div className="flex-1">
+                          <p className="text-xs text-muted-foreground capitalize mb-1">{i.tipo}</p>
+                          <p className="text-sm">{i.descricao}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{new Date(i.created_at).toLocaleDateString('pt-BR')}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="deliveries" className="mt-4">
+                {clientDeliveries.length === 0 ? (
+                  <p className="text-center py-8 text-muted-foreground text-sm">Nenhuma entrega registrada</p>
+                ) : (
+                  <div className="space-y-2">
+                    {clientDeliveries.map(d => (
+                      <div key={d.id} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg text-sm">
+                        <Badge variant="outline" className="text-xs capitalize shrink-0">{d.tipo}</Badge>
+                        <p className="flex-1 truncate">{d.titulo}</p>
+                        <Badge variant="outline" className={`text-xs capitalize shrink-0 ${d.status === 'entregue' ? 'bg-success/20 text-success border-success/30' : ''}`}>{d.status}</Badge>
+                        <p className="text-xs text-muted-foreground shrink-0">{formatDate(d.prazo)}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="invoices" className="mt-4">
+                {clientInvoices.length === 0 ? (
+                  <p className="text-center py-8 text-muted-foreground text-sm">Nenhuma fatura registrada</p>
+                ) : (
+                  <div className="space-y-2">
+                    {clientInvoices.map(inv => (
+                      <div key={inv.id} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg text-sm">
+                        <p className="font-bold text-success flex-1">{formatCurrency(inv.valor)}</p>
+                        <p className="text-muted-foreground">{formatDate(inv.vencimento)}</p>
+                        <Badge variant="outline" className={`text-xs capitalize ${inv.status === 'pago' ? 'bg-success/20 text-success border-success/30' : inv.status === 'atrasado' ? 'bg-danger/20 text-danger border-danger/30' : ''}`}>
+                          {inv.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="notes" className="mt-4 space-y-3">
+                <Textarea
+                  value={selectedClient.notes || ''}
+                  onChange={e => setSelectedClient(prev => prev ? { ...prev, notes: e.target.value } : null)}
+                  placeholder="Adicione suas anotações sobre este cliente..."
+                  className="min-h-32 bg-muted/30 border-border"
+                  rows={6}
+                />
+                <Button onClick={saveNotes} className="w-full">Salvar Notas</Button>
+              </TabsContent>
+            </Tabs>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}

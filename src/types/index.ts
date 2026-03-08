@@ -1,0 +1,150 @@
+export interface Profile {
+  id: string
+  user_id: string
+  name: string
+  avatar_url: string | null
+  role: string
+  created_at: string
+  updated_at: string
+}
+
+export interface Lead {
+  id: string
+  name: string
+  company: string | null
+  phone: string
+  email: string | null
+  segment: string | null
+  source: string
+  stage: string
+  ticket_estimado: number | null
+  plano: string | null
+  mrr_projetado: number | null
+  owner_id: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Client {
+  id: string
+  name: string
+  company: string
+  phone: string
+  email: string | null
+  segment: string
+  plano: string
+  mrr: number
+  status: string
+  health_score: number
+  inicio_contrato: string
+  owner_id: string | null
+  notes: string | null
+}
+
+export interface Delivery {
+  id: string
+  client_id: string
+  tipo: string
+  titulo: string
+  responsavel_id: string | null
+  status: string
+  prazo: string
+  data_entrega: string | null
+  created_at: string
+  updated_at: string
+  clients?: { name: string; company: string }
+}
+
+export interface Invoice {
+  id: string
+  client_id: string
+  valor: number
+  vencimento: string
+  status: string
+  metodo_pagamento: string | null
+  data_pagamento: string | null
+  clients?: { name: string; company: string }
+}
+
+export interface Expense {
+  id: string
+  categoria: string
+  descricao: string
+  valor: number
+  vencimento: string
+  status: string
+}
+
+export interface Interaction {
+  id: string
+  client_id: string | null
+  lead_id: string | null
+  tipo: string
+  descricao: string
+  user_id: string | null
+  created_at: string
+}
+
+export const PIPELINE_STAGES = [
+  { id: 'lead', label: 'Lead', color: 'bg-blue-500/20 border-blue-500/30' },
+  { id: 'qualificacao', label: 'Qualificação', color: 'bg-purple-500/20 border-purple-500/30' },
+  { id: 'diagnostico', label: 'Diagnóstico', color: 'bg-yellow-500/20 border-yellow-500/30' },
+  { id: 'proposta', label: 'Proposta', color: 'bg-orange-500/20 border-orange-500/30' },
+  { id: 'negociacao', label: 'Negociação', color: 'bg-pink-500/20 border-pink-500/30' },
+  { id: 'fechado', label: 'Fechado', color: 'bg-green-500/20 border-green-500/30' },
+]
+
+export const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+  ativo: { label: 'Ativo', className: 'bg-green-500/20 text-green-400 border-green-500/30' },
+  risco: { label: 'Em Risco', className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
+  inadimplente: { label: 'Inadimplente', className: 'bg-red-500/20 text-red-400 border-red-500/30' },
+}
+
+export const PLANO_CONFIG: Record<string, { label: string; className: string }> = {
+  starter: { label: 'Starter', className: 'bg-slate-500/20 text-slate-400 border-slate-500/30' },
+  growth: { label: 'Growth', className: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  pro: { label: 'Pro', className: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+  enterprise: { label: 'Enterprise', className: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+}
+
+export const DELIVERY_TYPE_CONFIG: Record<string, { label: string; className: string }> = {
+  roteiro: { label: 'Roteiro', className: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  copy: { label: 'Copy', className: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+  reuniao: { label: 'Reunião', className: 'bg-green-500/20 text-green-400 border-green-500/30' },
+  relatorio: { label: 'Relatório', className: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+  design: { label: 'Design', className: 'bg-pink-500/20 text-pink-400 border-pink-500/30' },
+  video: { label: 'Vídeo', className: 'bg-red-500/20 text-red-400 border-red-500/30' },
+}
+
+export const DELIVERY_STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+  pendente: { label: 'Pendente', className: 'bg-slate-500/20 text-slate-400 border-slate-500/30' },
+  em_progresso: { label: 'Em Progresso', className: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  revisao: { label: 'Em Revisão', className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
+  entregue: { label: 'Entregue', className: 'bg-green-500/20 text-green-400 border-green-500/30' },
+}
+
+export function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+}
+
+export function formatDate(date: string): string {
+  return new Date(date + 'T00:00:00').toLocaleDateString('pt-BR')
+}
+
+export function getDaysAgo(date: string): string {
+  const diff = Math.floor((Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24))
+  if (diff === 0) return 'hoje'
+  if (diff === 1) return '1d'
+  return `${diff}d`
+}
+
+export function getDeadlineColor(prazo: string): string {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const deadline = new Date(prazo + 'T00:00:00')
+  const diff = Math.floor((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  if (diff < 0) return 'text-red-400'
+  if (diff <= 2) return 'text-yellow-400'
+  return 'text-green-400'
+}
