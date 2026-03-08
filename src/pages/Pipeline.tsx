@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
-import { Plus, Search, X } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { Lead, PIPELINE_STAGES, formatCurrency, getDaysAgo } from '@/types'
