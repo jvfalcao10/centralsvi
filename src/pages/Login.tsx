@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
+import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
@@ -9,14 +9,17 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import logoBranca from '@/assets/logo-branca.png'
 
+type Mode = 'login' | 'signup' | 'forgot'
+
 export default function Login() {
   const { user, loading } = useAuth()
   const { toast } = useToast()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [name, setName] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [forgotMode, setForgotMode] = useState(false)
+  const [mode, setMode] = useState<Mode>('login')
 
   if (!loading && user) return <Navigate to="/dashboard" replace />
 
@@ -26,6 +29,29 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       toast({ title: 'Erro ao entrar', description: error.message, variant: 'destructive' })
+    }
+    setIsLoading(false)
+  }
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: name },
+        emailRedirectTo: window.location.origin,
+      },
+    })
+    if (error) {
+      toast({ title: 'Erro ao criar conta', description: error.message, variant: 'destructive' })
+    } else {
+      toast({
+        title: 'Conta criada!',
+        description: 'Verifique seu email para confirmar o cadastro.',
+      })
+      setMode('login')
     }
     setIsLoading(false)
   }
@@ -40,7 +66,7 @@ export default function Login() {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' })
     } else {
       toast({ title: 'Email enviado!', description: 'Verifique sua caixa de entrada.' })
-      setForgotMode(false)
+      setMode('login')
     }
     setIsLoading(false)
   }
@@ -62,11 +88,39 @@ export default function Login() {
             <img src={logoBranca} alt="SVI Command Center" className="h-14 mb-4 dark:hidden block" style={{ filter: 'invert(1) sepia(1) saturate(2) hue-rotate(5deg)' }} />
             <h1 className="text-xl font-bold text-foreground">Command Center</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              {forgotMode ? 'Recupere sua senha' : 'Acesse sua conta'}
+              {mode === 'forgot' ? 'Recupere sua senha' : mode === 'signup' ? 'Crie sua conta' : 'Acesse sua conta'}
             </p>
           </div>
 
-          {forgotMode ? (
+          {/* Login / Signup tabs */}
+          {mode !== 'forgot' && (
+            <div className="flex rounded-lg bg-muted p-1 mb-6">
+              <button
+                type="button"
+                onClick={() => setMode('login')}
+                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  mode === 'login'
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Entrar
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('signup')}
+                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  mode === 'signup'
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Criar conta
+              </button>
+            </div>
+          )}
+
+          {mode === 'forgot' && (
             <form onSubmit={handleForgotPassword} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -88,13 +142,15 @@ export default function Login() {
               </Button>
               <button
                 type="button"
-                onClick={() => setForgotMode(false)}
+                onClick={() => setMode('login')}
                 className="w-full text-center text-sm text-muted-foreground hover:text-primary transition-colors"
               >
                 Voltar ao login
               </button>
             </form>
-          ) : (
+          )}
+
+          {mode === 'login' && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -138,11 +194,72 @@ export default function Login() {
               </Button>
               <button
                 type="button"
-                onClick={() => setForgotMode(true)}
+                onClick={() => setMode('forgot')}
                 className="w-full text-center text-sm text-muted-foreground hover:text-primary transition-colors"
               >
                 Esqueci minha senha
               </button>
+            </form>
+          )}
+
+          {mode === 'signup' && (
+            <form onSubmit={handleSignup} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Seu nome"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signup-email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="signup-email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signup-password">Senha</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="signup-password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Mínimo 6 caracteres"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    className="pl-10 pr-10"
+                    minLength={6}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? 'Criando conta...' : 'Criar conta'}
+              </Button>
             </form>
           )}
         </div>
