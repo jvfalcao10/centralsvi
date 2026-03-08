@@ -26,6 +26,14 @@
     --input: 220 14% 82%;
     --ring: 38 47% 61%;
     --radius: 0.75rem;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 220 14% 8%;
+    --danger: 0 72% 51%;
+    --danger-foreground: 0 0% 100%;
+    --info: 210 100% 56%;
+    --info-foreground: 0 0% 100%;
     --sidebar-background: 220 20% 94%;
     --sidebar-foreground: 220 14% 12%;
     --sidebar-primary: 38 47% 55%;
