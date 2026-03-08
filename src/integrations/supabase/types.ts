@@ -14,16 +14,346 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      clients: {
+        Row: {
+          company: string
+          created_at: string
+          email: string | null
+          health_score: number
+          id: string
+          inicio_contrato: string
+          mrr: number
+          name: string
+          notes: string | null
+          owner_id: string | null
+          phone: string
+          plano: string
+          segment: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company?: string
+          created_at?: string
+          email?: string | null
+          health_score?: number
+          id?: string
+          inicio_contrato?: string
+          mrr?: number
+          name: string
+          notes?: string | null
+          owner_id?: string | null
+          phone?: string
+          plano?: string
+          segment?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company?: string
+          created_at?: string
+          email?: string | null
+          health_score?: number
+          id?: string
+          inicio_contrato?: string
+          mrr?: number
+          name?: string
+          notes?: string | null
+          owner_id?: string | null
+          phone?: string
+          plano?: string
+          segment?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      deliveries: {
+        Row: {
+          client_id: string
+          created_at: string
+          data_entrega: string | null
+          id: string
+          prazo: string
+          responsavel_id: string | null
+          status: string
+          tipo: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          data_entrega?: string | null
+          id?: string
+          prazo: string
+          responsavel_id?: string | null
+          status?: string
+          tipo?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          data_entrega?: string | null
+          id?: string
+          prazo?: string
+          responsavel_id?: string | null
+          status?: string
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deliveries_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expenses: {
+        Row: {
+          categoria: string
+          created_at: string
+          descricao: string
+          id: string
+          status: string
+          updated_at: string
+          valor: number
+          vencimento: string
+        }
+        Insert: {
+          categoria?: string
+          created_at?: string
+          descricao: string
+          id?: string
+          status?: string
+          updated_at?: string
+          valor?: number
+          vencimento: string
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          valor?: number
+          vencimento?: string
+        }
+        Relationships: []
+      }
+      interactions: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          descricao: string
+          id: string
+          lead_id: string | null
+          tipo: string
+          user_id: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          descricao: string
+          id?: string
+          lead_id?: string | null
+          tipo?: string
+          user_id?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          descricao?: string
+          id?: string
+          lead_id?: string | null
+          tipo?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interactions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interactions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          client_id: string
+          created_at: string
+          data_pagamento: string | null
+          id: string
+          metodo_pagamento: string | null
+          status: string
+          updated_at: string
+          valor: number
+          vencimento: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          data_pagamento?: string | null
+          id?: string
+          metodo_pagamento?: string | null
+          status?: string
+          updated_at?: string
+          valor?: number
+          vencimento: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          data_pagamento?: string | null
+          id?: string
+          metodo_pagamento?: string | null
+          status?: string
+          updated_at?: string
+          valor?: number
+          vencimento?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string | null
+          id: string
+          mrr_projetado: number | null
+          name: string
+          notes: string | null
+          owner_id: string | null
+          phone: string
+          plano: string | null
+          segment: string | null
+          source: string
+          stage: string
+          ticket_estimado: number | null
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          mrr_projetado?: number | null
+          name: string
+          notes?: string | null
+          owner_id?: string | null
+          phone?: string
+          plano?: string | null
+          segment?: string | null
+          source?: string
+          stage?: string
+          ticket_estimado?: number | null
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          mrr_projetado?: number | null
+          name?: string
+          notes?: string | null
+          owner_id?: string | null
+          phone?: string
+          plano?: string | null
+          segment?: string | null
+          source?: string
+          stage?: string
+          ticket_estimado?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          id: string
+          name: string
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          role?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "manager" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +480,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "manager", "user"],
+    },
   },
 } as const
