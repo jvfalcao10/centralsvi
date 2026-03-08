@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useToast } from '@/hooks/use-toast'
 import {
   DollarSign, TrendingDown, Users, Target, AlertTriangle,
   TrendingUp, ArrowUp, ArrowDown
@@ -9,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Legend
+  Tooltip, ResponsiveContainer
 } from 'recharts'
 import { formatCurrency } from '@/types'
 
@@ -19,28 +18,36 @@ const MRR_DATA = [
   { month: 'Mai', mrr: 27200 }, { month: 'Jun', mrr: 28700 },
 ]
 
-const REVENUE_DATA = [
-  { name: 'Receita', valor: 28700 },
-  { name: 'Despesas', valor: 15896 },
-]
-
 interface KPICard {
   label: string; value: string; change: number; icon: React.ElementType; prefix?: string
 }
 
 export default function Dashboard() {
-  const { toast } = useToast()
   const [clients, setClients] = useState<{ status: string; mrr: number }[]>([])
+  const [leads, setLeads] = useState<{ stage: string }[]>([])
+  const [expenses, setExpenses] = useState<{ valor: number }[]>([])
   const [loading, setLoading] = useState(true)
   const [alerts, setAlerts] = useState<{ msg: string; level: 'green' | 'yellow' | 'red' }[]>([])
 
   useEffect(() => {
     async function load() {
-      const { data: clientsData } = await supabase.from('clients').select('status, mrr')
-      const { data: deliveries } = await supabase.from('deliveries').select('status, prazo')
-      const { data: invoices } = await supabase.from('invoices').select('status, vencimento')
+      const [
+        { data: clientsData },
+        { data: leadsData },
+        { data: deliveries },
+        { data: invoices },
+        { data: expensesData },
+      ] = await Promise.all([
+        supabase.from('clients').select('status, mrr'),
+        supabase.from('leads').select('stage'),
+        supabase.from('deliveries').select('status, prazo'),
+        supabase.from('invoices').select('status, vencimento'),
+        supabase.from('expenses').select('valor'),
+      ])
 
       if (clientsData) setClients(clientsData)
+      if (leadsData) setLeads(leadsData)
+      if (expensesData) setExpenses(expensesData)
 
       const newAlerts: { msg: string; level: 'green' | 'yellow' | 'red' }[] = []
       if (clientsData) {
@@ -59,6 +66,7 @@ export default function Dashboard() {
         const late = deliveries.filter(d => d.status !== 'entregue' && d.prazo < today).length
         if (late > 0) newAlerts.push({ msg: `${late} entrega(s) atrasada(s)`, level: 'yellow' })
       }
+      if (newAlerts.length === 0) newAlerts.push({ msg: 'Tudo certo! Nenhum alerta no momento.', level: 'green' })
       setAlerts(newAlerts)
       setLoading(false)
     }
@@ -67,15 +75,29 @@ export default function Dashboard() {
 
   const activeClients = clients.filter(c => c.status === 'ativo').length
   const totalMRR = clients.reduce((sum, c) => sum + c.mrr, 0)
+  const totalExpenses = expenses.reduce((sum, e) => sum + e.valor, 0)
   const riskClients = clients.filter(c => c.status === 'risco' || c.status === 'inadimplente').length
   const churnRate = clients.length > 0 ? ((riskClients / clients.length) * 100).toFixed(1) : '0.0'
-  const conversionRate = '23.5'
+
+  // Real conversion rate: fechado leads / total non-perdido leads
+  const totalLeads = leads.filter(l => l.stage !== 'perdido').length
+  const closedLeads = leads.filter(l => l.stage === 'fechado').length
+  const conversionRate = totalLeads > 0 ? ((closedLeads / totalLeads) * 100).toFixed(1) : '0.0'
+
+  // Revenue data using real MRR
+  const revenueData = [
+    { name: 'Receita', valor: totalMRR },
+    { name: 'Despesas', valor: totalExpenses },
+  ]
+
+  // Update last month in MRR_DATA with real value
+  const mrrChartData = MRR_DATA.map((d, i) => i === MRR_DATA.length - 1 && totalMRR > 0 ? { ...d, mrr: totalMRR } : d)
 
   const kpis: KPICard[] = [
     { label: 'MRR Atual', value: formatCurrency(totalMRR), change: 5.4, icon: DollarSign },
     { label: 'Churn Mensal', value: `${churnRate}%`, change: -1.2, icon: TrendingDown },
     { label: 'Clientes Ativos', value: String(activeClients), change: 2.1, icon: Users },
-    { label: 'Taxa de Conversão', value: `${conversionRate}%`, change: 3.8, icon: Target },
+    { label: 'Taxa de Conversão', value: `${conversionRate}%`, change: totalLeads > 0 ? 3.8 : 0, icon: Target },
   ]
 
   const alertBadgeClass = {
@@ -100,6 +122,12 @@ export default function Dashboard() {
     return null
   }
 
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+    </div>
+  )
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* KPI Cards */}
@@ -120,10 +148,12 @@ export default function Dashboard() {
                     <Icon className="h-5 w-5 text-primary" />
                   </div>
                 </div>
-                <div className={`flex items-center gap-1 mt-3 text-xs font-medium ${isGoodPositive ? 'text-success' : 'text-danger'}`}>
-                  {isPositive ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-                  <span>{Math.abs(kpi.change)}% vs mês anterior</span>
-                </div>
+                {kpi.change !== 0 && (
+                  <div className={`flex items-center gap-1 mt-3 text-xs font-medium ${isGoodPositive ? 'text-success' : 'text-danger'}`}>
+                    {isPositive ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                    <span>{Math.abs(kpi.change)}% vs mês anterior</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )
@@ -132,7 +162,6 @@ export default function Dashboard() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {/* MRR Evolution */}
         <Card className="border-border bg-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
@@ -142,7 +171,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={MRR_DATA}>
+              <LineChart data={mrrChartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="month" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} />
@@ -153,7 +182,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Revenue vs Expenses */}
         <Card className="border-border bg-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
@@ -163,15 +191,12 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={REVENUE_DATA} barCategoryGap="40%">
+              <BarChart data={revenueData} barCategoryGap="40%">
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="valor" name="Valor" radius={[6, 6, 0, 0]}
-                  fill="url(#barGradient)"
-                  label={false}
-                />
+                <Bar dataKey="valor" name="Valor" radius={[6, 6, 0, 0]} fill="url(#barGradient)" />
                 <defs>
                   <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#10b981" />
@@ -197,23 +222,17 @@ export default function Dashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {alerts.length === 0 ? (
-            <div className="text-center py-6 text-muted-foreground">
-              <p className="text-sm">✅ Nenhum alerta no momento. Tudo certo!</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {alerts.map((alert, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border">
-                  <AlertTriangle className={`h-4 w-4 shrink-0 ${alert.level === 'red' ? 'text-danger' : alert.level === 'yellow' ? 'text-warning' : 'text-success'}`} />
-                  <p className="text-sm flex-1">{alert.msg}</p>
-                  <Badge variant="outline" className={alertBadgeClass[alert.level]}>
-                    {alert.level === 'red' ? 'Crítico' : alert.level === 'yellow' ? 'Atenção' : 'OK'}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="space-y-3">
+            {alerts.map((alert, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border">
+                <AlertTriangle className={`h-4 w-4 shrink-0 ${alert.level === 'red' ? 'text-danger' : alert.level === 'yellow' ? 'text-warning' : 'text-success'}`} />
+                <p className="text-sm flex-1">{alert.msg}</p>
+                <Badge variant="outline" className={alertBadgeClass[alert.level]}>
+                  {alert.level === 'red' ? 'Crítico' : alert.level === 'yellow' ? 'Atenção' : 'OK'}
+                </Badge>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
     </div>
