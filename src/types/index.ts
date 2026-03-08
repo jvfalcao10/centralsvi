@@ -40,6 +40,8 @@ export interface Client {
   inicio_contrato: string
   owner_id: string | null
   notes: string | null
+  created_at: string
+  updated_at: string
 }
 
 export interface Delivery {
@@ -93,6 +95,7 @@ export const PIPELINE_STAGES = [
   { id: 'proposta', label: 'Proposta', color: 'bg-orange-500/20 border-orange-500/30' },
   { id: 'negociacao', label: 'Negociação', color: 'bg-pink-500/20 border-pink-500/30' },
   { id: 'fechado', label: 'Fechado', color: 'bg-green-500/20 border-green-500/30' },
+  { id: 'perdido', label: 'Perdido', color: 'bg-muted border-border' },
 ]
 
 export const STATUS_CONFIG: Record<string, { label: string; className: string }> = {

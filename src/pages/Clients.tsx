@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Search, Eye, Building2, User, Plus, Pencil, Trash2 } from 'lucide-react'
+import { Search, Eye, Building2, User, Plus, Pencil, Trash2, MessageSquare, Send } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
+import { useAuth } from '@/contexts/AuthContext'
 import { Client, Delivery, Invoice, Interaction, STATUS_CONFIG, PLANO_CONFIG, formatCurrency, formatDate } from '@/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -37,10 +38,19 @@ const EMPTY_FORM = {
   notes: '',
 }
 
+const INTERACTION_TYPES = [
+  { value: 'reuniao', label: 'Reunião' },
+  { value: 'ligacao', label: 'Ligação' },
+  { value: 'email', label: 'Email' },
+  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'nota', label: 'Nota Interna' },
+]
+
 type ClientForm = typeof EMPTY_FORM
 
 export default function Clients() {
   const { toast } = useToast()
+  const { user } = useAuth()
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
@@ -61,6 +71,10 @@ export default function Clients() {
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<Client | null>(null)
   const [deleting, setDeleting] = useState(false)
+
+  // Log interaction
+  const [interactionForm, setInteractionForm] = useState({ tipo: 'reuniao', descricao: '' })
+  const [savingInteraction, setSavingInteraction] = useState(false)
 
   const fetchClients = useCallback(async () => {
     const { data } = await supabase.from('clients').select('*').order('mrr', { ascending: false })
@@ -116,7 +130,6 @@ export default function Clients() {
   const handleSaveClient = async () => {
     if (!validateForm()) return
     setSaving(true)
-
     const payload = {
       name: form.name.trim(),
       company: form.company.trim(),
@@ -130,21 +143,16 @@ export default function Clients() {
       inicio_contrato: form.inicio_contrato,
       notes: form.notes.trim() || null,
     }
-
     const { error } = editingClient
       ? await supabase.from('clients').update(payload).eq('id', editingClient.id)
       : await supabase.from('clients').insert(payload)
-
     setSaving(false)
-
     if (error) {
       toast({ title: 'Erro ao salvar cliente', description: error.message, variant: 'destructive' })
     } else {
       toast({ title: editingClient ? 'Cliente atualizado!' : 'Cliente criado!', description: `${form.name} salvo com sucesso.` })
       setShowForm(false)
       setEditingClient(null)
-
-      // Refresh detail modal if editing the currently open client
       if (editingClient && selectedClient?.id === editingClient.id) {
         setSelectedClient(prev => prev ? { ...prev, ...payload } : null)
       }
@@ -169,6 +177,7 @@ export default function Clients() {
 
   const openClient = async (client: Client) => {
     setSelectedClient(client)
+    setInteractionForm({ tipo: 'reuniao', descricao: '' })
     const [{ data: deliveries }, { data: invoices }, { data: interactions }] = await Promise.all([
       supabase.from('deliveries').select('*').eq('client_id', client.id).order('prazo'),
       supabase.from('invoices').select('*').eq('client_id', client.id).order('vencimento', { ascending: false }),
@@ -177,6 +186,30 @@ export default function Clients() {
     setClientDeliveries(deliveries || [])
     setClientInvoices(invoices || [])
     setClientInteractions(interactions || [])
+  }
+
+  const refreshInteractions = async (clientId: string) => {
+    const { data } = await supabase.from('interactions').select('*').eq('client_id', clientId).order('created_at', { ascending: false })
+    setClientInteractions(data || [])
+  }
+
+  const handleLogInteraction = async () => {
+    if (!selectedClient || !interactionForm.descricao.trim()) return
+    setSavingInteraction(true)
+    const { error } = await supabase.from('interactions').insert({
+      client_id: selectedClient.id,
+      tipo: interactionForm.tipo,
+      descricao: interactionForm.descricao.trim(),
+      user_id: user?.id || null,
+    })
+    setSavingInteraction(false)
+    if (error) {
+      toast({ title: 'Erro ao registrar interação', description: error.message, variant: 'destructive' })
+    } else {
+      toast({ title: 'Interação registrada!', description: 'Adicionada ao histórico do cliente.' })
+      setInteractionForm({ tipo: 'reuniao', descricao: '' })
+      refreshInteractions(selectedClient.id)
+    }
   }
 
   const saveNotes = async () => {
@@ -338,32 +371,16 @@ export default function Clients() {
           </DialogHeader>
 
           <div className="space-y-4 py-1">
-            {/* Nome */}
             <div className="space-y-1.5">
               <Label htmlFor="cf-name">Nome <span className="text-destructive">*</span></Label>
-              <Input
-                id="cf-name"
-                placeholder="Nome do responsável"
-                value={form.name}
-                onChange={e => setField('name', e.target.value)}
-                className={formErrors.name ? 'border-destructive' : ''}
-                maxLength={100}
-              />
+              <Input id="cf-name" placeholder="Nome do responsável" value={form.name} onChange={e => setField('name', e.target.value)} className={formErrors.name ? 'border-destructive' : ''} maxLength={100} />
               {formErrors.name && <p className="text-xs text-destructive">{formErrors.name}</p>}
             </div>
 
-            {/* Empresa + Telefone */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="cf-company">Empresa <span className="text-destructive">*</span></Label>
-                <Input
-                  id="cf-company"
-                  placeholder="Nome da empresa"
-                  value={form.company}
-                  onChange={e => setField('company', e.target.value)}
-                  className={formErrors.company ? 'border-destructive' : ''}
-                  maxLength={100}
-                />
+                <Input id="cf-company" placeholder="Nome da empresa" value={form.company} onChange={e => setField('company', e.target.value)} className={formErrors.company ? 'border-destructive' : ''} maxLength={100} />
                 {formErrors.company && <p className="text-xs text-destructive">{formErrors.company}</p>}
               </div>
               <div className="space-y-1.5">
@@ -372,19 +389,10 @@ export default function Clients() {
               </div>
             </div>
 
-            {/* Email + Segmento */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="cf-email">Email</Label>
-                <Input
-                  id="cf-email"
-                  type="email"
-                  placeholder="email@empresa.com"
-                  value={form.email}
-                  onChange={e => setField('email', e.target.value)}
-                  className={formErrors.email ? 'border-destructive' : ''}
-                  maxLength={255}
-                />
+                <Input id="cf-email" type="email" placeholder="email@empresa.com" value={form.email} onChange={e => setField('email', e.target.value)} className={formErrors.email ? 'border-destructive' : ''} maxLength={255} />
                 {formErrors.email && <p className="text-xs text-destructive">{formErrors.email}</p>}
               </div>
               <div className="space-y-1.5">
@@ -393,7 +401,6 @@ export default function Clients() {
               </div>
             </div>
 
-            {/* Plano + Status */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Plano</Label>
@@ -420,36 +427,19 @@ export default function Clients() {
               </div>
             </div>
 
-            {/* MRR + Início de Contrato */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="cf-mrr">MRR (R$)</Label>
-                <Input
-                  id="cf-mrr"
-                  type="number"
-                  placeholder="0,00"
-                  min="0"
-                  step="0.01"
-                  value={form.mrr}
-                  onChange={e => setField('mrr', e.target.value)}
-                  className={formErrors.mrr ? 'border-destructive' : ''}
-                />
+                <Input id="cf-mrr" type="number" placeholder="0,00" min="0" step="0.01" value={form.mrr} onChange={e => setField('mrr', e.target.value)} className={formErrors.mrr ? 'border-destructive' : ''} />
                 {formErrors.mrr && <p className="text-xs text-destructive">{formErrors.mrr}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="cf-inicio">Início do Contrato <span className="text-destructive">*</span></Label>
-                <Input
-                  id="cf-inicio"
-                  type="date"
-                  value={form.inicio_contrato}
-                  onChange={e => setField('inicio_contrato', e.target.value)}
-                  className={formErrors.inicio_contrato ? 'border-destructive' : ''}
-                />
+                <Input id="cf-inicio" type="date" value={form.inicio_contrato} onChange={e => setField('inicio_contrato', e.target.value)} className={formErrors.inicio_contrato ? 'border-destructive' : ''} />
                 {formErrors.inicio_contrato && <p className="text-xs text-destructive">{formErrors.inicio_contrato}</p>}
               </div>
             </div>
 
-            {/* Health Score */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label>Health Score</Label>
@@ -457,49 +447,26 @@ export default function Clients() {
                   {form.health_score}/100
                 </span>
               </div>
-              <Slider
-                min={0}
-                max={100}
-                step={1}
-                value={[form.health_score]}
-                onValueChange={([v]) => setField('health_score', v)}
-                className="w-full"
-              />
+              <Slider min={0} max={100} step={1} value={[form.health_score]} onValueChange={([v]) => setField('health_score', v)} className="w-full" />
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Em Risco</span>
                 <span>Saudável</span>
               </div>
             </div>
 
-            {/* Notas */}
             <div className="space-y-1.5">
               <Label htmlFor="cf-notes">Notas</Label>
-              <Textarea
-                id="cf-notes"
-                placeholder="Observações sobre o cliente..."
-                value={form.notes}
-                onChange={e => setField('notes', e.target.value)}
-                rows={3}
-                maxLength={1000}
-                className="resize-none"
-              />
+              <Textarea id="cf-notes" placeholder="Observações sobre o cliente..." value={form.notes} onChange={e => setField('notes', e.target.value)} rows={3} maxLength={1000} className="resize-none" />
             </div>
           </div>
 
           <DialogFooter className="gap-2 pt-2">
             {editingClient && (
-              <Button
-                variant="destructive"
-                onClick={() => { setShowForm(false); setDeleteTarget(editingClient) }}
-                disabled={saving}
-                className="mr-auto"
-              >
+              <Button variant="destructive" onClick={() => { setShowForm(false); setDeleteTarget(editingClient) }} disabled={saving} className="mr-auto">
                 <Trash2 className="h-4 w-4" />
               </Button>
             )}
-            <Button variant="outline" onClick={() => setShowForm(false)} disabled={saving}>
-              Cancelar
-            </Button>
+            <Button variant="outline" onClick={() => setShowForm(false)} disabled={saving}>Cancelar</Button>
             <Button onClick={handleSaveClient} disabled={saving} className="gap-2">
               {saving
                 ? <div className="w-4 h-4 rounded-full border-2 border-primary-foreground border-t-transparent animate-spin" />
@@ -523,11 +490,7 @@ export default function Clients() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteClient}
-              disabled={deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <AlertDialogAction onClick={handleDeleteClient} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {deleting ? 'Excluindo...' : 'Sim, excluir'}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -551,20 +514,10 @@ export default function Clients() {
                 </div>
               </div>
               <div className="flex gap-2 pr-8">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={e => selectedClient && openEditClient(selectedClient, e)}
-                  className="gap-1 text-xs"
-                >
+                <Button variant="outline" size="sm" onClick={e => selectedClient && openEditClient(selectedClient, e)} className="gap-1 text-xs">
                   <Pencil className="h-3 w-3" /> Editar
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => { setDeleteTarget(selectedClient); setSelectedClient(null) }}
-                  className="gap-1 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
-                >
+                <Button variant="outline" size="sm" onClick={() => { setDeleteTarget(selectedClient); setSelectedClient(null) }} className="gap-1 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30">
                   <Trash2 className="h-3 w-3" /> Excluir
                 </Button>
               </div>
@@ -574,7 +527,9 @@ export default function Clients() {
             <Tabs defaultValue="info">
               <TabsList className="w-full bg-muted">
                 <TabsTrigger value="info" className="flex-1 text-xs">Informações</TabsTrigger>
-                <TabsTrigger value="history" className="flex-1 text-xs">Histórico</TabsTrigger>
+                <TabsTrigger value="history" className="flex-1 text-xs">
+                  Histórico {clientInteractions.length > 0 && <span className="ml-1 bg-primary/20 text-primary text-xs rounded-full px-1.5">{clientInteractions.length}</span>}
+                </TabsTrigger>
                 <TabsTrigger value="deliveries" className="flex-1 text-xs">Entregas</TabsTrigger>
                 <TabsTrigger value="invoices" className="flex-1 text-xs">Faturas</TabsTrigger>
                 <TabsTrigger value="notes" className="flex-1 text-xs">Notas</TabsTrigger>
@@ -607,20 +562,63 @@ export default function Clients() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="history" className="mt-4">
+              <TabsContent value="history" className="mt-4 space-y-4">
+                {/* Log Interaction Form */}
+                <div className="p-4 bg-muted/30 rounded-xl border border-border space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                    <MessageSquare className="h-3.5 w-3.5" /> Registrar Interação
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Select value={interactionForm.tipo} onValueChange={v => setInteractionForm(p => ({ ...p, tipo: v }))}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {INTERACTION_TYPES.map(t => (
+                          <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Textarea
+                      placeholder="Descreva a interação..."
+                      value={interactionForm.descricao}
+                      onChange={e => setInteractionForm(p => ({ ...p, descricao: e.target.value }))}
+                      rows={1}
+                      className="col-span-2 min-h-8 resize-none text-xs"
+                      maxLength={500}
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    className="w-full gap-2"
+                    onClick={handleLogInteraction}
+                    disabled={savingInteraction || !interactionForm.descricao.trim()}
+                  >
+                    {savingInteraction
+                      ? <div className="w-3.5 h-3.5 rounded-full border-2 border-primary-foreground border-t-transparent animate-spin" />
+                      : <Send className="h-3.5 w-3.5" />
+                    }
+                    {savingInteraction ? 'Salvando...' : 'Registrar'}
+                  </Button>
+                </div>
+
+                {/* Interaction List */}
                 {clientInteractions.length === 0 ? (
-                  <p className="text-center py-8 text-muted-foreground text-sm">Nenhuma interação registrada</p>
+                  <p className="text-center py-6 text-muted-foreground text-sm">Nenhuma interação registrada</p>
                 ) : (
-                  <div className="space-y-3">
-                    {clientInteractions.map(i => (
-                      <div key={i.id} className="flex gap-3 p-3 bg-muted/30 rounded-lg border-l-2 border-primary/40">
-                        <div className="flex-1">
-                          <p className="text-xs text-muted-foreground capitalize mb-1">{i.tipo}</p>
-                          <p className="text-sm">{i.descricao}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{new Date(i.created_at).toLocaleDateString('pt-BR')}</p>
+                  <div className="space-y-2">
+                    {clientInteractions.map(i => {
+                      const typeConf = INTERACTION_TYPES.find(t => t.value === i.tipo)
+                      return (
+                        <div key={i.id} className="flex gap-3 p-3 bg-muted/30 rounded-lg border-l-2 border-primary/40">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge variant="outline" className="text-xs px-1.5 py-0 capitalize">{typeConf?.label || i.tipo}</Badge>
+                              <span className="text-xs text-muted-foreground">{new Date(i.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                            <p className="text-sm">{i.descricao}</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </TabsContent>

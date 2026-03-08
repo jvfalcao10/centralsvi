@@ -54,6 +54,7 @@ export default function Financial() {
   const { toast } = useToast()
   const [invoices, setInvoices] = useState<InvoiceWithClient[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [activeClientsMrr, setActiveClientsMrr] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('all')
   const [expenseStatusFilter, setExpenseStatusFilter] = useState('all')
@@ -62,12 +63,17 @@ export default function Financial() {
   const [newExpense, setNewExpense] = useState({ categoria: 'operacional', descricao: '', valor: '', vencimento: '' })
 
   const fetchData = useCallback(async () => {
-    const [{ data: inv }, { data: exp }] = await Promise.all([
+    const [{ data: inv }, { data: exp }, { data: clientsData }] = await Promise.all([
       supabase.from('invoices').select('*, clients(name)').order('vencimento'),
       supabase.from('expenses').select('*').order('vencimento'),
+      supabase.from('clients').select('mrr, status'),
     ])
     setInvoices(inv || [])
     setExpenses(exp || [])
+    if (clientsData) {
+      const mrr = clientsData.filter(c => c.status === 'ativo').reduce((s, c) => s + c.mrr, 0)
+      setActiveClientsMrr(mrr)
+    }
     setLoading(false)
   }, [])
 
@@ -101,13 +107,14 @@ export default function Financial() {
   const today = new Date().toISOString().split('T')[0]
   const in7Days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
+  const mrr = activeClientsMrr ?? 0
   const totalReceivable = invoices.filter(i => i.status !== 'pago').reduce((s, i) => s + i.valor, 0)
   const overdueInvoices = invoices.filter(i => i.status === 'atrasado' || (i.status === 'pendente' && i.vencimento < today))
   const dueSoonInvoices = invoices.filter(i => i.status === 'pendente' && i.vencimento >= today && i.vencimento <= in7Days)
 
-  const totalRevenue = invoices.filter(i => i.status === 'pago').reduce((s, i) => s + i.valor, 0) + 28700
+  const paidInvoicesTotal = invoices.filter(i => i.status === 'pago').reduce((s, i) => s + i.valor, 0)
+  const totalRevenue = paidInvoicesTotal + mrr
   const totalExpensesVal = expenses.reduce((s, e) => s + e.valor, 0)
-  const mrr = 28700
   const netProfit = totalRevenue - totalExpensesVal
   const margin = totalRevenue > 0 ? (netProfit / totalRevenue * 100).toFixed(1) : '0.0'
 
@@ -157,7 +164,7 @@ export default function Financial() {
         <TabsContent value="overview" className="space-y-4 mt-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
             {[
-              { label: 'MRR', value: formatCurrency(mrr), icon: DollarSign, color: 'text-primary' },
+              { label: 'MRR (Clientes Ativos)', value: formatCurrency(mrr), icon: DollarSign, color: 'text-primary' },
               { label: 'Receita Mês', value: formatCurrency(totalRevenue), icon: TrendingUp, color: 'text-success' },
               { label: 'Despesas Mês', value: formatCurrency(totalExpensesVal), icon: TrendingDown, color: 'text-danger' },
               { label: 'Lucro Líquido', value: formatCurrency(netProfit), icon: DollarSign, color: netProfit > 0 ? 'text-success' : 'text-danger' },
@@ -332,11 +339,11 @@ export default function Financial() {
         <TabsContent value="dre" className="space-y-4 mt-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card className="border-border bg-card">
-              <CardHeader><CardTitle className="text-sm">DRE - {new Date().toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">DRE — {new Date().toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}</CardTitle></CardHeader>
               <CardContent>
                 <div className="space-y-3 text-sm">
                   {[
-                    { label: 'Receita Total', value: mrr, bold: false, type: 'income' },
+                    { label: 'Receita Total (MRR)', value: mrr, bold: false, type: 'income' },
                     { label: '(-) Custos Diretos (Pessoal)', value: -costosDirectos, bold: false, type: 'expense' },
                     { label: '(=) Margem Bruta', value: grossMargin, bold: true, type: grossMargin > 0 ? 'income' : 'expense' },
                     { label: '(-) Despesas Fixas', value: -fixedExpenses, bold: false, type: 'expense' },
