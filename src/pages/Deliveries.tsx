@@ -30,7 +30,7 @@ export default function Deliveries() {
   useEffect(() => {
     async function load() {
       await fetchDeliveries()
-      const { data: clientsData } = await supabase.from('clients').select('id, name, company, plano, mrr, status, health_score, inicio_contrato, phone, email, segment, notes').order('name')
+      const { data: clientsData } = await supabase.from('clients').select('*').order('name')
       setClients(clientsData || [])
       setLoading(false)
     }
