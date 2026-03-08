@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
-import { Search, X } from 'lucide-react'
+import { Search, X, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { Lead, PIPELINE_STAGES, formatCurrency, getDaysAgo } from '@/types'
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 
@@ -19,6 +19,19 @@ const SOURCE_COLORS: Record<string, string> = {
   evento: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
 }
 
+const EMPTY_FORM = {
+  name: '',
+  company: '',
+  phone: '',
+  email: '',
+  segment: '',
+  source: 'organico',
+  stage: 'lead',
+  plano: '',
+  ticket_estimado: '',
+  notes: '',
+}
+
 export default function Pipeline() {
   const { toast } = useToast()
   const [leads, setLeads] = useState<Lead[]>([])
@@ -26,6 +39,10 @@ export default function Pipeline() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [filters, setFilters] = useState({ source: '', segment: '' })
   const [search, setSearch] = useState('')
+  const [showNewLead, setShowNewLead] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [nameError, setNameError] = useState('')
 
   const fetchLeads = useCallback(async () => {
     const { data, error } = await supabase.from('leads').select('*').order('created_at', { ascending: false })
@@ -35,6 +52,41 @@ export default function Pipeline() {
   }, [toast])
 
   useEffect(() => { fetchLeads() }, [fetchLeads])
+
+  const setField = (field: string, value: string) => {
+    setForm(prev => ({ ...prev, [field]: value }))
+    if (field === 'name') setNameError('')
+  }
+
+  const handleCreateLead = async () => {
+    if (!form.name.trim()) {
+      setNameError('Nome é obrigatório')
+      return
+    }
+    setSaving(true)
+    const payload = {
+      name: form.name.trim(),
+      company: form.company.trim() || null,
+      phone: form.phone.trim(),
+      email: form.email.trim() || null,
+      segment: form.segment.trim() || null,
+      source: form.source,
+      stage: form.stage,
+      plano: form.plano || null,
+      ticket_estimado: form.ticket_estimado ? parseFloat(form.ticket_estimado) : null,
+      notes: form.notes.trim() || null,
+    }
+    const { error } = await supabase.from('leads').insert(payload)
+    setSaving(false)
+    if (error) {
+      toast({ title: 'Erro ao criar lead', description: error.message, variant: 'destructive' })
+    } else {
+      toast({ title: 'Lead criado!', description: `${form.name} adicionado ao pipeline` })
+      setForm(EMPTY_FORM)
+      setShowNewLead(false)
+      fetchLeads()
+    }
+  }
 
   const filteredLeads = leads.filter(l => {
     if (filters.source && l.source !== filters.source) return false
@@ -124,6 +176,9 @@ export default function Pipeline() {
             <X className="h-4 w-4" /> Limpar
           </Button>
         )}
+        <Button size="sm" onClick={() => setShowNewLead(true)} className="gap-2 ml-auto">
+          <Plus className="h-4 w-4" /> Novo Lead
+        </Button>
       </div>
 
       {/* Kanban Board */}
@@ -195,6 +250,136 @@ export default function Pipeline() {
           })}
         </div>
       </DragDropContext>
+
+      {/* New Lead Modal */}
+      <Dialog open={showNewLead} onOpenChange={open => { setShowNewLead(open); if (!open) { setForm(EMPTY_FORM); setNameError('') } }}>
+        <DialogContent className="max-w-lg bg-card border-border max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg flex items-center gap-2">
+              <Plus className="h-5 w-5 text-primary" /> Novo Lead
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-1">
+            {/* Nome */}
+            <div className="space-y-1.5">
+              <Label htmlFor="nl-name">Nome <span className="text-destructive">*</span></Label>
+              <Input
+                id="nl-name"
+                placeholder="Nome do lead"
+                value={form.name}
+                onChange={e => setField('name', e.target.value)}
+                className={nameError ? 'border-destructive' : ''}
+                maxLength={100}
+              />
+              {nameError && <p className="text-xs text-destructive">{nameError}</p>}
+            </div>
+
+            {/* Empresa + Telefone */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="nl-company">Empresa</Label>
+                <Input id="nl-company" placeholder="Empresa" value={form.company} onChange={e => setField('company', e.target.value)} maxLength={100} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="nl-phone">Telefone</Label>
+                <Input id="nl-phone" placeholder="(00) 00000-0000" value={form.phone} onChange={e => setField('phone', e.target.value)} maxLength={20} />
+              </div>
+            </div>
+
+            {/* Email + Segmento */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="nl-email">Email</Label>
+                <Input id="nl-email" type="email" placeholder="email@exemplo.com" value={form.email} onChange={e => setField('email', e.target.value)} maxLength={255} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="nl-segment">Segmento</Label>
+                <Input id="nl-segment" placeholder="Ex: saúde, varejo..." value={form.segment} onChange={e => setField('segment', e.target.value)} maxLength={60} />
+              </div>
+            </div>
+
+            {/* Origem + Etapa */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Origem</Label>
+                <Select value={form.source} onValueChange={v => setField('source', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="organico">Orgânico</SelectItem>
+                    <SelectItem value="pago">Pago</SelectItem>
+                    <SelectItem value="indicacao">Indicação</SelectItem>
+                    <SelectItem value="evento">Evento</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Etapa</Label>
+                <Select value={form.stage} onValueChange={v => setField('stage', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PIPELINE_STAGES.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Plano + Ticket Estimado */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Plano</Label>
+                <Select value={form.plano || 'none'} onValueChange={v => setField('plano', v === 'none' ? '' : v)}>
+                  <SelectTrigger><SelectValue placeholder="Selecionar plano" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    <SelectItem value="starter">Starter</SelectItem>
+                    <SelectItem value="growth">Growth</SelectItem>
+                    <SelectItem value="pro">Pro</SelectItem>
+                    <SelectItem value="enterprise">Enterprise</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="nl-ticket">Ticket Estimado (R$)</Label>
+                <Input
+                  id="nl-ticket"
+                  type="number"
+                  placeholder="0,00"
+                  min="0"
+                  step="0.01"
+                  value={form.ticket_estimado}
+                  onChange={e => setField('ticket_estimado', e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Notas */}
+            <div className="space-y-1.5">
+              <Label htmlFor="nl-notes">Notas</Label>
+              <Textarea
+                id="nl-notes"
+                placeholder="Observações sobre o lead..."
+                value={form.notes}
+                onChange={e => setField('notes', e.target.value)}
+                rows={3}
+                maxLength={1000}
+                className="resize-none"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowNewLead(false)} disabled={saving}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCreateLead} disabled={saving} className="gap-2">
+              {saving ? <div className="w-4 h-4 rounded-full border-2 border-primary-foreground border-t-transparent animate-spin" /> : <Plus className="h-4 w-4" />}
+              {saving ? 'Salvando...' : 'Salvar Lead'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Lead Detail Modal */}
       <Dialog open={!!selectedLead} onOpenChange={() => setSelectedLead(null)}>
