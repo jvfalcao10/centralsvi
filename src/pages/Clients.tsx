@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Search, Eye, Building2, User } from 'lucide-react'
+import { Search, Eye, Building2, User, Plus, Pencil, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { Client, Delivery, Invoice, Interaction, STATUS_CONFIG, PLANO_CONFIG, formatCurrency, formatDate } from '@/types'
@@ -7,19 +7,37 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Slider } from '@/components/ui/slider'
 
 function getHealthColor(score: number) {
   if (score >= 75) return 'bg-success'
   if (score >= 50) return 'bg-warning'
   return 'bg-danger'
 }
+
+const EMPTY_FORM = {
+  name: '',
+  company: '',
+  phone: '',
+  email: '',
+  segment: '',
+  plano: 'starter',
+  mrr: '',
+  status: 'ativo',
+  health_score: 80,
+  inicio_contrato: new Date().toISOString().split('T')[0],
+  notes: '',
+}
+
+type ClientForm = typeof EMPTY_FORM
 
 export default function Clients() {
   const { toast } = useToast()
@@ -33,6 +51,17 @@ export default function Clients() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [planoFilter, setPlanoFilter] = useState('all')
 
+  // Create/Edit modal
+  const [showForm, setShowForm] = useState(false)
+  const [editingClient, setEditingClient] = useState<Client | null>(null)
+  const [form, setForm] = useState<ClientForm>(EMPTY_FORM)
+  const [saving, setSaving] = useState(false)
+  const [formErrors, setFormErrors] = useState<Partial<Record<keyof ClientForm, string>>>({})
+
+  // Delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState<Client | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
   const fetchClients = useCallback(async () => {
     const { data } = await supabase.from('clients').select('*').order('mrr', { ascending: false })
     setClients(data || [])
@@ -40,6 +69,103 @@ export default function Clients() {
   }, [])
 
   useEffect(() => { fetchClients() }, [fetchClients])
+
+  const openNewClient = () => {
+    setEditingClient(null)
+    setForm(EMPTY_FORM)
+    setFormErrors({})
+    setShowForm(true)
+  }
+
+  const openEditClient = (client: Client, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setEditingClient(client)
+    setForm({
+      name: client.name,
+      company: client.company,
+      phone: client.phone,
+      email: client.email || '',
+      segment: client.segment,
+      plano: client.plano,
+      mrr: String(client.mrr),
+      status: client.status,
+      health_score: client.health_score,
+      inicio_contrato: client.inicio_contrato,
+      notes: client.notes || '',
+    })
+    setFormErrors({})
+    setShowForm(true)
+  }
+
+  const setField = (field: keyof ClientForm, value: string | number) => {
+    setForm(prev => ({ ...prev, [field]: value }))
+    setFormErrors(prev => ({ ...prev, [field]: undefined }))
+  }
+
+  const validateForm = (): boolean => {
+    const errors: Partial<Record<keyof ClientForm, string>> = {}
+    if (!form.name.trim()) errors.name = 'Nome é obrigatório'
+    if (!form.company.trim()) errors.company = 'Empresa é obrigatória'
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errors.email = 'Email inválido'
+    if (form.mrr !== '' && isNaN(Number(form.mrr))) errors.mrr = 'MRR deve ser um número'
+    if (!form.inicio_contrato) errors.inicio_contrato = 'Data de início é obrigatória'
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  const handleSaveClient = async () => {
+    if (!validateForm()) return
+    setSaving(true)
+
+    const payload = {
+      name: form.name.trim(),
+      company: form.company.trim(),
+      phone: form.phone.trim(),
+      email: form.email.trim() || null,
+      segment: form.segment.trim(),
+      plano: form.plano,
+      mrr: form.mrr !== '' ? parseFloat(form.mrr) : 0,
+      status: form.status,
+      health_score: form.health_score,
+      inicio_contrato: form.inicio_contrato,
+      notes: form.notes.trim() || null,
+    }
+
+    const { error } = editingClient
+      ? await supabase.from('clients').update(payload).eq('id', editingClient.id)
+      : await supabase.from('clients').insert(payload)
+
+    setSaving(false)
+
+    if (error) {
+      toast({ title: 'Erro ao salvar cliente', description: error.message, variant: 'destructive' })
+    } else {
+      toast({ title: editingClient ? 'Cliente atualizado!' : 'Cliente criado!', description: `${form.name} salvo com sucesso.` })
+      setShowForm(false)
+      setEditingClient(null)
+
+      // Refresh detail modal if editing the currently open client
+      if (editingClient && selectedClient?.id === editingClient.id) {
+        setSelectedClient(prev => prev ? { ...prev, ...payload } : null)
+      }
+      fetchClients()
+    }
+  }
+
+  const handleDeleteClient = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    const { error } = await supabase.from('clients').delete().eq('id', deleteTarget.id)
+    setDeleting(false)
+    if (error) {
+      toast({ title: 'Erro ao excluir cliente', description: error.message, variant: 'destructive' })
+    } else {
+      toast({ title: 'Cliente excluído', description: `${deleteTarget.name} foi removido.`, variant: 'destructive' })
+      setDeleteTarget(null)
+      if (selectedClient?.id === deleteTarget.id) setSelectedClient(null)
+      fetchClients()
+    }
+  }
 
   const openClient = async (client: Client) => {
     setSelectedClient(client)
@@ -100,6 +226,9 @@ export default function Clients() {
             <SelectItem value="enterprise">Enterprise</SelectItem>
           </SelectContent>
         </Select>
+        <Button size="sm" onClick={openNewClient} className="gap-2 ml-auto">
+          <Plus className="h-4 w-4" /> Novo Cliente
+        </Button>
       </div>
 
       {/* Table */}
@@ -168,9 +297,22 @@ export default function Clients() {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{formatDate(client.inicio_contrato)}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" onClick={() => openClient(client)} className="gap-1 text-xs">
-                      <Eye className="h-3 w-3" /> Ver
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => openClient(client)} className="gap-1 text-xs">
+                        <Eye className="h-3 w-3" /> Ver
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={e => openEditClient(client, e)} className="gap-1 text-xs">
+                        <Pencil className="h-3 w-3" /> Editar
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={e => { e.stopPropagation(); setDeleteTarget(client) }}
+                        className="gap-1 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               )
@@ -185,21 +327,248 @@ export default function Clients() {
         )}
       </div>
 
+      {/* Create / Edit Client Modal */}
+      <Dialog open={showForm} onOpenChange={open => { if (!open) { setShowForm(false); setEditingClient(null) } }}>
+        <DialogContent className="max-w-lg bg-card border-border max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {editingClient ? <Pencil className="h-5 w-5 text-primary" /> : <Plus className="h-5 w-5 text-primary" />}
+              {editingClient ? 'Editar Cliente' : 'Novo Cliente'}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-1">
+            {/* Nome */}
+            <div className="space-y-1.5">
+              <Label htmlFor="cf-name">Nome <span className="text-destructive">*</span></Label>
+              <Input
+                id="cf-name"
+                placeholder="Nome do responsável"
+                value={form.name}
+                onChange={e => setField('name', e.target.value)}
+                className={formErrors.name ? 'border-destructive' : ''}
+                maxLength={100}
+              />
+              {formErrors.name && <p className="text-xs text-destructive">{formErrors.name}</p>}
+            </div>
+
+            {/* Empresa + Telefone */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="cf-company">Empresa <span className="text-destructive">*</span></Label>
+                <Input
+                  id="cf-company"
+                  placeholder="Nome da empresa"
+                  value={form.company}
+                  onChange={e => setField('company', e.target.value)}
+                  className={formErrors.company ? 'border-destructive' : ''}
+                  maxLength={100}
+                />
+                {formErrors.company && <p className="text-xs text-destructive">{formErrors.company}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cf-phone">Telefone</Label>
+                <Input id="cf-phone" placeholder="(00) 00000-0000" value={form.phone} onChange={e => setField('phone', e.target.value)} maxLength={20} />
+              </div>
+            </div>
+
+            {/* Email + Segmento */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="cf-email">Email</Label>
+                <Input
+                  id="cf-email"
+                  type="email"
+                  placeholder="email@empresa.com"
+                  value={form.email}
+                  onChange={e => setField('email', e.target.value)}
+                  className={formErrors.email ? 'border-destructive' : ''}
+                  maxLength={255}
+                />
+                {formErrors.email && <p className="text-xs text-destructive">{formErrors.email}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cf-segment">Segmento</Label>
+                <Input id="cf-segment" placeholder="Ex: saúde, varejo..." value={form.segment} onChange={e => setField('segment', e.target.value)} maxLength={60} />
+              </div>
+            </div>
+
+            {/* Plano + Status */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Plano</Label>
+                <Select value={form.plano} onValueChange={v => setField('plano', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="starter">Starter</SelectItem>
+                    <SelectItem value="growth">Growth</SelectItem>
+                    <SelectItem value="pro">Pro</SelectItem>
+                    <SelectItem value="enterprise">Enterprise</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Status</Label>
+                <Select value={form.status} onValueChange={v => setField('status', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ativo">Ativo</SelectItem>
+                    <SelectItem value="risco">Em Risco</SelectItem>
+                    <SelectItem value="inadimplente">Inadimplente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* MRR + Início de Contrato */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="cf-mrr">MRR (R$)</Label>
+                <Input
+                  id="cf-mrr"
+                  type="number"
+                  placeholder="0,00"
+                  min="0"
+                  step="0.01"
+                  value={form.mrr}
+                  onChange={e => setField('mrr', e.target.value)}
+                  className={formErrors.mrr ? 'border-destructive' : ''}
+                />
+                {formErrors.mrr && <p className="text-xs text-destructive">{formErrors.mrr}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cf-inicio">Início do Contrato <span className="text-destructive">*</span></Label>
+                <Input
+                  id="cf-inicio"
+                  type="date"
+                  value={form.inicio_contrato}
+                  onChange={e => setField('inicio_contrato', e.target.value)}
+                  className={formErrors.inicio_contrato ? 'border-destructive' : ''}
+                />
+                {formErrors.inicio_contrato && <p className="text-xs text-destructive">{formErrors.inicio_contrato}</p>}
+              </div>
+            </div>
+
+            {/* Health Score */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>Health Score</Label>
+                <span className={`text-sm font-bold ${form.health_score >= 75 ? 'text-success' : form.health_score >= 50 ? 'text-warning' : 'text-danger'}`}>
+                  {form.health_score}/100
+                </span>
+              </div>
+              <Slider
+                min={0}
+                max={100}
+                step={1}
+                value={[form.health_score]}
+                onValueChange={([v]) => setField('health_score', v)}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Em Risco</span>
+                <span>Saudável</span>
+              </div>
+            </div>
+
+            {/* Notas */}
+            <div className="space-y-1.5">
+              <Label htmlFor="cf-notes">Notas</Label>
+              <Textarea
+                id="cf-notes"
+                placeholder="Observações sobre o cliente..."
+                value={form.notes}
+                onChange={e => setField('notes', e.target.value)}
+                rows={3}
+                maxLength={1000}
+                className="resize-none"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 pt-2">
+            {editingClient && (
+              <Button
+                variant="destructive"
+                onClick={() => { setShowForm(false); setDeleteTarget(editingClient) }}
+                disabled={saving}
+                className="mr-auto"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => setShowForm(false)} disabled={saving}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveClient} disabled={saving} className="gap-2">
+              {saving
+                ? <div className="w-4 h-4 rounded-full border-2 border-primary-foreground border-t-transparent animate-spin" />
+                : editingClient ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />
+              }
+              {saving ? 'Salvando...' : editingClient ? 'Atualizar' : 'Criar Cliente'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null) }}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir cliente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir <span className="font-semibold text-foreground">{deleteTarget?.name}</span>?
+              Esta ação não pode ser desfeita e todos os dados relacionados serão mantidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteClient}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'Excluindo...' : 'Sim, excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Client Detail Modal */}
       <Dialog open={!!selectedClient} onOpenChange={() => setSelectedClient(null)}>
         <DialogContent className="max-w-2xl bg-card border-border max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-3">
-              <Avatar className="h-9 w-9">
-                <AvatarFallback className="bg-primary/15 text-primary font-bold">
-                  {selectedClient?.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p>{selectedClient?.name}</p>
-                <p className="text-sm text-muted-foreground font-normal">{selectedClient?.company}</p>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-9 w-9">
+                  <AvatarFallback className="bg-primary/15 text-primary font-bold">
+                    {selectedClient?.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <DialogTitle>{selectedClient?.name}</DialogTitle>
+                  <p className="text-sm text-muted-foreground font-normal">{selectedClient?.company}</p>
+                </div>
               </div>
-            </DialogTitle>
+              <div className="flex gap-2 pr-8">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={e => selectedClient && openEditClient(selectedClient, e)}
+                  className="gap-1 text-xs"
+                >
+                  <Pencil className="h-3 w-3" /> Editar
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setDeleteTarget(selectedClient); setSelectedClient(null) }}
+                  className="gap-1 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                >
+                  <Trash2 className="h-3 w-3" /> Excluir
+                </Button>
+              </div>
+            </div>
           </DialogHeader>
           {selectedClient && (
             <Tabs defaultValue="info">
