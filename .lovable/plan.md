@@ -1,74 +1,40 @@
 
-## Plan: Insert real client & lead data
+## Problema identificado
 
-### Summary
-- Store EUA clients as USD value (500) — user accepted
-- Delete ALL mock data (clients, leads, deliveries, invoices, interactions, expenses)
-- Insert 24 real active clients + 5 prospects as leads
+`AuthContext.tsx` usa `async` callback dentro de `onAuthStateChange`. O Supabase **não suporta** callbacks assíncronos nessa função — ele não aguarda o Promise resolver, então `setLoading(false)` só é chamado após o `await fetchProfile()` completar. Se o fetch do perfil travar, atrasar, ou falhar silenciosamente, o `loading` nunca vira `false` e o spinner fica para sempre.
 
-### Execution: 3 data operations via insert tool
+Confirmado: a tabela `profiles` existe, RLS ativo com `SELECT qual: true` (todos podem ver), então a query não é o problema em si. O problema é a ordem de execução: o `onAuthStateChange` dispara, inicia `fetchProfile` async, e a sessão do Supabase pode já ter sido inicializada pela `getSession()` abaixo — causando dupla execução e race conditions.
 
-**Operation 1 — DELETE all mock data**
-```sql
-DELETE FROM interactions;
-DELETE FROM deliveries;
-DELETE FROM invoices;
-DELETE FROM expenses;
-DELETE FROM leads;
-DELETE FROM clients;
+## Fix: separar em dois efeitos
+
+### `src/contexts/AuthContext.tsx` — reescrever
+
+**Novo padrão (correto):**
+
+1. `onAuthStateChange` — callback **síncrono**: só atualiza `user`, `session` e chama `setLoading(false)` imediatamente. Sem await.
+2. `getSession()` — inicialização inicial, também síncrona no callback.
+3. Novo `useEffect([user])` — observa mudanças no `user` e faz `fetchProfile` de forma independente, com try/catch para não travar nada.
+
+```text
+ANTES (quebrado):
+  onAuthStateChange(async (_event, session) => {
+    ...
+    await fetchProfile()   ← trava aqui
+    setLoading(false)      ← nunca chega aqui se trava
+  })
+
+DEPOIS (correto):
+  onAuthStateChange((_event, session) => {
+    setSession(session)
+    setUser(session?.user ?? null)
+    setLoading(false)      ← imediato, não espera nada
+  })
+
+  useEffect(() => {
+    if (user) fetchProfile(user.id)  ← separado, não bloqueia loading
+    else setProfile(null)
+  }, [user])
 ```
 
-**Operation 2 — INSERT 24 active clients**
-
-Brasil (20):
-
-| Name | Company | Segment | MRR | Plano | Status |
-|------|---------|---------|-----|-------|--------|
-| Hospital Jordão | Hospital Jordão (Oftalmologia) | saude | 1750 | growth | ativo |
-| Dr. Brenno | Medicina da Dor | saude | 1600 | growth | ativo |
-| Dr. Daniel Peralba | Cirurgia - Saúde Intestinal | saude | 2000 | growth | ativo |
-| Dr. Felipe Branco | Cirurgia Bariátrica | saude | 2000 | growth | ativo |
-| Dra. Esia Lopes Xinguara | Pediatria Xinguara | saude | 1750 | growth | ativo |
-| Nikolas Fisio | Fisioterapia - Joelho | saude | 2000 | growth | ativo |
-| ProLife | Academia de Reabilitação | saude | 2000 | growth | ativo |
-| Spa Nature | Spa Nature | estetica | 2000 | growth | ativo |
-| Vanessa Back | Vanessa Back Estética | estetica | 1500 | growth | ativo |
-| Espaço Soraia | Roupas e Perfumaria | varejo | 2000 | growth | ativo |
-| Ótica Central | Ótica Central | varejo | 1750 | growth | ativo |
-| Realme | Celulares e Acessórios | varejo | 1800 | growth | ativo |
-| Supermercado América | Supermercado América | alimentacao | 2000 | growth | ativo |
-| Oficinas Burguer | Oficinas Burguer | alimentacao | 1800 | growth | ativo |
-| A Fórmula | Farmácia de Manipulação | servicos | 0 | starter | ativo |
-| Números Contabilidade | Números Contabilidade | servicos | 0 | starter | ativo |
-| Colégio Christo Rei | Colégio Christo Rei | educacao | 2500 | pro | ativo |
-| Exatta Solar | Exatta Solar | energia_agro | 2500 | pro | ativo |
-| Aerojet | Aviação Agrícola | energia_agro | 700 | starter | ativo |
-| Alpha Fitness | Alpha Fitness | fitness | 2000 | growth | ativo |
-
-EUA (4):
-
-| Name | Company | Segment | MRR | Plano | Notes |
-|------|---------|---------|-----|-------|-------|
-| MJC Pavers | MJC Pavers (Orlando) | construcao | 500 | starter | USD |
-| Ma Pavers | Ma Pavers (Fort Myers) | construcao | 500 | starter | USD |
-| Botelho Construction | Botelho Construction (Orlando) | construcao | 500 | starter | USD |
-| MJC Kitchen | MJC Kitchen (Móveis) | construcao | 500 | starter | USD |
-
-**Operation 3 — INSERT 5 prospects as leads** (stage: `proposta`)
-
-| Name | Company | Segment | Source | Ticket |
-|------|---------|---------|--------|--------|
-| Dra. Paula Andrade | adv.paulaandrade | advocacia | organico | 2000 |
-| Dr. Deusdete Junior | dr.deusdete_junior | saude | organico | 2000 |
-| Norte Capital | nortecapitalai | investimentos | organico | 1400 |
-| Bengô Açaí | bengoacai.redencao | alimentacao | organico | 1750 |
-| WR Pizzaria | wr_pizzaria19 | alimentacao | organico | 2000 |
-
-### Result after execution
-- Dashboard will show real MRR: ~R$33.650/mês Brasil + USD 2.000 EUA
-- 24 active clients in Clients page
-- 5 prospects in Pipeline at "Proposta" column
-- All financial pages start clean (zero invoices/expenses to add manually)
-- No code changes needed
-
-### No DB migrations needed — only data operations
+### Arquivos alterados
+- `src/contexts/AuthContext.tsx` — único arquivo, mudança cirúrgica
