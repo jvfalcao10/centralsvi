@@ -147,7 +147,8 @@ export default function Financial() {
   const in7Days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
   const in7DaysStr = in7Days.toISOString().split('T')[0]
 
-  const mrr = activeClientsMrr ?? 0
+  // Use USD-converted MRR sum for financial calculations
+  const mrr = activeClients.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0)
   const totalReceivable = invoices.filter(i => i.status !== 'pago').reduce((s, i) => s + i.valor, 0)
   const overdueInvoices = invoices.filter(i => i.status === 'atrasado' || (i.status === 'pendente' && i.vencimento < todayStr))
   const dueSoonInvoices = invoices.filter(i => i.status === 'pendente' && i.vencimento >= todayStr && i.vencimento <= in7DaysStr)
