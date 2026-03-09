@@ -127,6 +127,9 @@ export default function Clients() {
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errors.email = 'Email inválido'
     if (form.mrr !== '' && isNaN(Number(form.mrr))) errors.mrr = 'MRR deve ser um número'
     if (!form.inicio_contrato) errors.inicio_contrato = 'Data de início é obrigatória'
+    if (form.dia_vencimento !== '' && (isNaN(Number(form.dia_vencimento)) || Number(form.dia_vencimento) < 1 || Number(form.dia_vencimento) > 31)) {
+      errors.dia_vencimento = 'Dia inválido (1-31)'
+    }
     setFormErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -146,6 +149,8 @@ export default function Clients() {
       health_score: form.health_score,
       inicio_contrato: form.inicio_contrato,
       notes: form.notes.trim() || null,
+      instagram: form.instagram.trim() || null,
+      dia_vencimento: form.dia_vencimento !== '' ? parseInt(form.dia_vencimento) : null,
     }
     const { error } = editingClient
       ? await supabase.from('clients').update(payload).eq('id', editingClient.id)
