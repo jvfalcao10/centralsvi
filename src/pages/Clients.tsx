@@ -108,6 +108,8 @@ export default function Clients() {
       health_score: client.health_score,
       inicio_contrato: client.inicio_contrato,
       notes: client.notes || '',
+      instagram: client.instagram || '',
+      dia_vencimento: client.dia_vencimento ? String(client.dia_vencimento) : '',
     })
     setFormErrors({})
     setShowForm(true)
