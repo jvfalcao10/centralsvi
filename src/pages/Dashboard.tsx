@@ -4,7 +4,7 @@ import {
   DollarSign, TrendingDown, Users, Target, AlertTriangle,
   TrendingUp, ArrowUp, ArrowDown, RefreshCw
 } from 'lucide-react'
-import { useUsdRate, useUsdRateInfo, mrrBRL } from '@/hooks/useUsdRate'
+import { useUsdRateInfo, mrrBRL } from '@/hooks/useUsdRate'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
