@@ -431,20 +431,7 @@ export default function Clients() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Plano</Label>
-                <Select value={form.plano} onValueChange={v => setField('plano', v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="starter">Starter</SelectItem>
-                    <SelectItem value="growth">Growth</SelectItem>
-                    <SelectItem value="pro">Pro</SelectItem>
-                    <SelectItem value="enterprise">Enterprise</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
+            <div className="space-y-1.5">
                 <Label>Status</Label>
                 <Select value={form.status} onValueChange={v => setField('status', v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
