@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { DollarSign, TrendingUp, TrendingDown, Percent, Plus, CheckCircle, Send } from 'lucide-react'
+import { DollarSign, TrendingUp, TrendingDown, Percent, Plus, CheckCircle, Send, AlertCircle, Clock, Calendar, CalendarCheck } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { Invoice, Expense, formatCurrency, formatDate } from '@/types'
@@ -17,6 +17,16 @@ import {
 } from 'recharts'
 
 type InvoiceWithClient = Invoice & { clients?: { name: string } }
+
+type ActiveClient = {
+  id: string
+  name: string
+  company: string
+  mrr: number
+  status: string
+  dia_vencimento: number | null
+  instagram: string | null
+}
 
 const CASH_PROJECTION = [
   { day: 'Hoje', saldo: 45000 }, { day: '+15d', saldo: 52000 },
@@ -50,29 +60,37 @@ const expenseCatClass: Record<string, string> = {
   operacional: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
 }
 
+function getDueDate(dia: number): Date {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), dia)
+}
+
 export default function Financial() {
   const { toast } = useToast()
   const [invoices, setInvoices] = useState<InvoiceWithClient[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [activeClientsMrr, setActiveClientsMrr] = useState<number | null>(null)
+  const [activeClients, setActiveClients] = useState<ActiveClient[]>([])
   const [loading, setLoading] = useState(true)
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('all')
   const [expenseStatusFilter, setExpenseStatusFilter] = useState('all')
   const [expenseCatFilter, setExpenseCatFilter] = useState('all')
   const [showNewExpense, setShowNewExpense] = useState(false)
   const [newExpense, setNewExpense] = useState({ categoria: 'operacional', descricao: '', valor: '', vencimento: '' })
+  const [registeringPayment, setRegisteringPayment] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
     const [{ data: inv }, { data: exp }, { data: clientsData }] = await Promise.all([
       supabase.from('invoices').select('*, clients(name)').order('vencimento'),
       supabase.from('expenses').select('*').order('vencimento'),
-      supabase.from('clients').select('mrr, status'),
+      supabase.from('clients').select('id, name, company, mrr, status, dia_vencimento, instagram'),
     ])
     setInvoices(inv || [])
     setExpenses(exp || [])
     if (clientsData) {
-      const mrr = clientsData.filter(c => c.status === 'ativo').reduce((s, c) => s + c.mrr, 0)
-      setActiveClientsMrr(mrr)
+      const active = clientsData.filter(c => c.status === 'ativo')
+      setActiveClients(active)
+      setActiveClientsMrr(active.reduce((s, c) => s + c.mrr, 0))
     }
     setLoading(false)
   }, [])
@@ -104,13 +122,32 @@ export default function Financial() {
     fetchData()
   }
 
-  const today = new Date().toISOString().split('T')[0]
-  const in7Days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const registerPayment = async (client: ActiveClient) => {
+    if (!client.dia_vencimento) return
+    setRegisteringPayment(client.id)
+    const today = new Date().toISOString().split('T')[0]
+    const dueDate = getDueDate(client.dia_vencimento).toISOString().split('T')[0]
+    await supabase.from('invoices').insert({
+      client_id: client.id,
+      valor: client.mrr,
+      status: 'pago',
+      vencimento: dueDate,
+      data_pagamento: today,
+    })
+    toast({ title: `Pagamento de ${client.name} registrado!` })
+    setRegisteringPayment(null)
+    fetchData()
+  }
+
+  const today = new Date()
+  const todayStr = today.toISOString().split('T')[0]
+  const in7Days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+  const in7DaysStr = in7Days.toISOString().split('T')[0]
 
   const mrr = activeClientsMrr ?? 0
   const totalReceivable = invoices.filter(i => i.status !== 'pago').reduce((s, i) => s + i.valor, 0)
-  const overdueInvoices = invoices.filter(i => i.status === 'atrasado' || (i.status === 'pendente' && i.vencimento < today))
-  const dueSoonInvoices = invoices.filter(i => i.status === 'pendente' && i.vencimento >= today && i.vencimento <= in7Days)
+  const overdueInvoices = invoices.filter(i => i.status === 'atrasado' || (i.status === 'pendente' && i.vencimento < todayStr))
+  const dueSoonInvoices = invoices.filter(i => i.status === 'pendente' && i.vencimento >= todayStr && i.vencimento <= in7DaysStr)
 
   const paidInvoicesTotal = invoices.filter(i => i.status === 'pago').reduce((s, i) => s + i.valor, 0)
   const totalRevenue = paidInvoicesTotal + mrr
@@ -130,6 +167,38 @@ export default function Financial() {
   const grossMargin = mrr - costosDirectos
   const netProfitDRE = grossMargin - fixedExpenses
 
+  // --- Billing module grouping ---
+  const todayDay = today.getDate()
+  const clientsWithDue = activeClients.filter(c => c.dia_vencimento !== null)
+  const clientsNoDue = activeClients.filter(c => c.dia_vencimento === null)
+
+  const clientsToday = clientsWithDue.filter(c => c.dia_vencimento === todayDay)
+  const clientsThisWeek = clientsWithDue.filter(c => {
+    if (!c.dia_vencimento) return false
+    const d = getDueDate(c.dia_vencimento)
+    const dStr = d.toISOString().split('T')[0]
+    return dStr > todayStr && dStr <= in7DaysStr
+  })
+  const clientsThisMonth = clientsWithDue.filter(c => {
+    if (!c.dia_vencimento) return false
+    const d = getDueDate(c.dia_vencimento)
+    const dStr = d.toISOString().split('T')[0]
+    return dStr > in7DaysStr
+  })
+  const clientsOverdue = clientsWithDue.filter(c => {
+    if (!c.dia_vencimento) return false
+    const d = getDueDate(c.dia_vencimento)
+    const dStr = d.toISOString().split('T')[0]
+    return dStr < todayStr
+  })
+
+  const billingKpis = [
+    { label: 'Vence hoje', value: clientsToday.reduce((s, c) => s + c.mrr, 0), count: clientsToday.length, color: 'text-danger' },
+    { label: 'Esta semana', value: clientsThisWeek.reduce((s, c) => s + c.mrr, 0), count: clientsThisWeek.length, color: 'text-warning' },
+    { label: 'Este mês', value: clientsThisMonth.reduce((s, c) => s + c.mrr, 0), count: clientsThisMonth.length, color: 'text-primary' },
+    { label: 'Já vencidos', value: clientsOverdue.reduce((s, c) => s + c.mrr, 0), count: clientsOverdue.length, color: 'text-muted-foreground' },
+  ]
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -144,6 +213,93 @@ export default function Financial() {
     return null
   }
 
+  const ClientBillingRow = ({ client, highlight }: { client: ActiveClient; highlight: 'danger' | 'warning' | 'primary' | 'muted' }) => {
+    const colorMap = {
+      danger: 'text-danger',
+      warning: 'text-warning',
+      primary: 'text-primary',
+      muted: 'text-muted-foreground',
+    }
+    const dueDate = client.dia_vencimento ? getDueDate(client.dia_vencimento) : null
+    const dueDateStr = dueDate ? dueDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '—'
+
+    // Check if payment already registered this month
+    const alreadyPaid = invoices.some(inv =>
+      inv.client_id === client.id &&
+      inv.status === 'pago' &&
+      inv.vencimento.startsWith(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`)
+    )
+
+    return (
+      <TableRow className="border-border hover:bg-muted/20">
+        <TableCell className="text-sm font-medium">{client.name}</TableCell>
+        <TableCell className="text-xs text-muted-foreground">{client.company || '—'}</TableCell>
+        <TableCell className="text-sm font-bold text-success">{formatCurrency(client.mrr)}</TableCell>
+        <TableCell>
+          <span className={`text-sm font-medium ${colorMap[highlight]}`}>Dia {client.dia_vencimento} · {dueDateStr}</span>
+        </TableCell>
+        <TableCell className="text-right">
+          {alreadyPaid ? (
+            <Badge variant="outline" className="text-xs bg-success/20 text-success border-success/30">
+              <CheckCircle className="h-3 w-3 mr-1" /> Pago
+            </Badge>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs gap-1 text-success hover:text-success"
+              disabled={registeringPayment === client.id}
+              onClick={() => registerPayment(client)}
+            >
+              <CheckCircle className="h-3 w-3" /> Registrar pag.
+            </Button>
+          )}
+        </TableCell>
+      </TableRow>
+    )
+  }
+
+  const BillingSection = ({
+    title,
+    clients,
+    icon: Icon,
+    highlight,
+    borderColor,
+  }: {
+    title: string
+    clients: ActiveClient[]
+    icon: any
+    highlight: 'danger' | 'warning' | 'primary' | 'muted'
+    borderColor: string
+  }) => {
+    if (clients.length === 0) return null
+    return (
+      <div className={`rounded-xl border ${borderColor} overflow-hidden`}>
+        <div className="px-4 py-2.5 flex items-center gap-2 bg-muted/30 border-b border-border">
+          <Icon className={`h-4 w-4 ${highlight === 'danger' ? 'text-danger' : highlight === 'warning' ? 'text-warning' : highlight === 'primary' ? 'text-primary' : 'text-muted-foreground'}`} />
+          <span className="text-sm font-semibold">{title}</span>
+          <Badge variant="outline" className="ml-auto text-xs">{clients.length} cliente{clients.length !== 1 ? 's' : ''}</Badge>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="border-border hover:bg-transparent">
+              <TableHead>Cliente</TableHead>
+              <TableHead>Empresa</TableHead>
+              <TableHead>MRR</TableHead>
+              <TableHead>Vencimento</TableHead>
+              <TableHead className="text-right">Ação</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {clients.map(c => (
+              <ClientBillingRow key={c.id} client={c} highlight={highlight} />
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    )
+  }
+
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
@@ -155,6 +311,7 @@ export default function Financial() {
       <Tabs defaultValue="overview">
         <TabsList className="bg-muted">
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+          <TabsTrigger value="cobranca">Cobrança</TabsTrigger>
           <TabsTrigger value="receivable">Contas a Receber</TabsTrigger>
           <TabsTrigger value="payable">Contas a Pagar</TabsTrigger>
           <TabsTrigger value="dre">DRE</TabsTrigger>
@@ -201,6 +358,74 @@ export default function Financial() {
               </ResponsiveContainer>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* COBRANÇA */}
+        <TabsContent value="cobranca" className="space-y-4 mt-4">
+          {/* KPIs */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {billingKpis.map(kpi => (
+              <Card key={kpi.label} className="border-border bg-card">
+                <CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground mb-1">{kpi.label}</p>
+                  <p className={`text-lg font-bold ${kpi.color}`}>{formatCurrency(kpi.value)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{kpi.count} cliente{kpi.count !== 1 ? 's' : ''}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Sections */}
+          <BillingSection
+            title="Vence Hoje"
+            clients={clientsToday}
+            icon={AlertCircle}
+            highlight="danger"
+            borderColor="border-danger/30"
+          />
+          <BillingSection
+            title="Vence Esta Semana (próximos 7 dias)"
+            clients={clientsThisWeek}
+            icon={Clock}
+            highlight="warning"
+            borderColor="border-warning/30"
+          />
+          <BillingSection
+            title="Vence Este Mês"
+            clients={clientsThisMonth}
+            icon={Calendar}
+            highlight="primary"
+            borderColor="border-border"
+          />
+          <BillingSection
+            title="Já Vencidos Este Mês"
+            clients={clientsOverdue}
+            icon={CalendarCheck}
+            highlight="muted"
+            borderColor="border-border"
+          />
+
+          {clientsWithDue.length === 0 && clientsNoDue.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground text-sm">
+              Nenhum cliente ativo encontrado.
+            </div>
+          )}
+
+          {/* Clients without due date */}
+          {clientsNoDue.length > 0 && (
+            <Card className="border-border bg-muted/20">
+              <CardContent className="p-4 flex items-center gap-3">
+                <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0" />
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">{clientsNoDue.length} cliente{clientsNoDue.length !== 1 ? 's' : ''}</span> sem dia de vencimento cadastrado:{' '}
+                  {clientsNoDue.map(c => c.name).join(', ')}.{' '}
+                  <a href="/clients" className="text-primary underline underline-offset-2 hover:opacity-80">
+                    Cadastrar agora →
+                  </a>
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* RECEIVABLE */}
