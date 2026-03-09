@@ -559,7 +559,6 @@ export default function Clients() {
                     { label: 'Email', value: selectedClient.email || '—' },
                     { label: 'Telefone', value: selectedClient.phone || '—' },
                     { label: 'Segmento', value: selectedClient.segment },
-                    { label: 'Plano', value: PLANO_CONFIG[selectedClient.plano]?.label || selectedClient.plano },
                     { label: 'Início Contrato', value: formatDate(selectedClient.inicio_contrato) },
                   ].map(item => (
                     <div key={item.label} className="p-3 bg-muted/50 rounded-lg">
