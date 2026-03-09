@@ -317,7 +317,10 @@ export default function Clients() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <span className="font-bold text-success text-sm">{formatCurrency(client.mrr)}</span>
+                    <span className="font-bold text-success text-sm">{formatCurrency(mrrBRL(client.mrr, client.currency, usdRate))}</span>
+                    {client.currency === 'USD' && (
+                      <Badge variant="outline" className="text-xs ml-1 bg-blue-500/10 text-blue-400 border-blue-500/30">🇺🇸 USD</Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={`text-xs ${statusConf?.className}`}>
