@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Search, Eye, Building2, User, Plus, Pencil, Trash2, MessageSquare, Send } from 'lucide-react'
+import { Search, Eye, Building2, User, Plus, Pencil, Trash2, MessageSquare, Send, ExternalLink, Instagram } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'

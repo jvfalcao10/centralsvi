@@ -22,6 +22,7 @@ export interface Lead {
   mrr_projetado: number | null
   owner_id: string | null
   notes: string | null
+  instagram: string | null
   created_at: string
   updated_at: string
 }
