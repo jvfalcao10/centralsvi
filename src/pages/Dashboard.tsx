@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import {
   DollarSign, TrendingDown, Users, Target, AlertTriangle,
-  TrendingUp, ArrowUp, ArrowDown
+  TrendingUp, ArrowUp, ArrowDown, RefreshCw
 } from 'lucide-react'
-import { useUsdRate, mrrBRL } from '@/hooks/useUsdRate'
+import { useUsdRate, useUsdRateInfo, mrrBRL } from '@/hooks/useUsdRate'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
