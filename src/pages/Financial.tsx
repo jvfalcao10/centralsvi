@@ -85,13 +85,13 @@ export default function Financial() {
     const [{ data: inv }, { data: exp }, { data: clientsData }] = await Promise.all([
       supabase.from('invoices').select('*, clients(name)').order('vencimento'),
       supabase.from('expenses').select('*').order('vencimento'),
-      supabase.from('clients').select('id, name, company, mrr, status, dia_vencimento, instagram'),
+      supabase.from('clients').select('id, name, company, mrr, currency, status, dia_vencimento, instagram'),
     ])
     setInvoices(inv || [])
     setExpenses(exp || [])
     if (clientsData) {
       const active = clientsData.filter(c => c.status === 'ativo')
-      setActiveClients(active)
+      setActiveClients(active as ActiveClient[])
       setActiveClientsMrr(active.reduce((s, c) => s + c.mrr, 0))
     }
     setLoading(false)
