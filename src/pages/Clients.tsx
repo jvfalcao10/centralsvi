@@ -591,7 +591,6 @@ export default function Clients() {
                     { label: 'Telefone', value: selectedClient.phone || '—' },
                     { label: 'Segmento', value: selectedClient.segment },
                     { label: 'Plano', value: PLANO_CONFIG[selectedClient.plano]?.label || selectedClient.plano },
-                    { label: 'MRR', value: formatCurrency(selectedClient.mrr) },
                     { label: 'Início Contrato', value: formatDate(selectedClient.inicio_contrato) },
                   ].map(item => (
                     <div key={item.label} className="p-3 bg-muted/50 rounded-lg">
@@ -599,6 +598,16 @@ export default function Clients() {
                       <p className="font-medium">{item.value}</p>
                     </div>
                   ))}
+                  {/* MRR with USD badge */}
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">MRR</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium text-success">{formatCurrency(mrrBRL(selectedClient.mrr, selectedClient.currency, usdRate))}</p>
+                      {selectedClient.currency === 'USD' && (
+                        <Badge variant="outline" className="text-xs bg-info/10 text-info border-info/30">🇺🇸 USD ${selectedClient.mrr}</Badge>
+                      )}
+                    </div>
+                  </div>
                   <div className="p-3 bg-muted/50 rounded-lg">
                     <p className="text-xs text-muted-foreground mb-1">Instagram</p>
                     {selectedClient.instagram ? (
