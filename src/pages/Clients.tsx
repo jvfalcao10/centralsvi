@@ -144,7 +144,7 @@ export default function Clients() {
       phone: form.phone.trim(),
       email: form.email.trim() || null,
       segment: form.segment.trim(),
-      plano: form.plano,
+      
       mrr: form.mrr !== '' ? parseFloat(form.mrr) : 0,
       status: form.status,
       health_score: form.health_score,
