@@ -298,11 +298,6 @@ export default function Clients() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={`text-xs capitalize ${planoConf?.className}`}>
-                      {planoConf?.label || client.plano}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
                     <span className="font-bold text-success text-sm">{formatCurrency(mrrBRL(client.mrr, client.currency, usdRate))}</span>
                     {client.currency === 'USD' && (
                       <Badge variant="outline" className="text-xs ml-1 bg-info/10 text-info border-info/30">🇺🇸 USD</Badge>
