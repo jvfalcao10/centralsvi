@@ -1,64 +1,74 @@
 
-## Módulo de Cobrança — nova aba "Cobrança" na página Financeiro
+## Plan: Insert real client & lead data
 
-### Contexto
+### Summary
+- Store EUA clients as USD value (500) — user accepted
+- Delete ALL mock data (clients, leads, deliveries, invoices, interactions, expenses)
+- Insert 24 real active clients + 5 prospects as leads
 
-Clientes têm `dia_vencimento` (inteiro 1-31) + `mrr`. O módulo deve calcular, para o mês corrente, em que data cada cliente vence e agrupar em: **Vencendo hoje**, **Vencendo esta semana** (próximos 7 dias) e **Vencendo este mês**. Sem criar faturas novas — é uma visão inteligente sobre os clientes.
+### Execution: 3 data operations via insert tool
 
----
-
-### Lógica de datas
-
-Para cada cliente com `dia_vencimento`:
-- Construir `vencDate = new Date(anoAtual, mesAtual, dia_vencimento)`
-- Se `dia_vencimento` < hoje.getDate() → já venceu este mês → mostrar no grupo "Venceu este mês" (cinza)
-- Se `vencDate === hoje` → "Vence hoje" (vermelho)
-- Se `vencDate` entre amanhã e hoje+7 → "Vence esta semana" (amarelo)
-- Restante do mês → "Vence este mês" (azul)
-- Clientes sem `dia_vencimento` → não aparecem
-
----
-
-### O que mudar
-
-**Apenas `src/pages/Financial.tsx`:**
-
-1. **fetchData** — ampliar a query de clientes para `select('id, name, company, mrr, status, dia_vencimento, instagram')` e guardar em estado `activeClients`
-
-2. **Lógica de agrupamento** — derivar 4 grupos a partir de `activeClients`:
-   - `clientesToday` — vence hoje
-   - `clientesThisWeek` — vence nos próximos 7 dias (excluindo hoje)
-   - `clientesThisMonth` — vence no restante do mês
-   - `clientesOverdue` — dia_vencimento já passou neste mês
-
-3. **Nova aba** — adicionar `<TabsTrigger value="cobranca">Cobrança</TabsTrigger>` e `<TabsContent value="cobranca">`
-
-4. **Layout da aba Cobrança:**
-
-```text
-┌─ KPIs ────────────────────────────────────────────────┐
-│  Vence hoje: R$ X  │  Esta semana: R$ X  │  Este mês: R$ X  │
-└───────────────────────────────────────────────────────┘
-
-┌─ Alerta Vence HOJE ────────────────────────────────────┐  (vermelho)
-│  Cliente A   Growth   R$1.750   Dia 9    [Registrar pag.]  │
-│  Cliente B   Starter  R$900    Dia 9    [Registrar pag.]  │
-└───────────────────────────────────────────────────────┘
-
-┌─ Vence esta semana (próximos 7 dias) ─────────────────┐  (amarelo)
-│  ...                                                   │
-└───────────────────────────────────────────────────────┘
-
-┌─ Vence este mês ──────────────────────────────────────┐  (azul)
-│  ...                                                   │
-└───────────────────────────────────────────────────────┘
+**Operation 1 — DELETE all mock data**
+```sql
+DELETE FROM interactions;
+DELETE FROM deliveries;
+DELETE FROM invoices;
+DELETE FROM expenses;
+DELETE FROM leads;
+DELETE FROM clients;
 ```
 
-5. **Botão "Registrar pag."** — ao clicar, insere uma nova invoice com `status: 'pago'`, `vencimento` = data calculada, `valor` = mrr do cliente e `data_pagamento` = hoje. Chama `fetchData()` para atualizar os totais do módulo.
+**Operation 2 — INSERT 24 active clients**
 
-6. **Clientes sem `dia_vencimento`** — exibir no rodapé da aba um card cinza "X clientes sem dia de vencimento cadastrado" com link para a página de Clientes.
+Brasil (20):
 
----
+| Name | Company | Segment | MRR | Plano | Status |
+|------|---------|---------|-----|-------|--------|
+| Hospital Jordão | Hospital Jordão (Oftalmologia) | saude | 1750 | growth | ativo |
+| Dr. Brenno | Medicina da Dor | saude | 1600 | growth | ativo |
+| Dr. Daniel Peralba | Cirurgia - Saúde Intestinal | saude | 2000 | growth | ativo |
+| Dr. Felipe Branco | Cirurgia Bariátrica | saude | 2000 | growth | ativo |
+| Dra. Esia Lopes Xinguara | Pediatria Xinguara | saude | 1750 | growth | ativo |
+| Nikolas Fisio | Fisioterapia - Joelho | saude | 2000 | growth | ativo |
+| ProLife | Academia de Reabilitação | saude | 2000 | growth | ativo |
+| Spa Nature | Spa Nature | estetica | 2000 | growth | ativo |
+| Vanessa Back | Vanessa Back Estética | estetica | 1500 | growth | ativo |
+| Espaço Soraia | Roupas e Perfumaria | varejo | 2000 | growth | ativo |
+| Ótica Central | Ótica Central | varejo | 1750 | growth | ativo |
+| Realme | Celulares e Acessórios | varejo | 1800 | growth | ativo |
+| Supermercado América | Supermercado América | alimentacao | 2000 | growth | ativo |
+| Oficinas Burguer | Oficinas Burguer | alimentacao | 1800 | growth | ativo |
+| A Fórmula | Farmácia de Manipulação | servicos | 0 | starter | ativo |
+| Números Contabilidade | Números Contabilidade | servicos | 0 | starter | ativo |
+| Colégio Christo Rei | Colégio Christo Rei | educacao | 2500 | pro | ativo |
+| Exatta Solar | Exatta Solar | energia_agro | 2500 | pro | ativo |
+| Aerojet | Aviação Agrícola | energia_agro | 700 | starter | ativo |
+| Alpha Fitness | Alpha Fitness | fitness | 2000 | growth | ativo |
 
-### Arquivos alterados
-- `src/pages/Financial.tsx` — único arquivo, sem DB migration necessária
+EUA (4):
+
+| Name | Company | Segment | MRR | Plano | Notes |
+|------|---------|---------|-----|-------|-------|
+| MJC Pavers | MJC Pavers (Orlando) | construcao | 500 | starter | USD |
+| Ma Pavers | Ma Pavers (Fort Myers) | construcao | 500 | starter | USD |
+| Botelho Construction | Botelho Construction (Orlando) | construcao | 500 | starter | USD |
+| MJC Kitchen | MJC Kitchen (Móveis) | construcao | 500 | starter | USD |
+
+**Operation 3 — INSERT 5 prospects as leads** (stage: `proposta`)
+
+| Name | Company | Segment | Source | Ticket |
+|------|---------|---------|--------|--------|
+| Dra. Paula Andrade | adv.paulaandrade | advocacia | organico | 2000 |
+| Dr. Deusdete Junior | dr.deusdete_junior | saude | organico | 2000 |
+| Norte Capital | nortecapitalai | investimentos | organico | 1400 |
+| Bengô Açaí | bengoacai.redencao | alimentacao | organico | 1750 |
+| WR Pizzaria | wr_pizzaria19 | alimentacao | organico | 2000 |
+
+### Result after execution
+- Dashboard will show real MRR: ~R$33.650/mês Brasil + USD 2.000 EUA
+- 24 active clients in Clients page
+- 5 prospects in Pipeline at "Proposta" column
+- All financial pages start clean (zero invoices/expenses to add manually)
+- No code changes needed
+
+### No DB migrations needed — only data operations
