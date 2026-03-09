@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
-import { Search, X, Plus, Pencil, Trash2 } from 'lucide-react'
+import { Search, X, Plus, Pencil, Trash2, ExternalLink, Instagram } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { Lead, PIPELINE_STAGES, formatCurrency, getDaysAgo } from '@/types'
@@ -31,6 +31,7 @@ const EMPTY_FORM = {
   plano: '',
   ticket_estimado: '',
   notes: '',
+  instagram: '',
 }
 
 // Stages shown in "Avançar" (excludes perdido)
@@ -93,6 +94,7 @@ export default function Pipeline() {
       plano: form.plano || null,
       ticket_estimado: form.ticket_estimado ? parseFloat(form.ticket_estimado) : null,
       notes: form.notes.trim() || null,
+      instagram: form.instagram.trim() || null,
     }
     const { error } = await supabase.from('leads').insert(payload)
     setSaving(false)
@@ -118,6 +120,7 @@ export default function Pipeline() {
       plano: lead.plano || '',
       ticket_estimado: lead.ticket_estimado ? String(lead.ticket_estimado) : '',
       notes: lead.notes || '',
+      instagram: lead.instagram || '',
     })
     setEditNameError('')
     setShowEditLead(true)
@@ -138,6 +141,7 @@ export default function Pipeline() {
       plano: editForm.plano || null,
       ticket_estimado: editForm.ticket_estimado ? parseFloat(editForm.ticket_estimado) : null,
       notes: editForm.notes.trim() || null,
+      instagram: editForm.instagram.trim() || null,
       updated_at: new Date().toISOString(),
     }
     const { error } = await supabase.from('leads').update(payload).eq('id', selectedLead.id)
@@ -295,6 +299,13 @@ export default function Pipeline() {
       <div className="space-y-1.5">
         <Label>Notas</Label>
         <Textarea placeholder="Observações sobre o lead..." value={f.notes} onChange={e => setF('notes', e.target.value)} rows={3} maxLength={1000} className="resize-none" />
+      </div>
+      <div className="space-y-1.5">
+        <Label>Instagram</Label>
+        <div className="relative">
+          <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="@perfil" value={f.instagram} onChange={e => setF('instagram', e.target.value)} className="pl-9" maxLength={60} />
+        </div>
       </div>
     </div>
   )
@@ -527,6 +538,23 @@ export default function Pipeline() {
                 <div className="p-3 bg-muted/40 rounded-lg">
                   <Label className="text-muted-foreground text-xs">Etapa</Label>
                   <p className="mt-0.5 font-medium capitalize">{PIPELINE_STAGES.find(s => s.id === selectedLead.stage)?.label || selectedLead.stage}</p>
+                </div>
+                <div className="p-3 bg-muted/40 rounded-lg col-span-2">
+                  <Label className="text-muted-foreground text-xs">Instagram</Label>
+                  {selectedLead.instagram ? (
+                    <a
+                      href={`https://instagram.com/${selectedLead.instagram.replace('@', '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-0.5 font-medium text-primary flex items-center gap-1 hover:underline"
+                    >
+                      <Instagram className="h-3.5 w-3.5" />
+                      {selectedLead.instagram.startsWith('@') ? selectedLead.instagram : `@${selectedLead.instagram}`}
+                      <ExternalLink className="h-3 w-3 opacity-60" />
+                    </a>
+                  ) : (
+                    <p className="mt-0.5 font-medium text-muted-foreground">—</p>
+                  )}
                 </div>
               </div>
               {selectedLead.notes && (

@@ -22,6 +22,7 @@ export interface Lead {
   mrr_projetado: number | null
   owner_id: string | null
   notes: string | null
+  instagram: string | null
   created_at: string
   updated_at: string
 }
@@ -40,6 +41,8 @@ export interface Client {
   inicio_contrato: string
   owner_id: string | null
   notes: string | null
+  instagram: string | null
+  dia_vencimento: number | null
   created_at: string
   updated_at: string
 }

@@ -1,54 +1,74 @@
 
-## Adding Instagram field + vencimento de mensalidade to Clients & Leads
+## Plan: Insert real client & lead data
 
-### What needs to change
+### Summary
+- Store EUA clients as USD value (500) — user accepted
+- Delete ALL mock data (clients, leads, deliveries, invoices, interactions, expenses)
+- Insert 24 real active clients + 5 prospects as leads
 
-**1. Database migration** — add 2 columns to `clients` and 1 to `leads`:
-- `clients.instagram` — `text`, nullable (ex: `@hospitalJordao`)
-- `clients.dia_vencimento` — `integer`, nullable (1-31, day of month for billing)
-- `leads.instagram` — `text`, nullable (prospects already have Instagram handles in the data)
+### Execution: 3 data operations via insert tool
 
-**2. `src/types/index.ts`** — add `instagram: string | null` and `dia_vencimento: number | null` to `Client` interface; add `instagram: string | null` to `Lead` interface
-
-**3. `src/pages/Clients.tsx`** — 6 touch points:
-- `EMPTY_FORM` — add `instagram: ''`, `dia_vencimento: ''`
-- `openEditClient` — populate new fields from client
-- `validateForm` — validate dia_vencimento is 1-31 if provided
-- `handleSaveClient` payload — include new fields
-- **Create/Edit form** — add Instagram input (with `@` prefix) + dia_vencimento number input (1-31) in a new row
-- **Detail modal Info tab** — Instagram shown as clickable link `https://instagram.com/{handle}` opening new tab; dia_vencimento shown as "Dia X de cada mês"
-
-**4. `src/pages/Pipeline.tsx`** — 3 touch points:
-- `EMPTY_FORM` — add `instagram: ''`
-- `handleCreateLead` / `handleEditLead` payloads — include instagram
-- `LeadFormFields` component — add Instagram input field
-- Lead detail modal — show Instagram as clickable link
-
-### Form layout (Clients create/edit modal)
-New row added between email/segment row and plano/status row:
-```text
-[ Instagram @handle    ] [ Venc. mensalidade (dia 1-31) ]
+**Operation 1 — DELETE all mock data**
+```sql
+DELETE FROM interactions;
+DELETE FROM deliveries;
+DELETE FROM invoices;
+DELETE FROM expenses;
+DELETE FROM leads;
+DELETE FROM clients;
 ```
 
-### Detail modal display (Info tab)
-Instagram card shows:
-```text
-Instagram
-@hospitalJordao  →  link to instagram.com/hospitalJordao
-```
-With external link icon (ExternalLink from lucide-react, already imported or easy to add).
+**Operation 2 — INSERT 24 active clients**
 
-Vencimento card shows:
-```text
-Venc. Mensalidade
-Dia 5 de cada mês
-```
+Brasil (20):
 
-### No existing data affected
-All new columns are nullable with no default — existing 24 clients and 5 leads won't be touched. They'll just show `—` until updated via the edit form.
+| Name | Company | Segment | MRR | Plano | Status |
+|------|---------|---------|-----|-------|--------|
+| Hospital Jordão | Hospital Jordão (Oftalmologia) | saude | 1750 | growth | ativo |
+| Dr. Brenno | Medicina da Dor | saude | 1600 | growth | ativo |
+| Dr. Daniel Peralba | Cirurgia - Saúde Intestinal | saude | 2000 | growth | ativo |
+| Dr. Felipe Branco | Cirurgia Bariátrica | saude | 2000 | growth | ativo |
+| Dra. Esia Lopes Xinguara | Pediatria Xinguara | saude | 1750 | growth | ativo |
+| Nikolas Fisio | Fisioterapia - Joelho | saude | 2000 | growth | ativo |
+| ProLife | Academia de Reabilitação | saude | 2000 | growth | ativo |
+| Spa Nature | Spa Nature | estetica | 2000 | growth | ativo |
+| Vanessa Back | Vanessa Back Estética | estetica | 1500 | growth | ativo |
+| Espaço Soraia | Roupas e Perfumaria | varejo | 2000 | growth | ativo |
+| Ótica Central | Ótica Central | varejo | 1750 | growth | ativo |
+| Realme | Celulares e Acessórios | varejo | 1800 | growth | ativo |
+| Supermercado América | Supermercado América | alimentacao | 2000 | growth | ativo |
+| Oficinas Burguer | Oficinas Burguer | alimentacao | 1800 | growth | ativo |
+| A Fórmula | Farmácia de Manipulação | servicos | 0 | starter | ativo |
+| Números Contabilidade | Números Contabilidade | servicos | 0 | starter | ativo |
+| Colégio Christo Rei | Colégio Christo Rei | educacao | 2500 | pro | ativo |
+| Exatta Solar | Exatta Solar | energia_agro | 2500 | pro | ativo |
+| Aerojet | Aviação Agrícola | energia_agro | 700 | starter | ativo |
+| Alpha Fitness | Alpha Fitness | fitness | 2000 | growth | ativo |
 
-### Files to change
-1. **DB migration** — ALTER TABLE clients ADD COLUMN instagram, dia_vencimento; ALTER TABLE leads ADD COLUMN instagram
-2. `src/types/index.ts` — interface updates
-3. `src/pages/Clients.tsx` — form + detail modal + save logic
-4. `src/pages/Pipeline.tsx` — form fields + lead detail display + save logic
+EUA (4):
+
+| Name | Company | Segment | MRR | Plano | Notes |
+|------|---------|---------|-----|-------|-------|
+| MJC Pavers | MJC Pavers (Orlando) | construcao | 500 | starter | USD |
+| Ma Pavers | Ma Pavers (Fort Myers) | construcao | 500 | starter | USD |
+| Botelho Construction | Botelho Construction (Orlando) | construcao | 500 | starter | USD |
+| MJC Kitchen | MJC Kitchen (Móveis) | construcao | 500 | starter | USD |
+
+**Operation 3 — INSERT 5 prospects as leads** (stage: `proposta`)
+
+| Name | Company | Segment | Source | Ticket |
+|------|---------|---------|--------|--------|
+| Dra. Paula Andrade | adv.paulaandrade | advocacia | organico | 2000 |
+| Dr. Deusdete Junior | dr.deusdete_junior | saude | organico | 2000 |
+| Norte Capital | nortecapitalai | investimentos | organico | 1400 |
+| Bengô Açaí | bengoacai.redencao | alimentacao | organico | 1750 |
+| WR Pizzaria | wr_pizzaria19 | alimentacao | organico | 2000 |
+
+### Result after execution
+- Dashboard will show real MRR: ~R$33.650/mês Brasil + USD 2.000 EUA
+- 24 active clients in Clients page
+- 5 prospects in Pipeline at "Proposta" column
+- All financial pages start clean (zero invoices/expenses to add manually)
+- No code changes needed
+
+### No DB migrations needed — only data operations

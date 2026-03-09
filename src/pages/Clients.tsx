@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Search, Eye, Building2, User, Plus, Pencil, Trash2, MessageSquare, Send } from 'lucide-react'
+import { Search, Eye, Building2, User, Plus, Pencil, Trash2, MessageSquare, Send, ExternalLink, Instagram } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
@@ -36,6 +36,8 @@ const EMPTY_FORM = {
   health_score: 80,
   inicio_contrato: new Date().toISOString().split('T')[0],
   notes: '',
+  instagram: '',
+  dia_vencimento: '',
 }
 
 const INTERACTION_TYPES = [
@@ -106,6 +108,8 @@ export default function Clients() {
       health_score: client.health_score,
       inicio_contrato: client.inicio_contrato,
       notes: client.notes || '',
+      instagram: client.instagram || '',
+      dia_vencimento: client.dia_vencimento ? String(client.dia_vencimento) : '',
     })
     setFormErrors({})
     setShowForm(true)
@@ -123,6 +127,9 @@ export default function Clients() {
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errors.email = 'Email inválido'
     if (form.mrr !== '' && isNaN(Number(form.mrr))) errors.mrr = 'MRR deve ser um número'
     if (!form.inicio_contrato) errors.inicio_contrato = 'Data de início é obrigatória'
+    if (form.dia_vencimento !== '' && (isNaN(Number(form.dia_vencimento)) || Number(form.dia_vencimento) < 1 || Number(form.dia_vencimento) > 31)) {
+      errors.dia_vencimento = 'Dia inválido (1-31)'
+    }
     setFormErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -142,6 +149,8 @@ export default function Clients() {
       health_score: form.health_score,
       inicio_contrato: form.inicio_contrato,
       notes: form.notes.trim() || null,
+      instagram: form.instagram.trim() || null,
+      dia_vencimento: form.dia_vencimento !== '' ? parseInt(form.dia_vencimento) : null,
     }
     const { error } = editingClient
       ? await supabase.from('clients').update(payload).eq('id', editingClient.id)
@@ -403,6 +412,21 @@ export default function Clients() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
+                <Label htmlFor="cf-instagram">Instagram</Label>
+                <div className="relative">
+                  <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input id="cf-instagram" placeholder="@perfil" value={form.instagram} onChange={e => setField('instagram', e.target.value)} className="pl-9" maxLength={60} />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cf-venc">Venc. Mensalidade (dia)</Label>
+                <Input id="cf-venc" type="number" placeholder="Ex: 5" min="1" max="31" value={form.dia_vencimento} onChange={e => setField('dia_vencimento', e.target.value)} className={formErrors.dia_vencimento ? 'border-destructive' : ''} />
+                {formErrors.dia_vencimento && <p className="text-xs text-destructive">{formErrors.dia_vencimento}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
                 <Label>Plano</Label>
                 <Select value={form.plano} onValueChange={v => setField('plano', v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -550,6 +574,29 @@ export default function Clients() {
                       <p className="font-medium">{item.value}</p>
                     </div>
                   ))}
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">Instagram</p>
+                    {selectedClient.instagram ? (
+                      <a
+                        href={`https://instagram.com/${selectedClient.instagram.replace('@', '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-primary flex items-center gap-1 hover:underline"
+                      >
+                        <Instagram className="h-3.5 w-3.5" />
+                        {selectedClient.instagram.startsWith('@') ? selectedClient.instagram : `@${selectedClient.instagram}`}
+                        <ExternalLink className="h-3 w-3 opacity-60" />
+                      </a>
+                    ) : (
+                      <p className="font-medium text-muted-foreground">—</p>
+                    )}
+                  </div>
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">Venc. Mensalidade</p>
+                    <p className="font-medium">
+                      {selectedClient.dia_vencimento ? `Dia ${selectedClient.dia_vencimento} de cada mês` : '—'}
+                    </p>
+                  </div>
                 </div>
                 <div className="p-3 bg-muted/50 rounded-lg">
                   <p className="text-xs text-muted-foreground mb-2">Health Score</p>
