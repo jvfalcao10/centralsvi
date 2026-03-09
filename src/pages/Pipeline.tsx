@@ -94,6 +94,7 @@ export default function Pipeline() {
       plano: form.plano || null,
       ticket_estimado: form.ticket_estimado ? parseFloat(form.ticket_estimado) : null,
       notes: form.notes.trim() || null,
+      instagram: form.instagram.trim() || null,
     }
     const { error } = await supabase.from('leads').insert(payload)
     setSaving(false)
