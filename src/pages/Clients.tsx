@@ -258,16 +258,6 @@ export default function Clients() {
             <SelectItem value="inadimplente">Inadimplente</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={planoFilter} onValueChange={setPlanoFilter}>
-          <SelectTrigger className="w-36"><SelectValue placeholder="Plano" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos planos</SelectItem>
-            <SelectItem value="starter">Starter</SelectItem>
-            <SelectItem value="growth">Growth</SelectItem>
-            <SelectItem value="pro">Pro</SelectItem>
-            <SelectItem value="enterprise">Enterprise</SelectItem>
-          </SelectContent>
-        </Select>
         <Button size="sm" onClick={openNewClient} className="gap-2 ml-auto">
           <Plus className="h-4 w-4" /> Novo Cliente
         </Button>
