@@ -54,6 +54,7 @@ type ClientForm = typeof EMPTY_FORM
 export default function Clients() {
   const { toast } = useToast()
   const { user } = useAuth()
+  const usdRate = useUsdRate()
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
