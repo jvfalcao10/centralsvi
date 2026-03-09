@@ -104,7 +104,6 @@ export default function Clients() {
       phone: client.phone,
       email: client.email || '',
       segment: client.segment,
-      plano: client.plano,
       mrr: String(client.mrr),
       status: client.status,
       health_score: client.health_score,
