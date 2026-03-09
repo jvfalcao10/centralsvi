@@ -24,6 +24,7 @@ type ActiveClient = {
   name: string
   company: string
   mrr: number
+  currency: string
   status: string
   dia_vencimento: number | null
   instagram: string | null

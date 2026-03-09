@@ -24,7 +24,8 @@ interface KPICard {
 }
 
 export default function Dashboard() {
-  const [clients, setClients] = useState<{ status: string; mrr: number }[]>([])
+  const usdRate = useUsdRate()
+  const [clients, setClients] = useState<{ status: string; mrr: number; currency: string }[]>([])
   const [leads, setLeads] = useState<{ stage: string }[]>([])
   const [expenses, setExpenses] = useState<{ valor: number }[]>([])
   const [loading, setLoading] = useState(true)
@@ -39,7 +40,7 @@ export default function Dashboard() {
         { data: invoices },
         { data: expensesData },
       ] = await Promise.all([
-        supabase.from('clients').select('status, mrr'),
+        supabase.from('clients').select('status, mrr, currency'),
         supabase.from('leads').select('stage'),
         supabase.from('deliveries').select('status, prazo'),
         supabase.from('invoices').select('status, vencimento'),
