@@ -196,10 +196,10 @@ export default function Financial() {
   })
 
   const billingKpis = [
-    { label: 'Vence hoje', value: clientsToday.reduce((s, c) => s + c.mrr, 0), count: clientsToday.length, color: 'text-danger' },
-    { label: 'Esta semana', value: clientsThisWeek.reduce((s, c) => s + c.mrr, 0), count: clientsThisWeek.length, color: 'text-warning' },
-    { label: 'Este mês', value: clientsThisMonth.reduce((s, c) => s + c.mrr, 0), count: clientsThisMonth.length, color: 'text-primary' },
-    { label: 'Já vencidos', value: clientsOverdue.reduce((s, c) => s + c.mrr, 0), count: clientsOverdue.length, color: 'text-muted-foreground' },
+    { label: 'Vence hoje', value: clientsToday.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0), count: clientsToday.length, color: 'text-danger' },
+    { label: 'Esta semana', value: clientsThisWeek.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0), count: clientsThisWeek.length, color: 'text-warning' },
+    { label: 'Este mês', value: clientsThisMonth.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0), count: clientsThisMonth.length, color: 'text-primary' },
+    { label: 'Já vencidos', value: clientsOverdue.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0), count: clientsOverdue.length, color: 'text-muted-foreground' },
   ]
 
   const CustomTooltip = ({ active, payload, label }: any) => {
