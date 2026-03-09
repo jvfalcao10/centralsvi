@@ -1,0 +1,3 @@
+ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS instagram TEXT NULL;
+ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS dia_vencimento INTEGER NULL;
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS instagram TEXT NULL;

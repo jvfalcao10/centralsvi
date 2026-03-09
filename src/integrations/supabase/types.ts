@@ -18,10 +18,12 @@ export type Database = {
         Row: {
           company: string
           created_at: string
+          dia_vencimento: number | null
           email: string | null
           health_score: number
           id: string
           inicio_contrato: string
+          instagram: string | null
           mrr: number
           name: string
           notes: string | null
@@ -35,10 +37,12 @@ export type Database = {
         Insert: {
           company?: string
           created_at?: string
+          dia_vencimento?: number | null
           email?: string | null
           health_score?: number
           id?: string
           inicio_contrato?: string
+          instagram?: string | null
           mrr?: number
           name: string
           notes?: string | null
@@ -52,10 +56,12 @@ export type Database = {
         Update: {
           company?: string
           created_at?: string
+          dia_vencimento?: number | null
           email?: string | null
           health_score?: number
           id?: string
           inicio_contrato?: string
+          instagram?: string | null
           mrr?: number
           name?: string
           notes?: string | null
@@ -243,6 +249,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          instagram: string | null
           mrr_projetado: number | null
           name: string
           notes: string | null
@@ -260,6 +267,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          instagram?: string | null
           mrr_projetado?: number | null
           name: string
           notes?: string | null
@@ -277,6 +285,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          instagram?: string | null
           mrr_projetado?: number | null
           name?: string
           notes?: string | null

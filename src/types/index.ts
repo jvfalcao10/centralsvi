@@ -40,6 +40,8 @@ export interface Client {
   inicio_contrato: string
   owner_id: string | null
   notes: string | null
+  instagram: string | null
+  dia_vencimento: number | null
   created_at: string
   updated_at: string
 }
