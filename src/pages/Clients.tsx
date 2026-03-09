@@ -284,6 +284,7 @@ export default function Clients() {
               <TableHead>Status</TableHead>
               <TableHead>Health Score</TableHead>
               <TableHead>Início</TableHead>
+              <TableHead>Instagram</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
