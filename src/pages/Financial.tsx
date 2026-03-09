@@ -69,6 +69,7 @@ function getDueDate(dia: number): Date {
 
 export default function Financial() {
   const { toast } = useToast()
+  const usdRate = useUsdRate()
   const [invoices, setInvoices] = useState<InvoiceWithClient[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [activeClientsMrr, setActiveClientsMrr] = useState<number | null>(null)

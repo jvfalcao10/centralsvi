@@ -76,7 +76,7 @@ export default function Dashboard() {
   }, [])
 
   const activeClients = clients.filter(c => c.status === 'ativo').length
-  const totalMRR = clients.reduce((sum, c) => sum + c.mrr, 0)
+  const totalMRR = clients.reduce((sum, c) => sum + mrrBRL(c.mrr, c.currency, usdRate), 0)
   const totalExpenses = expenses.reduce((sum, e) => sum + e.valor, 0)
   const riskClients = clients.filter(c => c.status === 'risco' || c.status === 'inadimplente').length
   const churnRate = clients.length > 0 ? ((riskClients / clients.length) * 100).toFixed(1) : '0.0'
