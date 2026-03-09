@@ -132,7 +132,7 @@ export default function Financial() {
     const dueDate = getDueDate(client.dia_vencimento).toISOString().split('T')[0]
     await supabase.from('invoices').insert({
       client_id: client.id,
-      valor: client.mrr,
+      valor: mrrBRL(client.mrr, client.currency, usdRate),
       status: 'pago',
       vencimento: dueDate,
       data_pagamento: today,
