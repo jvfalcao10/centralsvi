@@ -31,7 +31,7 @@ const EMPTY_FORM = {
   phone: '',
   email: '',
   segment: '',
-  plano: 'starter',
+  
   mrr: '',
   status: 'ativo',
   health_score: 80,
