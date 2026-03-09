@@ -36,6 +36,8 @@ const EMPTY_FORM = {
   health_score: 80,
   inicio_contrato: new Date().toISOString().split('T')[0],
   notes: '',
+  instagram: '',
+  dia_vencimento: '',
 }
 
 const INTERACTION_TYPES = [
