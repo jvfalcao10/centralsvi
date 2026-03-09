@@ -238,7 +238,14 @@ export default function Financial() {
       <TableRow className="border-border hover:bg-muted/20">
         <TableCell className="text-sm font-medium">{client.name}</TableCell>
         <TableCell className="text-xs text-muted-foreground">{client.company || '—'}</TableCell>
-        <TableCell className="text-sm font-bold text-success">{formatCurrency(client.mrr)}</TableCell>
+        <TableCell>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-sm font-bold text-success">{formatCurrency(mrrBRL(client.mrr, client.currency, usdRate))}</span>
+            {client.currency === 'USD' && (
+              <Badge variant="outline" className="text-xs bg-info/10 text-info border-info/30">🇺🇸 USD</Badge>
+            )}
+          </div>
+        </TableCell>
         <TableCell>
           <span className={`text-sm font-medium ${colorMap[highlight]}`}>Dia {client.dia_vencimento} · {dueDateStr}</span>
         </TableCell>
