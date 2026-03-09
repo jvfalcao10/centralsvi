@@ -3,7 +3,7 @@ import { Search, Eye, Building2, User, Plus, Pencil, Trash2, MessageSquare, Send
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
-import { Client, Delivery, Invoice, Interaction, STATUS_CONFIG, PLANO_CONFIG, formatCurrency, formatDate } from '@/types'
+import { Client, Delivery, Invoice, Interaction, STATUS_CONFIG, formatCurrency, formatDate } from '@/types'
 import { useUsdRate, mrrBRL } from '@/hooks/useUsdRate'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -31,7 +31,7 @@ const EMPTY_FORM = {
   phone: '',
   email: '',
   segment: '',
-  plano: 'starter',
+  
   mrr: '',
   status: 'ativo',
   health_score: 80,
@@ -63,7 +63,7 @@ export default function Clients() {
   const [clientInteractions, setClientInteractions] = useState<Interaction[]>([])
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [planoFilter, setPlanoFilter] = useState('all')
+  
 
   // Create/Edit modal
   const [showForm, setShowForm] = useState(false)
@@ -104,7 +104,6 @@ export default function Clients() {
       phone: client.phone,
       email: client.email || '',
       segment: client.segment,
-      plano: client.plano,
       mrr: String(client.mrr),
       status: client.status,
       health_score: client.health_score,
@@ -145,7 +144,7 @@ export default function Clients() {
       phone: form.phone.trim(),
       email: form.email.trim() || null,
       segment: form.segment.trim(),
-      plano: form.plano,
+      
       mrr: form.mrr !== '' ? parseFloat(form.mrr) : 0,
       status: form.status,
       health_score: form.health_score,
@@ -232,7 +231,6 @@ export default function Clients() {
 
   const filtered = clients.filter(c => {
     if (statusFilter !== 'all' && c.status !== statusFilter) return false
-    if (planoFilter !== 'all' && c.plano !== planoFilter) return false
     if (search && !c.name.toLowerCase().includes(search.toLowerCase()) && !c.company.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
@@ -260,16 +258,6 @@ export default function Clients() {
             <SelectItem value="inadimplente">Inadimplente</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={planoFilter} onValueChange={setPlanoFilter}>
-          <SelectTrigger className="w-36"><SelectValue placeholder="Plano" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos planos</SelectItem>
-            <SelectItem value="starter">Starter</SelectItem>
-            <SelectItem value="growth">Growth</SelectItem>
-            <SelectItem value="pro">Pro</SelectItem>
-            <SelectItem value="enterprise">Enterprise</SelectItem>
-          </SelectContent>
-        </Select>
         <Button size="sm" onClick={openNewClient} className="gap-2 ml-auto">
           <Plus className="h-4 w-4" /> Novo Cliente
         </Button>
@@ -281,7 +269,6 @@ export default function Clients() {
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
               <TableHead>Cliente</TableHead>
-              <TableHead>Plano</TableHead>
               <TableHead>MRR</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Health Score</TableHead>
@@ -293,7 +280,6 @@ export default function Clients() {
           <TableBody>
             {filtered.map((client) => {
               const statusConf = STATUS_CONFIG[client.status]
-              const planoConf = PLANO_CONFIG[client.plano]
               return (
                 <TableRow key={client.id} className="border-border hover:bg-muted/30">
                   <TableCell>
@@ -310,11 +296,6 @@ export default function Clients() {
                         </p>
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={`text-xs capitalize ${planoConf?.className}`}>
-                      {planoConf?.label || client.plano}
-                    </Badge>
                   </TableCell>
                   <TableCell>
                     <span className="font-bold text-success text-sm">{formatCurrency(mrrBRL(client.mrr, client.currency, usdRate))}</span>
@@ -452,18 +433,6 @@ export default function Clients() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Plano</Label>
-                <Select value={form.plano} onValueChange={v => setField('plano', v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="starter">Starter</SelectItem>
-                    <SelectItem value="growth">Growth</SelectItem>
-                    <SelectItem value="pro">Pro</SelectItem>
-                    <SelectItem value="enterprise">Enterprise</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
                 <Label>Status</Label>
                 <Select value={form.status} onValueChange={v => setField('status', v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -590,7 +559,6 @@ export default function Clients() {
                     { label: 'Email', value: selectedClient.email || '—' },
                     { label: 'Telefone', value: selectedClient.phone || '—' },
                     { label: 'Segmento', value: selectedClient.segment },
-                    { label: 'Plano', value: PLANO_CONFIG[selectedClient.plano]?.label || selectedClient.plano },
                     { label: 'Início Contrato', value: formatDate(selectedClient.inicio_contrato) },
                   ].map(item => (
                     <div key={item.label} className="p-3 bg-muted/50 rounded-lg">
