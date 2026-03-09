@@ -269,7 +269,6 @@ export default function Clients() {
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
               <TableHead>Cliente</TableHead>
-              <TableHead>Plano</TableHead>
               <TableHead>MRR</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Health Score</TableHead>
@@ -281,7 +280,6 @@ export default function Clients() {
           <TableBody>
             {filtered.map((client) => {
               const statusConf = STATUS_CONFIG[client.status]
-              const planoConf = PLANO_CONFIG[client.plano]
               return (
                 <TableRow key={client.id} className="border-border hover:bg-muted/30">
                   <TableCell>
