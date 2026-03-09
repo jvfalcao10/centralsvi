@@ -24,7 +24,7 @@ interface KPICard {
 }
 
 export default function Dashboard() {
-  const usdRate = useUsdRate()
+  const { rate: usdRate, updatedAt: usdUpdatedAt, isEstimate: usdIsEstimate } = useUsdRateInfo()
   const [clients, setClients] = useState<{ status: string; mrr: number; currency: string }[]>([])
   const [leads, setLeads] = useState<{ stage: string }[]>([])
   const [expenses, setExpenses] = useState<{ valor: number }[]>([])
