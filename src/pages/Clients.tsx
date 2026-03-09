@@ -231,7 +231,6 @@ export default function Clients() {
 
   const filtered = clients.filter(c => {
     if (statusFilter !== 'all' && c.status !== statusFilter) return false
-    if (planoFilter !== 'all' && c.plano !== planoFilter) return false
     if (search && !c.name.toLowerCase().includes(search.toLowerCase()) && !c.company.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
