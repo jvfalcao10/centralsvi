@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import {
   DollarSign, TrendingDown, Users, Target, AlertTriangle,
-  TrendingUp, ArrowUp, ArrowDown
+  TrendingUp, ArrowUp, ArrowDown, RefreshCw
 } from 'lucide-react'
-import { useUsdRate, mrrBRL } from '@/hooks/useUsdRate'
+import { useUsdRateInfo, mrrBRL } from '@/hooks/useUsdRate'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -24,7 +24,7 @@ interface KPICard {
 }
 
 export default function Dashboard() {
-  const usdRate = useUsdRate()
+  const { rate: usdRate, updatedAt: usdUpdatedAt, isEstimate: usdIsEstimate } = useUsdRateInfo()
   const [clients, setClients] = useState<{ status: string; mrr: number; currency: string }[]>([])
   const [leads, setLeads] = useState<{ stage: string }[]>([])
   const [expenses, setExpenses] = useState<{ valor: number }[]>([])
@@ -130,10 +130,15 @@ export default function Dashboard() {
     </div>
   )
 
+  const usdFormatted = usdRate.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const usdTime = usdUpdatedAt
+    ? usdUpdatedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    : null
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
         {kpis.map((kpi) => {
           const Icon = kpi.icon
           const isPositive = kpi.change > 0
@@ -160,6 +165,33 @@ export default function Dashboard() {
             </Card>
           )
         })}
+
+        {/* USD Rate Card */}
+        <Card className="border-border bg-card hover:border-primary/30 transition-colors">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p className="text-muted-foreground text-sm mb-1">Cotação USD</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {usdIsEstimate && !usdTime ? 'Carregando...' : `R$ ${usdFormatted}`}
+                </p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-info/15 flex items-center justify-center">
+                <span className="text-lg leading-none">🇺🇸</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 mt-3 text-xs text-muted-foreground">
+              {usdIsEstimate ? (
+                <Badge variant="outline" className="text-xs py-0 px-1.5 border-warning/30 text-warning bg-warning/10">Estimado</Badge>
+              ) : usdTime ? (
+                <>
+                  <RefreshCw className="h-3 w-3" />
+                  <span>Atualizado às {usdTime}</span>
+                </>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Charts */}
