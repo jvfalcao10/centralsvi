@@ -63,7 +63,7 @@ export default function Clients() {
   const [clientInteractions, setClientInteractions] = useState<Interaction[]>([])
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [planoFilter, setPlanoFilter] = useState('all')
+  
 
   // Create/Edit modal
   const [showForm, setShowForm] = useState(false)
