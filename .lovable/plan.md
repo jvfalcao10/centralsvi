@@ -1,74 +1,43 @@
 
-## Plan: Insert real client & lead data
+## Adicionar card de cotação USD no Dashboard
 
-### Summary
-- Store EUA clients as USD value (500) — user accepted
-- Delete ALL mock data (clients, leads, deliveries, invoices, interactions, expenses)
-- Insert 24 real active clients + 5 prospects as leads
+### O que mudar
 
-### Execution: 3 data operations via insert tool
+**`src/hooks/useUsdRate.ts`** — ampliar o hook para também expor `rateUpdatedAt: Date | null` e um segundo hook `useUsdRateInfo()` que retorna `{ rate, updatedAt }`.
 
-**Operation 1 — DELETE all mock data**
-```sql
-DELETE FROM interactions;
-DELETE FROM deliveries;
-DELETE FROM invoices;
-DELETE FROM expenses;
-DELETE FROM leads;
-DELETE FROM clients;
+**`src/pages/Dashboard.tsx`** — 
+1. Importar o novo hook e `RefreshCw` do lucide-react
+2. Adicionar um 5º card na seção de KPIs (ajustar grid para `xl:grid-cols-5` ou manter 4 e colocar o card USD separado numa linha mais estreita)
+3. Card visual:
+   - Ícone: bandeira 🇺🇸 ou `DollarSign` com badge "USD"
+   - Título: "Cotação USD"
+   - Valor: `R$ 5,85` (formatado com vírgula e 2 casas)
+   - Subtexto: `Atualizado às HH:mm` (timestamp da última fetch)
+   - Se `rate === 5.0` e sem timestamp → mostrar "Carregando..." ou badge "Estimado"
+
+### Detalhes técnicos
+
+**`useUsdRate.ts`**: adicionar `cachedAt` (módulo-level) e retornar `{ rate, updatedAt }` num segundo hook `useUsdRateInfo`.
+
+```ts
+let cachedAt: Date | null = null
+
+export function useUsdRateInfo() {
+  const [rate, setRate] = useState(cachedRate ?? 5.0)
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(cachedAt)
+  // fetch lógico igual, mas salva cachedAt = new Date()
+  return { rate, updatedAt }
+}
 ```
 
-**Operation 2 — INSERT 24 active clients**
+**`Dashboard.tsx`**: card separado abaixo dos 4 KPIs OU como 5º card na grid.
 
-Brasil (20):
+Melhor posição: linha separada de 1 card pequeno ao lado dos gráficos (mais elegante) — inserir entre os KPIs e os gráficos, com `grid-cols-1 sm:grid-cols-3` contendo o card USD na última coluna.
 
-| Name | Company | Segment | MRR | Plano | Status |
-|------|---------|---------|-----|-------|--------|
-| Hospital Jordão | Hospital Jordão (Oftalmologia) | saude | 1750 | growth | ativo |
-| Dr. Brenno | Medicina da Dor | saude | 1600 | growth | ativo |
-| Dr. Daniel Peralba | Cirurgia - Saúde Intestinal | saude | 2000 | growth | ativo |
-| Dr. Felipe Branco | Cirurgia Bariátrica | saude | 2000 | growth | ativo |
-| Dra. Esia Lopes Xinguara | Pediatria Xinguara | saude | 1750 | growth | ativo |
-| Nikolas Fisio | Fisioterapia - Joelho | saude | 2000 | growth | ativo |
-| ProLife | Academia de Reabilitação | saude | 2000 | growth | ativo |
-| Spa Nature | Spa Nature | estetica | 2000 | growth | ativo |
-| Vanessa Back | Vanessa Back Estética | estetica | 1500 | growth | ativo |
-| Espaço Soraia | Roupas e Perfumaria | varejo | 2000 | growth | ativo |
-| Ótica Central | Ótica Central | varejo | 1750 | growth | ativo |
-| Realme | Celulares e Acessórios | varejo | 1800 | growth | ativo |
-| Supermercado América | Supermercado América | alimentacao | 2000 | growth | ativo |
-| Oficinas Burguer | Oficinas Burguer | alimentacao | 1800 | growth | ativo |
-| A Fórmula | Farmácia de Manipulação | servicos | 0 | starter | ativo |
-| Números Contabilidade | Números Contabilidade | servicos | 0 | starter | ativo |
-| Colégio Christo Rei | Colégio Christo Rei | educacao | 2500 | pro | ativo |
-| Exatta Solar | Exatta Solar | energia_agro | 2500 | pro | ativo |
-| Aerojet | Aviação Agrícola | energia_agro | 700 | starter | ativo |
-| Alpha Fitness | Alpha Fitness | fitness | 2000 | growth | ativo |
+Ou mais simples: adicionar como **5º card na grid dos KPIs** ajustando para `xl:grid-cols-5`.
 
-EUA (4):
+**Escolha final**: 5º card na grid `xl:grid-cols-5` — mantém consistência visual.
 
-| Name | Company | Segment | MRR | Plano | Notes |
-|------|---------|---------|-----|-------|-------|
-| MJC Pavers | MJC Pavers (Orlando) | construcao | 500 | starter | USD |
-| Ma Pavers | Ma Pavers (Fort Myers) | construcao | 500 | starter | USD |
-| Botelho Construction | Botelho Construction (Orlando) | construcao | 500 | starter | USD |
-| MJC Kitchen | MJC Kitchen (Móveis) | construcao | 500 | starter | USD |
-
-**Operation 3 — INSERT 5 prospects as leads** (stage: `proposta`)
-
-| Name | Company | Segment | Source | Ticket |
-|------|---------|---------|--------|--------|
-| Dra. Paula Andrade | adv.paulaandrade | advocacia | organico | 2000 |
-| Dr. Deusdete Junior | dr.deusdete_junior | saude | organico | 2000 |
-| Norte Capital | nortecapitalai | investimentos | organico | 1400 |
-| Bengô Açaí | bengoacai.redencao | alimentacao | organico | 1750 |
-| WR Pizzaria | wr_pizzaria19 | alimentacao | organico | 2000 |
-
-### Result after execution
-- Dashboard will show real MRR: ~R$33.650/mês Brasil + USD 2.000 EUA
-- 24 active clients in Clients page
-- 5 prospects in Pipeline at "Proposta" column
-- All financial pages start clean (zero invoices/expenses to add manually)
-- No code changes needed
-
-### No DB migrations needed — only data operations
+### Arquivos alterados
+- `src/hooks/useUsdRate.ts` — adicionar `cachedAt` + `useUsdRateInfo()`
+- `src/pages/Dashboard.tsx` — usar `useUsdRateInfo()`, adicionar card USD, ajustar grid
