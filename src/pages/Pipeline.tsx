@@ -539,6 +539,23 @@ export default function Pipeline() {
                   <Label className="text-muted-foreground text-xs">Etapa</Label>
                   <p className="mt-0.5 font-medium capitalize">{PIPELINE_STAGES.find(s => s.id === selectedLead.stage)?.label || selectedLead.stage}</p>
                 </div>
+                <div className="p-3 bg-muted/40 rounded-lg col-span-2">
+                  <Label className="text-muted-foreground text-xs">Instagram</Label>
+                  {selectedLead.instagram ? (
+                    <a
+                      href={`https://instagram.com/${selectedLead.instagram.replace('@', '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-0.5 font-medium text-primary flex items-center gap-1 hover:underline"
+                    >
+                      <Instagram className="h-3.5 w-3.5" />
+                      {selectedLead.instagram.startsWith('@') ? selectedLead.instagram : `@${selectedLead.instagram}`}
+                      <ExternalLink className="h-3 w-3 opacity-60" />
+                    </a>
+                  ) : (
+                    <p className="mt-0.5 font-medium text-muted-foreground">—</p>
+                  )}
+                </div>
               </div>
               {selectedLead.notes && (
                 <div className="p-3 bg-muted/40 rounded-lg">
