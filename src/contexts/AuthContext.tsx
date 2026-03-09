@@ -26,39 +26,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .single()
-    if (data) setProfile(data)
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single()
+      if (data) setProfile(data)
+    } catch {
+      // silently ignore — loading is already false
+    }
   }
 
   useEffect(() => {
+    // Initialize session synchronously
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      setUser(session?.user ?? null)
+      setLoading(false)
+    })
+
+    // Listen for auth changes — synchronous, no await
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         setSession(session)
         setUser(session?.user ?? null)
-        if (session?.user) {
-          await fetchProfile(session.user.id)
-        } else {
-          setProfile(null)
-        }
         setLoading(false)
       }
     )
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchProfile(session.user.id)
-      }
-      setLoading(false)
-    })
-
     return () => subscription.unsubscribe()
   }, [])
+
+  // Fetch profile separately, never blocks loading
+  useEffect(() => {
+    if (user) {
+      fetchProfile(user.id)
+    } else {
+      setProfile(null)
+    }
+  }, [user])
 
   const signOut = async () => {
     await supabase.auth.signOut()
