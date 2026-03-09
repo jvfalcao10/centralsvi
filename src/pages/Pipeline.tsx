@@ -300,6 +300,13 @@ export default function Pipeline() {
         <Label>Notas</Label>
         <Textarea placeholder="Observações sobre o lead..." value={f.notes} onChange={e => setF('notes', e.target.value)} rows={3} maxLength={1000} className="resize-none" />
       </div>
+      <div className="space-y-1.5">
+        <Label>Instagram</Label>
+        <div className="relative">
+          <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="@perfil" value={f.instagram} onChange={e => setF('instagram', e.target.value)} className="pl-9" maxLength={60} />
+        </div>
+      </div>
     </div>
   )
 
