@@ -3,7 +3,7 @@ import { Search, Eye, Building2, User, Plus, Pencil, Trash2, MessageSquare, Send
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
-import { Client, Delivery, Invoice, Interaction, STATUS_CONFIG, PLANO_CONFIG, formatCurrency, formatDate } from '@/types'
+import { Client, Delivery, Invoice, Interaction, STATUS_CONFIG, formatCurrency, formatDate } from '@/types'
 import { useUsdRate, mrrBRL } from '@/hooks/useUsdRate'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
