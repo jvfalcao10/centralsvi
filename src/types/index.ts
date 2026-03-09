@@ -36,6 +36,7 @@ export interface Client {
   segment: string
   plano: string
   mrr: number
+  currency: string
   status: string
   health_score: number
   inicio_contrato: string

@@ -3,6 +3,7 @@ import { DollarSign, TrendingUp, TrendingDown, Percent, Plus, CheckCircle, Send,
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { Invoice, Expense, formatCurrency, formatDate } from '@/types'
+import { useUsdRate, mrrBRL } from '@/hooks/useUsdRate'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -23,6 +24,7 @@ type ActiveClient = {
   name: string
   company: string
   mrr: number
+  currency: string
   status: string
   dia_vencimento: number | null
   instagram: string | null
@@ -67,6 +69,7 @@ function getDueDate(dia: number): Date {
 
 export default function Financial() {
   const { toast } = useToast()
+  const usdRate = useUsdRate()
   const [invoices, setInvoices] = useState<InvoiceWithClient[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [activeClientsMrr, setActiveClientsMrr] = useState<number | null>(null)
@@ -83,13 +86,13 @@ export default function Financial() {
     const [{ data: inv }, { data: exp }, { data: clientsData }] = await Promise.all([
       supabase.from('invoices').select('*, clients(name)').order('vencimento'),
       supabase.from('expenses').select('*').order('vencimento'),
-      supabase.from('clients').select('id, name, company, mrr, status, dia_vencimento, instagram'),
+      supabase.from('clients').select('id, name, company, mrr, currency, status, dia_vencimento, instagram'),
     ])
     setInvoices(inv || [])
     setExpenses(exp || [])
     if (clientsData) {
       const active = clientsData.filter(c => c.status === 'ativo')
-      setActiveClients(active)
+      setActiveClients(active as ActiveClient[])
       setActiveClientsMrr(active.reduce((s, c) => s + c.mrr, 0))
     }
     setLoading(false)
@@ -129,7 +132,7 @@ export default function Financial() {
     const dueDate = getDueDate(client.dia_vencimento).toISOString().split('T')[0]
     await supabase.from('invoices').insert({
       client_id: client.id,
-      valor: client.mrr,
+      valor: mrrBRL(client.mrr, client.currency, usdRate),
       status: 'pago',
       vencimento: dueDate,
       data_pagamento: today,
@@ -144,7 +147,8 @@ export default function Financial() {
   const in7Days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
   const in7DaysStr = in7Days.toISOString().split('T')[0]
 
-  const mrr = activeClientsMrr ?? 0
+  // Use USD-converted MRR sum for financial calculations
+  const mrr = activeClients.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0)
   const totalReceivable = invoices.filter(i => i.status !== 'pago').reduce((s, i) => s + i.valor, 0)
   const overdueInvoices = invoices.filter(i => i.status === 'atrasado' || (i.status === 'pendente' && i.vencimento < todayStr))
   const dueSoonInvoices = invoices.filter(i => i.status === 'pendente' && i.vencimento >= todayStr && i.vencimento <= in7DaysStr)
@@ -193,10 +197,10 @@ export default function Financial() {
   })
 
   const billingKpis = [
-    { label: 'Vence hoje', value: clientsToday.reduce((s, c) => s + c.mrr, 0), count: clientsToday.length, color: 'text-danger' },
-    { label: 'Esta semana', value: clientsThisWeek.reduce((s, c) => s + c.mrr, 0), count: clientsThisWeek.length, color: 'text-warning' },
-    { label: 'Este mês', value: clientsThisMonth.reduce((s, c) => s + c.mrr, 0), count: clientsThisMonth.length, color: 'text-primary' },
-    { label: 'Já vencidos', value: clientsOverdue.reduce((s, c) => s + c.mrr, 0), count: clientsOverdue.length, color: 'text-muted-foreground' },
+    { label: 'Vence hoje', value: clientsToday.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0), count: clientsToday.length, color: 'text-danger' },
+    { label: 'Esta semana', value: clientsThisWeek.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0), count: clientsThisWeek.length, color: 'text-warning' },
+    { label: 'Este mês', value: clientsThisMonth.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0), count: clientsThisMonth.length, color: 'text-primary' },
+    { label: 'Já vencidos', value: clientsOverdue.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0), count: clientsOverdue.length, color: 'text-muted-foreground' },
   ]
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -234,7 +238,14 @@ export default function Financial() {
       <TableRow className="border-border hover:bg-muted/20">
         <TableCell className="text-sm font-medium">{client.name}</TableCell>
         <TableCell className="text-xs text-muted-foreground">{client.company || '—'}</TableCell>
-        <TableCell className="text-sm font-bold text-success">{formatCurrency(client.mrr)}</TableCell>
+        <TableCell>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-sm font-bold text-success">{formatCurrency(mrrBRL(client.mrr, client.currency, usdRate))}</span>
+            {client.currency === 'USD' && (
+              <Badge variant="outline" className="text-xs bg-info/10 text-info border-info/30">🇺🇸 USD</Badge>
+            )}
+          </div>
+        </TableCell>
         <TableCell>
           <span className={`text-sm font-medium ${colorMap[highlight]}`}>Dia {client.dia_vencimento} · {dueDateStr}</span>
         </TableCell>

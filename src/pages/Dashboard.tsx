@@ -4,6 +4,7 @@ import {
   DollarSign, TrendingDown, Users, Target, AlertTriangle,
   TrendingUp, ArrowUp, ArrowDown
 } from 'lucide-react'
+import { useUsdRate, mrrBRL } from '@/hooks/useUsdRate'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -23,7 +24,8 @@ interface KPICard {
 }
 
 export default function Dashboard() {
-  const [clients, setClients] = useState<{ status: string; mrr: number }[]>([])
+  const usdRate = useUsdRate()
+  const [clients, setClients] = useState<{ status: string; mrr: number; currency: string }[]>([])
   const [leads, setLeads] = useState<{ stage: string }[]>([])
   const [expenses, setExpenses] = useState<{ valor: number }[]>([])
   const [loading, setLoading] = useState(true)
@@ -38,7 +40,7 @@ export default function Dashboard() {
         { data: invoices },
         { data: expensesData },
       ] = await Promise.all([
-        supabase.from('clients').select('status, mrr'),
+        supabase.from('clients').select('status, mrr, currency'),
         supabase.from('leads').select('stage'),
         supabase.from('deliveries').select('status, prazo'),
         supabase.from('invoices').select('status, vencimento'),
@@ -74,7 +76,7 @@ export default function Dashboard() {
   }, [])
 
   const activeClients = clients.filter(c => c.status === 'ativo').length
-  const totalMRR = clients.reduce((sum, c) => sum + c.mrr, 0)
+  const totalMRR = clients.reduce((sum, c) => sum + mrrBRL(c.mrr, c.currency, usdRate), 0)
   const totalExpenses = expenses.reduce((sum, e) => sum + e.valor, 0)
   const riskClients = clients.filter(c => c.status === 'risco' || c.status === 'inadimplente').length
   const churnRate = clients.length > 0 ? ((riskClients / clients.length) * 100).toFixed(1) : '0.0'

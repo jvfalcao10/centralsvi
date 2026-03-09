@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
 import { Client, Delivery, Invoice, Interaction, STATUS_CONFIG, PLANO_CONFIG, formatCurrency, formatDate } from '@/types'
+import { useUsdRate, mrrBRL } from '@/hooks/useUsdRate'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -53,6 +54,7 @@ type ClientForm = typeof EMPTY_FORM
 export default function Clients() {
   const { toast } = useToast()
   const { user } = useAuth()
+  const usdRate = useUsdRate()
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
@@ -315,7 +317,10 @@ export default function Clients() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <span className="font-bold text-success text-sm">{formatCurrency(client.mrr)}</span>
+                    <span className="font-bold text-success text-sm">{formatCurrency(mrrBRL(client.mrr, client.currency, usdRate))}</span>
+                    {client.currency === 'USD' && (
+                      <Badge variant="outline" className="text-xs ml-1 bg-info/10 text-info border-info/30">🇺🇸 USD</Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={`text-xs ${statusConf?.className}`}>
@@ -586,7 +591,6 @@ export default function Clients() {
                     { label: 'Telefone', value: selectedClient.phone || '—' },
                     { label: 'Segmento', value: selectedClient.segment },
                     { label: 'Plano', value: PLANO_CONFIG[selectedClient.plano]?.label || selectedClient.plano },
-                    { label: 'MRR', value: formatCurrency(selectedClient.mrr) },
                     { label: 'Início Contrato', value: formatDate(selectedClient.inicio_contrato) },
                   ].map(item => (
                     <div key={item.label} className="p-3 bg-muted/50 rounded-lg">
@@ -594,6 +598,16 @@ export default function Clients() {
                       <p className="font-medium">{item.value}</p>
                     </div>
                   ))}
+                  {/* MRR with USD badge */}
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">MRR</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium text-success">{formatCurrency(mrrBRL(selectedClient.mrr, selectedClient.currency, usdRate))}</p>
+                      {selectedClient.currency === 'USD' && (
+                        <Badge variant="outline" className="text-xs bg-info/10 text-info border-info/30">🇺🇸 USD ${selectedClient.mrr}</Badge>
+                      )}
+                    </div>
+                  </div>
                   <div className="p-3 bg-muted/50 rounded-lg">
                     <p className="text-xs text-muted-foreground mb-1">Instagram</p>
                     {selectedClient.instagram ? (

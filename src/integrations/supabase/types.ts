@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           company: string
           created_at: string
+          currency: string
           dia_vencimento: number | null
           email: string | null
           health_score: number
@@ -37,6 +38,7 @@ export type Database = {
         Insert: {
           company?: string
           created_at?: string
+          currency?: string
           dia_vencimento?: number | null
           email?: string | null
           health_score?: number
@@ -56,6 +58,7 @@ export type Database = {
         Update: {
           company?: string
           created_at?: string
+          currency?: string
           dia_vencimento?: number | null
           email?: string | null
           health_score?: number
