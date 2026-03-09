@@ -559,6 +559,29 @@ export default function Clients() {
                       <p className="font-medium">{item.value}</p>
                     </div>
                   ))}
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">Instagram</p>
+                    {selectedClient.instagram ? (
+                      <a
+                        href={`https://instagram.com/${selectedClient.instagram.replace('@', '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-primary flex items-center gap-1 hover:underline"
+                      >
+                        <Instagram className="h-3.5 w-3.5" />
+                        {selectedClient.instagram.startsWith('@') ? selectedClient.instagram : `@${selectedClient.instagram}`}
+                        <ExternalLink className="h-3 w-3 opacity-60" />
+                      </a>
+                    ) : (
+                      <p className="font-medium text-muted-foreground">—</p>
+                    )}
+                  </div>
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">Venc. Mensalidade</p>
+                    <p className="font-medium">
+                      {selectedClient.dia_vencimento ? `Dia ${selectedClient.dia_vencimento} de cada mês` : '—'}
+                    </p>
+                  </div>
                 </div>
                 <div className="p-3 bg-muted/50 rounded-lg">
                   <p className="text-xs text-muted-foreground mb-2">Health Score</p>
