@@ -119,6 +119,7 @@ export default function Pipeline() {
       plano: lead.plano || '',
       ticket_estimado: lead.ticket_estimado ? String(lead.ticket_estimado) : '',
       notes: lead.notes || '',
+      instagram: lead.instagram || '',
     })
     setEditNameError('')
     setShowEditLead(true)
@@ -139,6 +140,7 @@ export default function Pipeline() {
       plano: editForm.plano || null,
       ticket_estimado: editForm.ticket_estimado ? parseFloat(editForm.ticket_estimado) : null,
       notes: editForm.notes.trim() || null,
+      instagram: editForm.instagram.trim() || null,
       updated_at: new Date().toISOString(),
     }
     const { error } = await supabase.from('leads').update(payload).eq('id', selectedLead.id)
