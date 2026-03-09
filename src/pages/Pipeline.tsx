@@ -31,6 +31,7 @@ const EMPTY_FORM = {
   plano: '',
   ticket_estimado: '',
   notes: '',
+  instagram: '',
 }
 
 // Stages shown in "Avançar" (excludes perdido)
