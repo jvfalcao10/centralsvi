@@ -412,6 +412,21 @@ export default function Clients() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
+                <Label htmlFor="cf-instagram">Instagram</Label>
+                <div className="relative">
+                  <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input id="cf-instagram" placeholder="@perfil" value={form.instagram} onChange={e => setField('instagram', e.target.value)} className="pl-9" maxLength={60} />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cf-venc">Venc. Mensalidade (dia)</Label>
+                <Input id="cf-venc" type="number" placeholder="Ex: 5" min="1" max="31" value={form.dia_vencimento} onChange={e => setField('dia_vencimento', e.target.value)} className={formErrors.dia_vencimento ? 'border-destructive' : ''} />
+                {formErrors.dia_vencimento && <p className="text-xs text-destructive">{formErrors.dia_vencimento}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
                 <Label>Plano</Label>
                 <Select value={form.plano} onValueChange={v => setField('plano', v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
