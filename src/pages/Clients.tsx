@@ -31,7 +31,7 @@ const EMPTY_FORM = {
   phone: '',
   email: '',
   segment: '',
-  
+  currency: 'BRL',
   mrr: '',
   status: 'ativo',
   health_score: 80,
@@ -104,6 +104,7 @@ export default function Clients() {
       phone: client.phone,
       email: client.email || '',
       segment: client.segment,
+      currency: client.currency || 'BRL',
       mrr: String(client.mrr),
       status: client.status,
       health_score: client.health_score,
@@ -144,7 +145,7 @@ export default function Clients() {
       phone: form.phone.trim(),
       email: form.email.trim() || null,
       segment: form.segment.trim(),
-      
+      currency: form.currency,
       mrr: form.mrr !== '' ? parseFloat(form.mrr) : 0,
       status: form.status,
       health_score: form.health_score,
@@ -447,10 +448,23 @@ export default function Clients() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="cf-mrr">MRR (R$)</Label>
+                <Label>Moeda</Label>
+                <Select value={form.currency} onValueChange={v => setField('currency', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="BRL">🇧🇷 BRL (Real)</SelectItem>
+                    <SelectItem value="USD">🇺🇸 USD (Dólar)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cf-mrr">MRR ({form.currency === 'USD' ? 'US$' : 'R$'})</Label>
                 <Input id="cf-mrr" type="number" placeholder="0,00" min="0" step="0.01" value={form.mrr} onChange={e => setField('mrr', e.target.value)} className={formErrors.mrr ? 'border-destructive' : ''} />
                 {formErrors.mrr && <p className="text-xs text-destructive">{formErrors.mrr}</p>}
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="cf-inicio">Início do Contrato <span className="text-destructive">*</span></Label>
                 <Input id="cf-inicio" type="date" value={form.inicio_contrato} onChange={e => setField('inicio_contrato', e.target.value)} className={formErrors.inicio_contrato ? 'border-destructive' : ''} />
