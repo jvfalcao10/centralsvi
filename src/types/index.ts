@@ -131,6 +131,56 @@ export const DELIVERY_STATUS_CONFIG: Record<string, { label: string; className: 
   entregue: { label: 'Entregue', className: 'bg-green-500/20 text-green-400 border-green-500/30' },
 }
 
+// ── Prospecting Types ─────────────────────────────────────────────────────
+export interface Prospect {
+  id: string
+  name: string
+  specialty: string
+  city: string
+  instagram: string
+  tier: 'verde' | 'amarelo' | 'vermelho'
+  touch: number
+  channel: 'dm' | 'whatsapp' | 'call'
+  status: string
+  signal: string
+  nextFollowUp: string
+  notes: string
+  createdAt: string
+}
+
+export const PROSPECT_TIER_CONFIG: Record<string, { label: string; className: string }> = {
+  verde: { label: 'Verde', className: 'bg-green-500/20 text-green-400 border-green-500/30' },
+  amarelo: { label: 'Amarelo', className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
+  vermelho: { label: 'Vermelho', className: 'bg-red-500/20 text-red-400 border-red-500/30' },
+}
+
+export const PROSPECT_STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+  novo: { label: 'Novo', className: 'bg-slate-500/20 text-slate-400 border-slate-500/30' },
+  enviado: { label: 'Enviado', className: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  respondeu: { label: 'Respondeu', className: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+  whatsapp: { label: 'WhatsApp', className: 'bg-green-500/20 text-green-400 border-green-500/30' },
+  call_agendada: { label: 'Call Agendada', className: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+  call_realizada: { label: 'Call Realizada', className: 'bg-pink-500/20 text-pink-400 border-pink-500/30' },
+  proposta_enviada: { label: 'Proposta', className: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+  fechado: { label: 'Fechado', className: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+  nao_agora: { label: 'Não Agora', className: 'bg-gray-500/20 text-gray-400 border-gray-500/30' },
+  perdido: { label: 'Perdido', className: 'bg-red-500/20 text-red-400 border-red-500/30' },
+}
+
+export const PROSPECT_CHANNELS: Record<string, { label: string; className: string }> = {
+  dm: { label: 'DM', className: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  whatsapp: { label: 'WhatsApp', className: 'bg-green-500/20 text-green-400 border-green-500/30' },
+  call: { label: 'Call', className: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+}
+
+export const CITIES = ['Redenção', 'Xinguara', 'Marabá', 'Tucumã', 'Conceição do Araguaia', 'Rio Maria', 'Outra']
+
+export const SPECIALTIES = [
+  'Ortopedista', 'Dermatologista', 'Ginecologista', 'Urologista',
+  'Cardiologista', 'Oftalmologista', 'Cirurgião Plástico', 'Neurologista',
+  'Gastroenterologista', 'Pediatra', 'Psiquiatra', 'Endocrinologista', 'Outra'
+]
+
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 }

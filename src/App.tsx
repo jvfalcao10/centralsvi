@@ -14,6 +14,11 @@ import Pipeline from "@/pages/Pipeline";
 import Clients from "@/pages/Clients";
 import Deliveries from "@/pages/Deliveries";
 import Financial from "@/pages/Financial";
+import Prospecting from "@/pages/Prospecting";
+import Scripts from "@/pages/Scripts";
+import Onboarding from "@/pages/Onboarding";
+import ActivityLog from "@/pages/ActivityLog";
+import Team from "@/pages/Team";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,28 +36,53 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/dashboard" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredRole="manager">
                   <AppLayout><Dashboard /></AppLayout>
                 </ProtectedRoute>
               } />
               <Route path="/pipeline" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredRole="seller">
                   <AppLayout><Pipeline /></AppLayout>
                 </ProtectedRoute>
               } />
               <Route path="/clients" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredRole="executor">
                   <AppLayout><Clients /></AppLayout>
                 </ProtectedRoute>
               } />
               <Route path="/deliveries" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredRole="executor">
                   <AppLayout><Deliveries /></AppLayout>
                 </ProtectedRoute>
               } />
               <Route path="/financial" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredRole="manager">
                   <AppLayout><Financial /></AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/prospecting" element={
+                <ProtectedRoute requiredRole="seller">
+                  <AppLayout><Prospecting /></AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/scripts" element={
+                <ProtectedRoute requiredRole="executor">
+                  <AppLayout><Scripts /></AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/onboarding" element={
+                <ProtectedRoute requiredRole="manager">
+                  <AppLayout><Onboarding /></AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/activity" element={
+                <ProtectedRoute requiredRole="executor">
+                  <AppLayout><ActivityLog /></AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/team" element={
+                <ProtectedRoute requiredRole="admin">
+                  <AppLayout><Team /></AppLayout>
                 </ProtectedRoute>
               } />
               <Route path="*" element={<NotFound />} />

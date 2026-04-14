@@ -1,31 +1,44 @@
 import { useLocation, Link } from 'react-router-dom'
-import { LayoutDashboard, GitBranch, Users, CheckSquare, DollarSign, Sun, Moon, LogOut, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, GitBranch, Users, CheckSquare, DollarSign, Crosshair, FileText, ClipboardCheck, Clock, UserCog, Sun, Moon, LogOut, ChevronRight } from 'lucide-react'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from '@/components/ui/sidebar'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth, UserRole } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import logoBranca from '@/assets/logo-branca.png'
 import logoSvi from '@/assets/logo-svi.png'
 
-const navItems = [
-  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
-  { title: 'Pipeline', url: '/pipeline', icon: GitBranch },
-  { title: 'Clientes', url: '/clients', icon: Users },
-  { title: 'Entregas', url: '/deliveries', icon: CheckSquare },
-  { title: 'Financeiro', url: '/financial', icon: DollarSign },
+interface NavItem {
+  title: string
+  url: string
+  icon: any
+  minRole: UserRole
+}
+
+const navItems: NavItem[] = [
+  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard, minRole: 'manager' },
+  { title: 'Pipeline', url: '/pipeline', icon: GitBranch, minRole: 'seller' },
+  { title: 'Prospecção', url: '/prospecting', icon: Crosshair, minRole: 'seller' },
+  { title: 'Scripts', url: '/scripts', icon: FileText, minRole: 'executor' },
+  { title: 'Clientes', url: '/clients', icon: Users, minRole: 'executor' },
+  { title: 'Onboarding', url: '/onboarding', icon: ClipboardCheck, minRole: 'manager' },
+  { title: 'Entregas', url: '/deliveries', icon: CheckSquare, minRole: 'executor' },
+  { title: 'Financeiro', url: '/financial', icon: DollarSign, minRole: 'manager' },
+  { title: 'Atividades', url: '/activity', icon: Clock, minRole: 'executor' },
+  { title: 'Equipe', url: '/team', icon: UserCog, minRole: 'admin' },
 ]
 
 export function AppSidebar() {
   const { state } = useSidebar()
   const collapsed = state === 'collapsed'
   const location = useLocation()
-  const { profile, signOut } = useAuth()
+  const { profile, role, signOut, can } = useAuth()
   const { theme, toggleTheme } = useTheme()
 
   const isActive = (url: string) => location.pathname === url
+  const visibleNavItems = navItems.filter(item => can(item.minRole))
 
   const initials = profile?.name
     ? profile.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
@@ -56,7 +69,7 @@ export function AppSidebar() {
 
       <SidebarContent className="px-2">
         <SidebarMenu>
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
                 asChild
@@ -101,7 +114,7 @@ export function AppSidebar() {
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium truncate">{profile?.name || 'Usuário'}</p>
-              <p className="text-xs text-muted-foreground truncate capitalize">{profile?.role || 'user'}</p>
+              <p className="text-xs text-muted-foreground truncate capitalize">{role || 'usuário'}</p>
             </div>
           )}
           {!collapsed && (

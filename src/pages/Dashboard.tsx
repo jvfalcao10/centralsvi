@@ -130,7 +130,8 @@ export default function Dashboard() {
     </div>
   )
 
-  const usdFormatted = usdRate.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const safeUsdRate = Number.isFinite(usdRate) && usdRate > 0 ? usdRate : 5.0
+  const usdFormatted = safeUsdRate.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   const usdTime = usdUpdatedAt
     ? usdUpdatedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
     : null
