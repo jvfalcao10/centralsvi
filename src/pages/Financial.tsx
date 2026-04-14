@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { DollarSign, TrendingUp, TrendingDown, Percent, Plus, CheckCircle, Send, AlertCircle, Clock, Calendar, CalendarCheck } from 'lucide-react'
+import { DollarSign, TrendingUp, TrendingDown, Percent, Plus, CheckCircle, Send, AlertCircle, Clock, Calendar, CalendarCheck, Pencil, Trash2, Undo2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { Invoice, Expense, formatCurrency, formatDate } from '@/types'
@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -81,6 +82,9 @@ export default function Financial() {
   const [showNewExpense, setShowNewExpense] = useState(false)
   const [newExpense, setNewExpense] = useState({ categoria: 'operacional', descricao: '', valor: '', vencimento: '' })
   const [registeringPayment, setRegisteringPayment] = useState<string | null>(null)
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
+  const [editForm, setEditForm] = useState({ categoria: 'operacional', descricao: '', valor: '', vencimento: '', status: 'pendente' })
+  const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null)
 
   const fetchData = useCallback(async () => {
     const [{ data: inv }, { data: exp }, { data: clientsData }] = await Promise.all([
@@ -109,6 +113,45 @@ export default function Financial() {
   const markExpensePaid = async (id: string) => {
     await supabase.from('expenses').update({ status: 'pago' }).eq('id', id)
     toast({ title: 'Despesa marcada como paga!' })
+    fetchData()
+  }
+
+  const markExpensePending = async (id: string) => {
+    await supabase.from('expenses').update({ status: 'pendente' }).eq('id', id)
+    toast({ title: 'Despesa marcada como pendente' })
+    fetchData()
+  }
+
+  const openEdit = (exp: Expense) => {
+    setEditingExpense(exp)
+    setEditForm({
+      categoria: exp.categoria,
+      descricao: exp.descricao,
+      valor: String(exp.valor),
+      vencimento: exp.vencimento,
+      status: exp.status,
+    })
+  }
+
+  const saveEdit = async () => {
+    if (!editingExpense) return
+    await supabase.from('expenses').update({
+      categoria: editForm.categoria,
+      descricao: editForm.descricao,
+      valor: parseFloat(editForm.valor),
+      vencimento: editForm.vencimento,
+      status: editForm.status,
+    }).eq('id', editingExpense.id)
+    toast({ title: 'Despesa atualizada' })
+    setEditingExpense(null)
+    fetchData()
+  }
+
+  const deleteExpense = async () => {
+    if (!deleteTarget) return
+    await supabase.from('expenses').delete().eq('id', deleteTarget.id)
+    toast({ title: 'Despesa removida' })
+    setDeleteTarget(null)
     fetchData()
   }
 
@@ -558,11 +601,23 @@ export default function Financial() {
                       <Badge variant="outline" className={`text-xs capitalize ${expenseStatusClass[exp.status]}`}>{exp.status}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      {exp.status !== 'pago' && (
-                        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-success hover:text-success" onClick={() => markExpensePaid(exp.id)}>
-                          <CheckCircle className="h-3 w-3" /> Pago
+                      <div className="flex items-center justify-end gap-1">
+                        {exp.status !== 'pago' ? (
+                          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-success hover:text-success" onClick={() => markExpensePaid(exp.id)} title="Marcar como pago">
+                            <CheckCircle className="h-3.5 w-3.5" /> Pago
+                          </Button>
+                        ) : (
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => markExpensePending(exp.id)} title="Voltar para pendente">
+                            <Undo2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(exp)} title="Editar">
+                          <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                      )}
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(exp)} title="Excluir">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -675,6 +730,78 @@ export default function Financial() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Expense Dialog */}
+      <Dialog open={!!editingExpense} onOpenChange={(open) => !open && setEditingExpense(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Editar Despesa</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="space-y-2">
+              <Label>Descrição</Label>
+              <Input value={editForm.descricao} onChange={e => setEditForm(p => ({ ...p, descricao: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Categoria</Label>
+                <Select value={editForm.categoria} onValueChange={v => setEditForm(p => ({ ...p, categoria: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pessoal">Pessoal</SelectItem>
+                    <SelectItem value="ferramentas">Ferramentas</SelectItem>
+                    <SelectItem value="infraestrutura">Infraestrutura</SelectItem>
+                    <SelectItem value="marketing">Marketing</SelectItem>
+                    <SelectItem value="operacional">Operacional</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={editForm.status} onValueChange={v => setEditForm(p => ({ ...p, status: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pendente">Pendente</SelectItem>
+                    <SelectItem value="pago">Pago</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Valor (R$)</Label>
+                <Input type="number" value={editForm.valor} onChange={e => setEditForm(p => ({ ...p, valor: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Vencimento</Label>
+                <Input type="date" value={editForm.vencimento} onChange={e => setEditForm(p => ({ ...p, vencimento: e.target.value }))} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingExpense(null)}>Cancelar</Button>
+            <Button onClick={saveEdit}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirm */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir despesa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget && `"${deleteTarget.descricao}" (${formatCurrency(deleteTarget.valor)}) será removida permanentemente. Esta ação não pode ser desfeita.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={deleteExpense} className="bg-destructive hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
