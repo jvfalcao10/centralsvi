@@ -26,3 +26,7 @@ dist-ssr
 # Environment
 .env
 .env.local
+
+# Supabase CLI
+supabase/.temp/
+supabase/.branches/

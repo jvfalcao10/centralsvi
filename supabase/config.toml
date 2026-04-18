@@ -1,4 +1,4 @@
-project_id = "odhsdzhpkfransjjmeps"
+project_id = "qvkfcvcqlfamyzgqgnrq"
 
 [functions.get-usd-rate]
 verify_jwt = false

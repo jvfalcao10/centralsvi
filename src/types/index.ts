@@ -205,3 +205,113 @@ export function getDeadlineColor(prazo: string): string {
   if (diff <= 2) return 'text-yellow-400'
   return 'text-green-400'
 }
+
+export function formatDateTime(ts: string): string {
+  return new Date(ts).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+export function formatTimestamp(ts: string): string {
+  return new Date(ts).toLocaleDateString('pt-BR')
+}
+
+// ============================================================================
+// CONTEÚDO
+// ============================================================================
+
+export type ContentFormat = 'carrossel' | 'reels' | 'stories' | 'feed'
+export type PostStatus = 'ideia' | 'producao' | 'agendado' | 'publicado'
+export type PautaUrgency = 'evergreen' | 'tendencia' | 'sazonal'
+export type PautaStatus = 'disponivel' | 'usada' | 'descartada'
+export type RefPlatform = 'instagram' | 'youtube' | 'linkedin' | 'tiktok'
+export type TrendRelevance = 'alta' | 'media' | 'baixa'
+
+export interface ContentPost {
+  id: string
+  client_id: string
+  title: string
+  format: ContentFormat
+  category: string | null
+  status: PostStatus
+  scheduled_date: string | null
+  published_at: string | null
+  caption: string | null
+  hashtags: string | null
+  notes: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ContentPauta {
+  id: string
+  client_id: string
+  title: string
+  category: string
+  format_suggestion: string | null
+  urgency: PautaUrgency
+  status: PautaStatus
+  notes: string | null
+  used_in_post_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ContentReference {
+  id: string
+  client_id: string
+  name: string
+  platform: RefPlatform
+  handle: string
+  specialty: string | null
+  notes: string | null
+  last_checked_at: string | null
+  followers_count: number | null
+  posts_per_week: number | null
+  top_formats: string | null
+  created_at: string
+}
+
+export interface ContentTrend {
+  id: string
+  client_id: string | null
+  title: string
+  source: string
+  url: string | null
+  relevance: TrendRelevance
+  category: string | null
+  summary: string | null
+  converted_to_pauta_id: string | null
+  captured_at: string
+}
+
+export const POST_STATUS_CONFIG: Record<PostStatus, { label: string; className: string }> = {
+  ideia:      { label: 'Ideia',       className: 'bg-muted text-muted-foreground' },
+  producao:   { label: 'Em produção', className: 'bg-info/15 text-info' },
+  agendado:   { label: 'Agendado',    className: 'bg-warning/15 text-warning' },
+  publicado:  { label: 'Publicado',   className: 'bg-success/15 text-success' },
+}
+
+export const CONTENT_FORMAT_CONFIG: Record<ContentFormat, { label: string; className: string; chipBg: string }> = {
+  carrossel: { label: 'Carrossel', className: 'bg-blue-500/15 text-blue-400 border-blue-500/30',       chipBg: 'bg-blue-500' },
+  reels:     { label: 'Reels',     className: 'bg-red-500/15 text-red-400 border-red-500/30',          chipBg: 'bg-red-500' },
+  stories:   { label: 'Stories',   className: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30', chipBg: 'bg-yellow-500' },
+  feed:      { label: 'Feed',      className: 'bg-green-500/15 text-green-400 border-green-500/30',    chipBg: 'bg-green-500' },
+}
+
+export const PAUTA_URGENCY_CONFIG: Record<PautaUrgency, { label: string; className: string }> = {
+  evergreen:  { label: 'Evergreen',  className: 'bg-success/15 text-success' },
+  tendencia:  { label: 'Tendência',  className: 'bg-warning/15 text-warning' },
+  sazonal:    { label: 'Sazonal',    className: 'bg-info/15 text-info' },
+}
+
+export const PAUTA_STATUS_CONFIG: Record<PautaStatus, { label: string; className: string }> = {
+  disponivel: { label: 'Disponível', className: 'bg-primary/15 text-primary' },
+  usada:      { label: 'Usada',      className: 'bg-muted text-muted-foreground' },
+  descartada: { label: 'Descartada', className: 'bg-destructive/10 text-destructive' },
+}
+
+export const TREND_RELEVANCE_CONFIG: Record<TrendRelevance, { label: string; className: string }> = {
+  alta:   { label: 'Alta',   className: 'bg-destructive/15 text-destructive' },
+  media:  { label: 'Média',  className: 'bg-warning/15 text-warning' },
+  baixa:  { label: 'Baixa',  className: 'bg-muted text-muted-foreground' },
+}

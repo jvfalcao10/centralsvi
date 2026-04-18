@@ -9,10 +9,19 @@ import { useToast } from '@/hooks/use-toast'
 interface Props {
   children: React.ReactNode
   requiredRole?: UserRole
+  /** Se true, permite role 'client' além dos staff roles. Usado em rotas de conteúdo compartilhadas. */
+  allowClient?: boolean
+  /** Se true, a rota é exclusiva para role 'client'. */
+  clientOnly?: boolean
 }
 
-export default function ProtectedRoute({ children, requiredRole }: Props) {
-  const { user, profile, role, loading, can, signOut } = useAuth()
+export default function ProtectedRoute({
+  children,
+  requiredRole,
+  allowClient = false,
+  clientOnly = false,
+}: Props) {
+  const { user, profile, role, signupStatus, loading, can, isClient, signOut } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const { toast } = useToast()
@@ -32,13 +41,28 @@ export default function ProtectedRoute({ children, requiredRole }: Props) {
 
   if (!user) return <Navigate to="/login" replace />
 
+  // Cliente sem role ainda mas com signup pendente/rejeitado → tela de espera
+  if (!role && signupStatus) {
+    return <Navigate to="/pending-approval" replace />
+  }
+
+  // Cliente aprovado tentando acessar rota exclusiva de staff
+  if (isClient && !allowClient && !clientOnly) {
+    return <Navigate to="/minha-area" replace />
+  }
+
+  // Rota clientOnly mas usuário é staff → manda pro dashboard
+  if (clientOnly && !isClient) {
+    return <Navigate to="/dashboard" replace />
+  }
+
   async function requestAccess() {
     setSending(true)
     const pageName = location.pathname.replace('/', '') || 'página'
     const { error } = await supabase.from('notifications').insert({
-      user_id: null, // global — qualquer admin vê
+      user_id: null,
       title: 'Solicitação de acesso',
-      message: `${profile?.name || user.email} (${role || 'executor'}) solicitou acesso a /${pageName} (nível necessário: ${requiredRole})`,
+      message: `${profile?.name || user!.email} (${role || 'sem role'}) solicitou acesso a /${pageName} (nível necessário: ${requiredRole})`,
       type: 'warning',
       link: '/team',
     })
@@ -56,7 +80,7 @@ export default function ProtectedRoute({ children, requiredRole }: Props) {
     navigate('/login', { replace: true })
   }
 
-  if (requiredRole && !can(requiredRole)) {
+  if (requiredRole && !can(requiredRole) && !(allowClient && isClient) && !(clientOnly && isClient)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <div className="max-w-md w-full text-center space-y-5">

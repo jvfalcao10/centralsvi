@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Navigate } from 'react-router-dom'
-import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react'
+import { Link, Navigate } from 'react-router-dom'
+import { Eye, EyeOff, Lock, Mail, User, Sparkles } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
@@ -12,7 +12,7 @@ import logoBranca from '@/assets/logo-branca.png'
 type Mode = 'login' | 'signup' | 'forgot'
 
 export default function Login() {
-  const { user, loading } = useAuth()
+  const { user, loading, isClient, isStaff, signupStatus } = useAuth()
   const { toast } = useToast()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -21,7 +21,13 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false)
   const [mode, setMode] = useState<Mode>('login')
 
-  if (!loading && user) return <Navigate to="/dashboard" replace />
+  if (!loading && user) {
+    if (isClient) return <Navigate to="/minha-area" replace />
+    if (isStaff) return <Navigate to="/dashboard" replace />
+    if (signupStatus) return <Navigate to="/pending-approval" replace />
+    // usuário autenticado sem role e sem signup_request — caso residual
+    return <Navigate to="/pending-approval" replace />
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -263,6 +269,25 @@ export default function Login() {
             </form>
           )}
         </div>
+
+        {mode === 'login' && (
+          <Link
+            to="/client-signup"
+            className="mt-4 block bg-primary/5 hover:bg-primary/10 border border-primary/20 rounded-xl p-4 transition-colors group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                <Sparkles className="h-4 w-4 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium">Sou cliente SVI.Co</div>
+                <div className="text-xs text-muted-foreground">Solicitar acesso ao painel de conteúdo</div>
+              </div>
+              <div className="text-primary group-hover:translate-x-0.5 transition-transform">→</div>
+            </div>
+          </Link>
+        )}
+
         <p className="text-center text-xs text-muted-foreground mt-6">
           SVI Command Center © {new Date().getFullYear()}
         </p>
