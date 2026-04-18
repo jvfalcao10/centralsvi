@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, Lock, Mail, User, Building2, Phone, Instagram, MessageSquare, CheckCircle2 } from 'lucide-react'
+import { Eye, EyeOff, Lock, Mail, User, Building2, CheckCircle2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import logoBranca from '@/assets/logo-branca.png'
 
@@ -19,10 +18,6 @@ export default function ClientSignup() {
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [company, setCompany] = useState('')
-  const [phone, setPhone] = useState('')
-  const [instagram, setInstagram] = useState('')
-  const [segment, setSegment] = useState('')
-  const [message, setMessage] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -66,10 +61,6 @@ export default function ClientSignup() {
       email: email.trim(),
       name: name.trim(),
       company: company.trim(),
-      phone: phone.trim() || null,
-      instagram: instagram.trim() || null,
-      segment: segment.trim() || null,
-      message: message.trim() || null,
     })
 
     setIsLoading(false)
@@ -165,38 +156,6 @@ export default function ClientSignup() {
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="phone">Telefone / WhatsApp</Label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input id="phone" value={phone} onChange={e => setPhone(e.target.value)} placeholder="(94) 9xxxx-xxxx" className="pl-9" />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="instagram">Instagram</Label>
-              <div className="relative">
-                <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input id="instagram" value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="@suamarca" className="pl-9" />
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="segment">Segmento / Nicho</Label>
-            <Input id="segment" value={segment} onChange={e => setSegment(e.target.value)} placeholder="Ex: moda, medicina, restaurante, advocacia..." />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="message">Mensagem para a equipe</Label>
-            <div className="relative">
-              <MessageSquare className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Textarea id="message" value={message} onChange={e => setMessage(e.target.value)}
-                placeholder="Conte brevemente sobre seu projeto ou como conheceu a SVI.Co..."
-                className="pl-9 resize-none" rows={3} />
             </div>
           </div>
 
