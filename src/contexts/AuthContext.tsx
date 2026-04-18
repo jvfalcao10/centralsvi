@@ -69,10 +69,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchRole = async (userId: string) => {
     try {
       // SELECT direto de user_roles (RLS permite ler os próprios)
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', userId)
+
+      // Token inválido (sessão velha em localStorage) → faz logout pra quebrar loop
+      if (error && (error.message?.includes('JWT') || (error as any).status === 401)) {
+        console.warn('[AUTH] Token inválido, fazendo signOut')
+        await supabase.auth.signOut()
+        return
+      }
 
       if (data && data.length > 0) {
         const roles = data.map((r: any) => r.role as UserRole)

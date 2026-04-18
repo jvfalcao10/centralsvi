@@ -58,9 +58,6 @@ export default function PendingApproval() {
 
   if (!user) return <Navigate to="/login" replace />
 
-  // Se não tem signup request nem role, algo estranho — manda pra signup
-  if (!signupStatus && !req) return <Navigate to="/client-signup" replace />
-
   const status = req?.status || signupStatus
 
   return (
@@ -71,6 +68,25 @@ export default function PendingApproval() {
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-8 shadow-xl space-y-6">
+          {!status && (
+            <>
+              <div className="w-16 h-16 mx-auto rounded-full bg-muted flex items-center justify-center">
+                <LogOut className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <div className="text-center space-y-2">
+                <h2 className="text-2xl font-bold">Conta sem cadastro ativo</h2>
+                <p className="text-sm text-muted-foreground">
+                  Você está logado mas não tem solicitação de acesso registrada.
+                  Faça logout e use <strong>Sou cliente SVI.Co</strong> na tela de login
+                  para criar sua solicitação.
+                </p>
+              </div>
+              <Button onClick={handleSignOut} className="w-full">
+                <LogOut className="h-4 w-4 mr-2" /> Fazer logout
+              </Button>
+            </>
+          )}
+
           {status === 'pending' && (
             <>
               <div className="w-16 h-16 mx-auto rounded-full bg-warning/10 flex items-center justify-center animate-pulse">
