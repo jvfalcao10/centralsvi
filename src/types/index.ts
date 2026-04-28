@@ -80,6 +80,8 @@ export interface Expense {
   valor: number
   vencimento: string
   status: string
+  recorrente: boolean
+  recorrencia_gerada: boolean
 }
 
 export interface Interaction {

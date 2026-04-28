@@ -14,6 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { RotateCw } from 'lucide-react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts'
@@ -80,10 +82,10 @@ export default function Financial() {
   const [expenseStatusFilter, setExpenseStatusFilter] = useState('all')
   const [expenseCatFilter, setExpenseCatFilter] = useState('all')
   const [showNewExpense, setShowNewExpense] = useState(false)
-  const [newExpense, setNewExpense] = useState({ categoria: 'operacional', descricao: '', valor: '', vencimento: '' })
+  const [newExpense, setNewExpense] = useState({ categoria: 'operacional', descricao: '', valor: '', vencimento: '', recorrente: false })
   const [registeringPayment, setRegisteringPayment] = useState<string | null>(null)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
-  const [editForm, setEditForm] = useState({ categoria: 'operacional', descricao: '', valor: '', vencimento: '', status: 'pendente' })
+  const [editForm, setEditForm] = useState({ categoria: 'operacional', descricao: '', valor: '', vencimento: '', status: 'pendente', recorrente: false })
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null)
 
   const fetchData = useCallback(async () => {
@@ -130,6 +132,7 @@ export default function Financial() {
       valor: String(exp.valor),
       vencimento: exp.vencimento,
       status: exp.status,
+      recorrente: exp.recorrente,
     })
   }
 
@@ -141,6 +144,7 @@ export default function Financial() {
       valor: parseFloat(editForm.valor),
       vencimento: editForm.vencimento,
       status: editForm.status,
+      recorrente: editForm.recorrente,
     }).eq('id', editingExpense.id)
     toast({ title: 'Despesa atualizada' })
     setEditingExpense(null)
@@ -164,7 +168,7 @@ export default function Financial() {
     })
     toast({ title: 'Despesa adicionada!' })
     setShowNewExpense(false)
-    setNewExpense({ categoria: 'operacional', descricao: '', valor: '', vencimento: '' })
+    setNewExpense({ categoria: 'operacional', descricao: '', valor: '', vencimento: '', recorrente: false })
     fetchData()
   }
 
@@ -594,7 +598,16 @@ export default function Financial() {
                     <TableCell>
                       <Badge variant="outline" className={`text-xs capitalize ${expenseCatClass[exp.categoria] || ''}`}>{exp.categoria}</Badge>
                     </TableCell>
-                    <TableCell className="text-sm">{exp.descricao}</TableCell>
+                    <TableCell className="text-sm">
+                      <div className="flex items-center gap-2">
+                        <span>{exp.descricao}</span>
+                        {exp.recorrente && (
+                          <Badge variant="outline" className="text-[10px] gap-1 bg-primary/10 text-primary border-primary/30">
+                            <RotateCw className="h-2.5 w-2.5" /> Recorrente
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="font-bold text-danger text-sm">{formatCurrency(exp.valor)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatDate(exp.vencimento)}</TableCell>
                     <TableCell>
@@ -723,6 +736,16 @@ export default function Financial() {
                 <Input type="date" value={newExpense.vencimento} onChange={e => setNewExpense(p => ({ ...p, vencimento: e.target.value }))} />
               </div>
             </div>
+            <div className="flex items-center justify-between rounded-lg border border-border p-3">
+              <div className="space-y-0.5">
+                <Label className="text-sm">Despesa recorrente mensal</Label>
+                <p className="text-xs text-muted-foreground">Ao marcar como paga, a próxima do mês seguinte é criada automaticamente.</p>
+              </div>
+              <Switch
+                checked={newExpense.recorrente}
+                onCheckedChange={v => setNewExpense(p => ({ ...p, recorrente: v }))}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewExpense(false)}>Cancelar</Button>
@@ -776,6 +799,16 @@ export default function Financial() {
                 <Label>Vencimento</Label>
                 <Input type="date" value={editForm.vencimento} onChange={e => setEditForm(p => ({ ...p, vencimento: e.target.value }))} />
               </div>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-border p-3">
+              <div className="space-y-0.5">
+                <Label className="text-sm">Despesa recorrente mensal</Label>
+                <p className="text-xs text-muted-foreground">Ao marcar como paga, a próxima do mês seguinte é criada automaticamente.</p>
+              </div>
+              <Switch
+                checked={editForm.recorrente}
+                onCheckedChange={v => setEditForm(p => ({ ...p, recorrente: v }))}
+              />
             </div>
           </div>
           <DialogFooter>
