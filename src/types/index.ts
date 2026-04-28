@@ -84,6 +84,56 @@ export interface Expense {
   recorrencia_gerada: boolean
 }
 
+export type CommercialPersonaKey = 'pedro' | 'arthur' | 'ruan'
+
+export interface CommercialPersona {
+  user_id: string
+  persona: CommercialPersonaKey
+  display_name: string
+  created_at: string
+}
+
+export interface CommercialDailyReport {
+  id: string
+  user_id: string
+  data: string
+  abridores: number
+  visualizacoes: number
+  conexoes: number
+  mapeamentos: number
+  pre_agendamentos: number
+  agendamentos: number
+  calls_realizadas: number
+  vendas: number
+  ligacoes: number
+  decisores: number
+  reunioes_marcadas: number
+  diag_mkt: number
+  diag_comercial: number
+  observacoes: string | null
+  melhorias: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CommercialGoals {
+  persona: CommercialPersonaKey
+  abridores: number
+  visualizacoes: number
+  conexoes: number
+  mapeamentos: number
+  pre_agendamentos: number
+  agendamentos: number
+  calls_realizadas: number
+  vendas: number
+  ligacoes: number
+  decisores: number
+  reunioes_marcadas: number
+  diag_mkt_semanal: number
+  diag_comercial_semanal: number
+  updated_at: string
+}
+
 export interface Interaction {
   id: string
   client_id: string | null

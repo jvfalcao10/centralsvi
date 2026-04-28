@@ -1,5 +1,5 @@
 import { useLocation, Link } from 'react-router-dom'
-import { LayoutDashboard, GitBranch, Users, CheckSquare, DollarSign, Crosshair, FileText, ClipboardCheck, Clock, UserCog, UserCheck, Kanban, Sun, Moon, LogOut, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, GitBranch, Users, CheckSquare, DollarSign, Crosshair, FileText, ClipboardCheck, Clock, UserCog, UserCheck, Kanban, Sparkles, Stethoscope, BarChart3, Sun, Moon, LogOut, ChevronRight } from 'lucide-react'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
@@ -20,11 +20,14 @@ interface NavItem {
 const navItems: NavItem[] = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard, minRole: 'manager' },
   { title: 'Pipeline', url: '/pipeline', icon: GitBranch, minRole: 'seller' },
+  { title: 'Comercial', url: '/comercial', icon: BarChart3, minRole: 'seller' },
   { title: 'Prospecção', url: '/prospecting', icon: Crosshair, minRole: 'seller' },
   { title: 'Scripts', url: '/scripts', icon: FileText, minRole: 'executor' },
   { title: 'Clientes', url: '/clients', icon: Users, minRole: 'executor' },
   { title: 'Aprovações', url: '/admin/approvals', icon: UserCheck, minRole: 'manager' },
   { title: 'Conteúdo', url: '/content/posts', icon: Kanban, minRole: 'executor' },
+  { title: 'SVI Company', url: '/content/svi-company', icon: Sparkles, minRole: 'executor' },
+  { title: 'SVI Doctor', url: '/content/svi-doctor', icon: Stethoscope, minRole: 'executor' },
   { title: 'Onboarding', url: '/onboarding', icon: ClipboardCheck, minRole: 'manager' },
   { title: 'Entregas', url: '/deliveries', icon: CheckSquare, minRole: 'executor' },
   { title: 'Financeiro', url: '/financial', icon: DollarSign, minRole: 'manager' },

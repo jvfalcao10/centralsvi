@@ -27,6 +27,7 @@ import Onboarding from "@/pages/Onboarding";
 import ActivityLog from "@/pages/ActivityLog";
 import Team from "@/pages/Team";
 import Approvals from "@/pages/Approvals";
+import Comercial from "@/pages/Comercial";
 
 // Client pages
 import MinhaArea from "@/pages/MinhaArea";
@@ -37,6 +38,8 @@ import Pautas from "@/pages/content/Pautas";
 import Calendar from "@/pages/content/Calendar";
 import Radar from "@/pages/content/Radar";
 import Monitor from "@/pages/content/Monitor";
+import SviCompany from "@/pages/content/SviCompany";
+import SviDoctor from "@/pages/content/SviDoctor";
 
 import NotFound from "./pages/NotFound";
 
@@ -99,6 +102,9 @@ const App = () => (
               <Route path="/admin/approvals" element={
                 <ProtectedRoute requiredRole="manager"><AppLayout><Approvals /></AppLayout></ProtectedRoute>
               } />
+              <Route path="/comercial" element={
+                <ProtectedRoute requiredRole="seller"><AppLayout><Comercial /></AppLayout></ProtectedRoute>
+              } />
 
               {/* Client-only */}
               <Route path="/minha-area" element={
@@ -129,6 +135,16 @@ const App = () => (
               <Route path="/content/monitor" element={
                 <ProtectedRoute requiredRole="executor" allowClient>
                   <AutoLayout><Monitor /></AutoLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/content/svi-company" element={
+                <ProtectedRoute requiredRole="executor">
+                  <AppLayout><SviCompany /></AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/content/svi-doctor" element={
+                <ProtectedRoute requiredRole="executor">
+                  <AppLayout><SviDoctor /></AppLayout>
                 </ProtectedRoute>
               } />
 
