@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Users, Shield, Crown, Crosshair, Wrench, UserCog, UserPlus, Mail, Clock, Copy, Check, Trash2, User } from 'lucide-react'
+import { Users, Shield, Crown, Crosshair, Wrench, UserCog, UserPlus, Mail, Clock, Copy, Check, Trash2, User, Search, Activity, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth, UserRole } from '@/contexts/AuthContext'
@@ -17,6 +17,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 
 interface TeamMember {
   user_id: string
@@ -24,6 +25,41 @@ interface TeamMember {
   email: string | null
   role: UserRole
   created_at: string
+  last_activity_at: string | null
+}
+
+interface ActivityEntry {
+  action: string
+  entity_type: string
+  entity_name: string | null
+  created_at: string
+}
+
+function formatRelative(dateStr: string | null): string {
+  if (!dateStr) return 'Sem atividade'
+  const diffMs = Date.now() - new Date(dateStr).getTime()
+  const days = Math.floor(diffMs / 86400000)
+  if (days < 0) return 'Agora'
+  if (days === 0) {
+    const hours = Math.floor(diffMs / 3600000)
+    if (hours === 0) return 'Há minutos'
+    return `Há ${hours}h`
+  }
+  if (days === 1) return 'Ontem'
+  if (days < 7) return `Há ${days} dias`
+  if (days < 30) return `Há ${Math.floor(days / 7)} sem`
+  if (days < 365) return `Há ${Math.floor(days / 30)} mês`
+  const years = Math.floor(days / 365)
+  return `Há ${years} ano${years > 1 ? 's' : ''}`
+}
+
+function activityStaleness(dateStr: string | null): 'active' | 'recent' | 'stale' | 'inactive' {
+  if (!dateStr) return 'inactive'
+  const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000)
+  if (days <= 1) return 'active'
+  if (days <= 7) return 'recent'
+  if (days <= 30) return 'stale'
+  return 'inactive'
 }
 
 interface Invitation {
@@ -67,18 +103,30 @@ export default function Team() {
   const [memberToRemove, setMemberToRemove] = useState<TeamMember | null>(null)
   const [removing, setRemoving] = useState(false)
 
+  // Search + filter
+  const [searchStaff, setSearchStaff] = useState('')
+  const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all')
+  const [searchClients, setSearchClients] = useState('')
+
+  // Member detail drawer
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null)
+  const [memberActivities, setMemberActivities] = useState<ActivityEntry[]>([])
+  const [activitiesLoading, setActivitiesLoading] = useState(false)
+
   const fetchData = useCallback(async () => {
     setLoading(true)
 
-    const [profilesRes, rolesRes, invitesRes] = await Promise.all([
+    const [profilesRes, rolesRes, invitesRes, activityRes] = await Promise.all([
       supabase.from('profiles').select('user_id, name, created_at').order('created_at', { ascending: true }),
       supabase.from('user_roles').select('user_id, role'),
       supabase.from('invitations').select('*').order('created_at', { ascending: false }),
+      supabase.from('activity_log').select('user_id, created_at').order('created_at', { ascending: false }).limit(500),
     ])
 
     const profiles = profilesRes.data || []
     const roles = rolesRes.data || []
     const invites = invitesRes.data || []
+    const activities = activityRes.data || []
 
     const roleMap = new Map<string, UserRole>()
     roles.forEach((r: any) => {
@@ -88,18 +136,40 @@ export default function Team() {
       }
     })
 
+    // Já vem ordenado desc, primeiro hit por user_id é a última atividade
+    const lastActivityMap = new Map<string, string>()
+    activities.forEach((a: any) => {
+      if (a.user_id && !lastActivityMap.has(a.user_id)) {
+        lastActivityMap.set(a.user_id, a.created_at)
+      }
+    })
+
     const merged: TeamMember[] = profiles.map((p: any) => ({
       user_id: p.user_id,
       name: p.name || 'Sem nome',
       email: null,
-      role: roleMap.get(p.user_id) || 'executor',
+      role: roleMap.get(p.user_id) || 'user',
       created_at: p.created_at,
+      last_activity_at: lastActivityMap.get(p.user_id) || null,
     }))
 
     setMembers(merged)
     setInvitations(invites)
     setLoading(false)
   }, [])
+
+  async function openMemberDetail(member: TeamMember) {
+    setSelectedMember(member)
+    setActivitiesLoading(true)
+    const { data } = await supabase
+      .from('activity_log')
+      .select('action, entity_type, entity_name, created_at')
+      .eq('user_id', member.user_id)
+      .order('created_at', { ascending: false })
+      .limit(15)
+    setMemberActivities(data || [])
+    setActivitiesLoading(false)
+  }
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -195,8 +265,22 @@ export default function Team() {
   }
 
   const STAFF_ROLES: UserRole[] = ['admin', 'manager', 'seller', 'executor', 'user']
-  const staffMembers = members.filter(m => STAFF_ROLES.includes(m.role))
-  const clientMembers = members.filter(m => m.role === 'client')
+  const staffMembersAll = members.filter(m => STAFF_ROLES.includes(m.role))
+  const clientMembersAll = members.filter(m => m.role === 'client')
+
+  const staffMembers = staffMembersAll.filter(m => {
+    if (roleFilter !== 'all' && m.role !== roleFilter) return false
+    if (searchStaff.trim()) {
+      return m.name.toLowerCase().includes(searchStaff.trim().toLowerCase())
+    }
+    return true
+  })
+  const clientMembers = clientMembersAll.filter(c => {
+    if (searchClients.trim()) {
+      return c.name.toLowerCase().includes(searchClients.trim().toLowerCase())
+    }
+    return true
+  })
   const pendingInvites = invitations.filter(i => !i.accepted)
   const acceptedInvites = invitations.filter(i => i.accepted)
 
@@ -253,22 +337,53 @@ export default function Team() {
       {/* Tabs: Staff / Clients / Pending / Accepted */}
       <Tabs defaultValue="members">
         <TabsList>
-          <TabsTrigger value="members">Time SVI ({staffMembers.length})</TabsTrigger>
-          <TabsTrigger value="clients">Clientes ({clientMembers.length})</TabsTrigger>
+          <TabsTrigger value="members">Time SVI ({staffMembersAll.length})</TabsTrigger>
+          <TabsTrigger value="clients">Clientes ({clientMembersAll.length})</TabsTrigger>
           <TabsTrigger value="pending">Convites Pendentes ({pendingInvites.length})</TabsTrigger>
           <TabsTrigger value="accepted">Histórico ({acceptedInvites.length})</TabsTrigger>
         </TabsList>
 
         {/* Members */}
         <TabsContent value="members">
+          {/* Search + role filter */}
+          <div className="flex flex-col sm:flex-row gap-2 mb-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome..."
+                value={searchStaff}
+                onChange={e => setSearchStaff(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as UserRole | 'all')}>
+              <SelectTrigger className="sm:w-[180px]"><SelectValue placeholder="Todas as roles" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as roles</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="manager">Gestor</SelectItem>
+                <SelectItem value="seller">Vendedor</SelectItem>
+                <SelectItem value="executor">Executor</SelectItem>
+                <SelectItem value="user">Usuário</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <Card className="border-border bg-card">
             <CardContent className="p-0">
+              {staffMembers.length === 0 ? (
+                <div className="p-8 text-center">
+                  <Search className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">Nenhum membro encontrado com esses filtros</p>
+                </div>
+              ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>Role Atual</TableHead>
                     <TableHead>Alterar Role</TableHead>
+                    <TableHead>Última atividade</TableHead>
                     <TableHead>Criado em</TableHead>
                     <TableHead className="w-20 text-right">Ações</TableHead>
                   </TableRow>
@@ -278,21 +393,28 @@ export default function Team() {
                     const config = getRoleConfig(m.role)
                     const isCurrentUser = m.user_id === currentUser?.id
                     const initials = m.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
+                    const staleness = activityStaleness(m.last_activity_at)
+                    const stalenessClass = {
+                      active: 'text-success',
+                      recent: 'text-foreground',
+                      stale: 'text-warning',
+                      inactive: 'text-muted-foreground italic',
+                    }[staleness]
                     return (
-                      <TableRow key={m.user_id}>
+                      <TableRow key={m.user_id} className="cursor-pointer hover:bg-accent/30" onClick={() => openMemberDetail(m)}>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">
                               <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">{initials}</AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="font-medium text-sm">{m.name}</p>
+                              <p className="font-medium text-sm hover:text-primary transition-colors">{m.name}</p>
                               {isCurrentUser && <p className="text-xs text-muted-foreground">(você)</p>}
                             </div>
                           </div>
                         </TableCell>
                         <TableCell><Badge variant="outline" className={config.className}>{config.label}</Badge></TableCell>
-                        <TableCell>
+                        <TableCell onClick={e => e.stopPropagation()}>
                           <Select value={m.role} onValueChange={(v: UserRole) => updateRole(m.user_id, v)} disabled={isCurrentUser}>
                             <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue /></SelectTrigger>
                             <SelectContent>
@@ -303,10 +425,13 @@ export default function Team() {
                             </SelectContent>
                           </Select>
                         </TableCell>
+                        <TableCell className={`text-xs ${stalenessClass}`}>
+                          {formatRelative(m.last_activity_at)}
+                        </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {new Date(m.created_at).toLocaleDateString('pt-BR')}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right" onClick={e => e.stopPropagation()}>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -323,15 +448,28 @@ export default function Team() {
                   })}
                 </TableBody>
               </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
         {/* Clients */}
         <TabsContent value="clients">
+          {clientMembersAll.length > 0 && (
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar cliente..."
+                value={searchClients}
+                onChange={e => setSearchClients(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          )}
+
           <Card className="border-border bg-card">
             <CardContent className="p-0">
-              {clientMembers.length === 0 ? (
+              {clientMembersAll.length === 0 ? (
                 <div className="p-8 text-center">
                   <User className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
                   <p className="text-sm text-muted-foreground">Nenhum cliente externo aprovado ainda</p>
@@ -339,11 +477,17 @@ export default function Team() {
                     Clientes que solicitam acesso aparecem em <span className="font-medium">Aprovações</span> antes de chegar aqui.
                   </p>
                 </div>
+              ) : clientMembers.length === 0 ? (
+                <div className="p-8 text-center">
+                  <Search className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">Nenhum cliente encontrado</p>
+                </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Cliente</TableHead>
+                      <TableHead>Última atividade</TableHead>
                       <TableHead>Aprovado em</TableHead>
                       <TableHead className="w-20 text-right">Ações</TableHead>
                     </TableRow>
@@ -351,25 +495,35 @@ export default function Team() {
                   <TableBody>
                     {clientMembers.map(c => {
                       const initials = c.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
+                      const staleness = activityStaleness(c.last_activity_at)
+                      const stalenessClass = {
+                        active: 'text-success',
+                        recent: 'text-foreground',
+                        stale: 'text-warning',
+                        inactive: 'text-muted-foreground italic',
+                      }[staleness]
                       return (
-                        <TableRow key={c.user_id}>
+                        <TableRow key={c.user_id} className="cursor-pointer hover:bg-accent/30" onClick={() => openMemberDetail(c)}>
                           <TableCell>
                             <div className="flex items-center gap-3">
                               <Avatar className="h-8 w-8">
                                 <AvatarFallback className="bg-cyan-500/20 text-cyan-400 text-xs font-bold">{initials}</AvatarFallback>
                               </Avatar>
                               <div>
-                                <p className="font-medium text-sm">{c.name}</p>
+                                <p className="font-medium text-sm hover:text-primary transition-colors">{c.name}</p>
                                 <Badge variant="outline" className={getRoleConfig('client').className + ' mt-0.5'}>
                                   Cliente externo
                                 </Badge>
                               </div>
                             </div>
                           </TableCell>
+                          <TableCell className={`text-xs ${stalenessClass}`}>
+                            {formatRelative(c.last_activity_at)}
+                          </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
                             {new Date(c.created_at).toLocaleDateString('pt-BR')}
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right" onClick={e => e.stopPropagation()}>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -573,6 +727,110 @@ export default function Team() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Member detail drawer */}
+      <Sheet open={!!selectedMember} onOpenChange={(open) => { if (!open) { setSelectedMember(null); setMemberActivities([]) } }}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+          {selectedMember && (() => {
+            const config = getRoleConfig(selectedMember.role)
+            const Icon = config.icon
+            const initials = selectedMember.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
+            const isClient = selectedMember.role === 'client'
+            return (
+              <>
+                <SheetHeader className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-12 w-12">
+                      <AvatarFallback className={isClient ? 'bg-cyan-500/20 text-cyan-400 font-bold' : 'bg-primary/20 text-primary font-bold'}>
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <SheetTitle className="text-left">{selectedMember.name}</SheetTitle>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="outline" className={config.className}>
+                          <Icon className="h-3 w-3 mr-1" />
+                          {config.label}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                  <SheetDescription className="text-left">
+                    {config.description}
+                  </SheetDescription>
+                </SheetHeader>
+
+                <div className="mt-6 space-y-5">
+                  {/* Stats */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-muted/30 border border-border rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                        <Activity className="h-3 w-3" /> Última atividade
+                      </p>
+                      <p className="text-sm font-medium">{formatRelative(selectedMember.last_activity_at)}</p>
+                    </div>
+                    <div className="bg-muted/30 border border-border rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                        <Clock className="h-3 w-3" /> Cadastrado em
+                      </p>
+                      <p className="text-sm font-medium">{new Date(selectedMember.created_at).toLocaleDateString('pt-BR')}</p>
+                    </div>
+                  </div>
+
+                  {/* Recent activity */}
+                  <div>
+                    <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                      <Activity className="h-4 w-4 text-primary" /> Atividade recente
+                    </h3>
+                    {activitiesLoading ? (
+                      <div className="flex items-center justify-center py-6">
+                        <div className="w-5 h-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                      </div>
+                    ) : memberActivities.length === 0 ? (
+                      <div className="bg-muted/20 border border-dashed border-border rounded-lg p-4 text-center">
+                        <p className="text-xs text-muted-foreground">Sem registros de atividade</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {memberActivities.map((a, i) => (
+                          <div key={i} className="flex items-start gap-3 text-xs border-l-2 border-primary/30 pl-3 py-1">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium">
+                                <span className="text-primary">{a.action}</span>
+                                {' · '}
+                                <span className="text-muted-foreground">{a.entity_type}</span>
+                              </p>
+                              {a.entity_name && <p className="text-muted-foreground truncate">{a.entity_name}</p>}
+                            </div>
+                            <p className="text-muted-foreground shrink-0">{formatRelative(a.created_at)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  {selectedMember.user_id !== currentUser?.id && (
+                    <div className="pt-4 border-t border-border">
+                      <Button
+                        variant="outline"
+                        className="w-full text-destructive border-destructive/30 hover:bg-destructive/10"
+                        onClick={() => {
+                          setMemberToRemove(selectedMember)
+                          setSelectedMember(null)
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Revogar acesso
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )
+          })()}
+        </SheetContent>
+      </Sheet>
 
       {/* Remove member confirmation */}
       <AlertDialog open={!!memberToRemove} onOpenChange={(open) => !open && setMemberToRemove(null)}>
