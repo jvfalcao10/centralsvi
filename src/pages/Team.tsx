@@ -144,14 +144,19 @@ export default function Team() {
       }
     })
 
-    const merged: TeamMember[] = profiles.map((p: any) => ({
-      user_id: p.user_id,
-      name: p.name || 'Sem nome',
-      email: null,
-      role: roleMap.get(p.user_id) || 'user',
-      created_at: p.created_at,
-      last_activity_at: lastActivityMap.get(p.user_id) || null,
-    }))
+    // Filtra perfis órfãos (sem role) — usuários cujas roles foram revogadas
+    // permanecem em profiles (RLS de profiles não permite DELETE), mas não devem
+    // aparecer na Equipe pois não têm acesso real ao sistema.
+    const merged: TeamMember[] = profiles
+      .filter((p: any) => roleMap.has(p.user_id))
+      .map((p: any) => ({
+        user_id: p.user_id,
+        name: p.name || 'Sem nome',
+        email: null,
+        role: roleMap.get(p.user_id) || 'user',
+        created_at: p.created_at,
+        last_activity_at: lastActivityMap.get(p.user_id) || null,
+      }))
 
     setMembers(merged)
     setInvitations(invites)
@@ -235,22 +240,21 @@ export default function Team() {
     setRemoving(true)
 
     const { error: rolesError } = await supabase.from('user_roles').delete().eq('user_id', memberToRemove.user_id)
-    const { error: profileError } = await supabase.from('profiles').delete().eq('user_id', memberToRemove.user_id)
 
     setRemoving(false)
 
-    if (rolesError || profileError) {
+    if (rolesError) {
       toast({
         title: 'Erro ao remover membro',
-        description: rolesError?.message || profileError?.message,
+        description: rolesError.message,
         variant: 'destructive',
       })
       return
     }
 
     toast({
-      title: 'Membro removido',
-      description: `${memberToRemove.name} perdeu o acesso ao sistema.`,
+      title: 'Acesso revogado',
+      description: `${memberToRemove.name} não tem mais permissão para acessar o sistema.`,
     })
     setMemberToRemove(null)
     fetchData()
@@ -836,10 +840,10 @@ export default function Team() {
       <AlertDialog open={!!memberToRemove} onOpenChange={(open) => !open && setMemberToRemove(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remover {memberToRemove?.name} da equipe?</AlertDialogTitle>
+            <AlertDialogTitle>Revogar acesso de {memberToRemove?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação revoga o acesso ao sistema imediatamente. O perfil e a role são apagados — o usuário não conseguirá mais entrar.
-              Para reativar, será necessário um novo convite.
+              Esta ação remove a role do usuário imediatamente. Ele deixa de aparecer na Equipe e perde acesso ao sistema.
+              O perfil em si fica preservado para auditoria. Para reativar, basta atribuir uma nova role via convite.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
