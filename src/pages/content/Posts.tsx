@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { Plus, Pencil, Trash2, Calendar as CalendarIcon, ArrowRight, Lightbulb, Wrench, Clock, CheckCircle2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Plus, Pencil, Trash2, Calendar as CalendarIcon, ArrowRight, Lightbulb, Wrench, Clock, CheckCircle2, Sparkles, Stethoscope } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
@@ -253,6 +254,23 @@ export default function Posts() {
         <div>
           <h1 className="text-2xl font-bold">Gestor de Posts</h1>
           <p className="text-sm text-muted-foreground">Fluxo editorial Kanban de ideia a publicação</p>
+          {isStaff && (
+            <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+              <span className="opacity-70">Marcas internas SVI:</span>
+              <Link
+                to="/content/svi-company"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/5 hover:bg-primary/15 text-primary border border-primary/20 transition-colors"
+              >
+                <Sparkles className="h-3 w-3" /> SVI Company
+              </Link>
+              <Link
+                to="/content/svi-doctor"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/5 hover:bg-primary/15 text-primary border border-primary/20 transition-colors"
+              >
+                <Stethoscope className="h-3 w-3" /> SVI Doctor
+              </Link>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {isStaff && (
