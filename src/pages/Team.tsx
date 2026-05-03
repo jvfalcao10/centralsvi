@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Users, Shield, Crown, Crosshair, Wrench, UserCog, UserPlus, Mail, Clock, Copy, Check, Trash2 } from 'lucide-react'
+import { Users, Shield, Crown, Crosshair, Wrench, UserCog, UserPlus, Mail, Clock, Copy, Check, Trash2, User } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth, UserRole } from '@/contexts/AuthContext'
@@ -37,8 +37,13 @@ const ROLE_CONFIG: Record<UserRole, { label: string; description: string; icon: 
   manager: { label: 'Gestor', description: 'Pipeline + Clientes + Onboarding + Financeiro', icon: Shield, className: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   seller: { label: 'Vendedor', description: 'Prospecção + Scripts + Pipeline', icon: Crosshair, className: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
   executor: { label: 'Executor', description: 'Entregas + Scripts (apenas próprias)', icon: Wrench, className: 'bg-green-500/20 text-green-400 border-green-500/30' },
+  client: { label: 'Cliente', description: 'Acesso ao painel de conteúdo (cliente externo)', icon: User, className: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
   user: { label: 'Usuário', description: 'Acesso básico', icon: UserCog, className: 'bg-slate-500/20 text-slate-400 border-slate-500/30' },
 }
+
+const FALLBACK_CONFIG = ROLE_CONFIG.user
+const getRoleConfig = (role: UserRole | string | null | undefined) =>
+  (role && ROLE_CONFIG[role as UserRole]) || FALLBACK_CONFIG
 
 export default function Team() {
   const { toast } = useToast()
@@ -214,7 +219,7 @@ export default function Team() {
                 </TableHeader>
                 <TableBody>
                   {members.map(m => {
-                    const config = ROLE_CONFIG[m.role]
+                    const config = getRoleConfig(m.role)
                     const isCurrentUser = m.user_id === currentUser?.id
                     const initials = m.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
                     return (
@@ -276,7 +281,7 @@ export default function Team() {
                   </TableHeader>
                   <TableBody>
                     {pendingInvites.map(inv => {
-                      const config = ROLE_CONFIG[inv.role]
+                      const config = getRoleConfig(inv.role)
                       return (
                         <TableRow key={inv.id}>
                           <TableCell className="text-sm">{inv.email}</TableCell>
@@ -320,7 +325,7 @@ export default function Team() {
                   </TableHeader>
                   <TableBody>
                     {acceptedInvites.map(inv => {
-                      const config = ROLE_CONFIG[inv.role]
+                      const config = getRoleConfig(inv.role)
                       return (
                         <TableRow key={inv.id}>
                           <TableCell className="text-sm">{inv.email}</TableCell>
