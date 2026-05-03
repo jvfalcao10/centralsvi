@@ -12,6 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface TeamMember {
@@ -58,6 +62,10 @@ export default function Team() {
   const [inviteRole, setInviteRole] = useState<UserRole>('executor')
   const [inviting, setInviting] = useState(false)
   const [copied, setCopied] = useState(false)
+
+  // Remove member dialog
+  const [memberToRemove, setMemberToRemove] = useState<TeamMember | null>(null)
+  const [removing, setRemoving] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -147,6 +155,37 @@ export default function Team() {
     fetchData()
   }
 
+  async function removeMember() {
+    if (!memberToRemove) return
+    if (memberToRemove.user_id === currentUser?.id) {
+      toast({ title: 'Não é possível remover você mesmo', variant: 'destructive' })
+      setMemberToRemove(null)
+      return
+    }
+    setRemoving(true)
+
+    const { error: rolesError } = await supabase.from('user_roles').delete().eq('user_id', memberToRemove.user_id)
+    const { error: profileError } = await supabase.from('profiles').delete().eq('user_id', memberToRemove.user_id)
+
+    setRemoving(false)
+
+    if (rolesError || profileError) {
+      toast({
+        title: 'Erro ao remover membro',
+        description: rolesError?.message || profileError?.message,
+        variant: 'destructive',
+      })
+      return
+    }
+
+    toast({
+      title: 'Membro removido',
+      description: `${memberToRemove.name} perdeu o acesso ao sistema.`,
+    })
+    setMemberToRemove(null)
+    fetchData()
+  }
+
   function copyInviteLink() {
     const url = `${window.location.origin}/login`
     navigator.clipboard.writeText(url)
@@ -215,6 +254,7 @@ export default function Team() {
                     <TableHead>Role Atual</TableHead>
                     <TableHead>Alterar Role</TableHead>
                     <TableHead>Criado em</TableHead>
+                    <TableHead className="w-20 text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -249,6 +289,18 @@ export default function Team() {
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {new Date(m.created_at).toLocaleDateString('pt-BR')}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive disabled:opacity-30"
+                            onClick={() => setMemberToRemove(m)}
+                            disabled={isCurrentUser}
+                            title={isCurrentUser ? 'Você não pode remover a si mesmo' : 'Remover membro'}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     )
@@ -425,6 +477,29 @@ export default function Team() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Remove member confirmation */}
+      <AlertDialog open={!!memberToRemove} onOpenChange={(open) => !open && setMemberToRemove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover {memberToRemove?.name} da equipe?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação revoga o acesso ao sistema imediatamente. O perfil e a role são apagados — o usuário não conseguirá mais entrar.
+              Para reativar, será necessário um novo convite.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removing}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); removeMember() }}
+              disabled={removing}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {removing ? 'Removendo...' : 'Remover acesso'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
