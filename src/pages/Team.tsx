@@ -187,15 +187,30 @@ export default function Team() {
   }
 
   function copyInviteLink() {
-    const url = `${window.location.origin}/login`
+    const url = inviteEmail.trim() ? buildSignupLink(inviteEmail.trim()) : `${window.location.origin}/login`
     navigator.clipboard.writeText(url)
     setCopied(true)
     toast({ title: 'Link copiado!', description: 'Envie este link para a pessoa convidada.' })
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const STAFF_ROLES: UserRole[] = ['admin', 'manager', 'seller', 'executor', 'user']
+  const staffMembers = members.filter(m => STAFF_ROLES.includes(m.role))
+  const clientMembers = members.filter(m => m.role === 'client')
   const pendingInvites = invitations.filter(i => !i.accepted)
   const acceptedInvites = invitations.filter(i => i.accepted)
+
+  function buildSignupLink(email: string) {
+    return `${window.location.origin}/login?mode=signup&email=${encodeURIComponent(email)}`
+  }
+
+  async function copyInviteLinkFor(email: string, inviteId: string) {
+    await navigator.clipboard.writeText(buildSignupLink(email))
+    toast({
+      title: 'Link copiado!',
+      description: `Envie para ${email}. O email já vai pré-preenchido na tela de cadastro.`,
+    })
+  }
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
@@ -235,10 +250,11 @@ export default function Team() {
         })}
       </div>
 
-      {/* Tabs: Members / Pending / Accepted */}
+      {/* Tabs: Staff / Clients / Pending / Accepted */}
       <Tabs defaultValue="members">
         <TabsList>
-          <TabsTrigger value="members">Membros ({members.length})</TabsTrigger>
+          <TabsTrigger value="members">Time SVI ({staffMembers.length})</TabsTrigger>
+          <TabsTrigger value="clients">Clientes ({clientMembers.length})</TabsTrigger>
           <TabsTrigger value="pending">Convites Pendentes ({pendingInvites.length})</TabsTrigger>
           <TabsTrigger value="accepted">Histórico ({acceptedInvites.length})</TabsTrigger>
         </TabsList>
@@ -258,7 +274,7 @@ export default function Team() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {members.map(m => {
+                  {staffMembers.map(m => {
                     const config = getRoleConfig(m.role)
                     const isCurrentUser = m.user_id === currentUser?.id
                     const initials = m.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
@@ -311,6 +327,69 @@ export default function Team() {
           </Card>
         </TabsContent>
 
+        {/* Clients */}
+        <TabsContent value="clients">
+          <Card className="border-border bg-card">
+            <CardContent className="p-0">
+              {clientMembers.length === 0 ? (
+                <div className="p-8 text-center">
+                  <User className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">Nenhum cliente externo aprovado ainda</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Clientes que solicitam acesso aparecem em <span className="font-medium">Aprovações</span> antes de chegar aqui.
+                  </p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Aprovado em</TableHead>
+                      <TableHead className="w-20 text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {clientMembers.map(c => {
+                      const initials = c.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
+                      return (
+                        <TableRow key={c.user_id}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-8 w-8">
+                                <AvatarFallback className="bg-cyan-500/20 text-cyan-400 text-xs font-bold">{initials}</AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium text-sm">{c.name}</p>
+                                <Badge variant="outline" className={getRoleConfig('client').className + ' mt-0.5'}>
+                                  Cliente externo
+                                </Badge>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {new Date(c.created_at).toLocaleDateString('pt-BR')}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={() => setMemberToRemove(c)}
+                              title="Revogar acesso do cliente"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* Pending Invites */}
         <TabsContent value="pending">
           <Card className="border-border bg-card">
@@ -328,7 +407,7 @@ export default function Team() {
                       <TableHead>Role Atribuída</TableHead>
                       <TableHead>Convidado por</TableHead>
                       <TableHead>Enviado em</TableHead>
-                      <TableHead className="w-20">Ações</TableHead>
+                      <TableHead className="w-32 text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -342,10 +421,27 @@ export default function Team() {
                           <TableCell className="text-xs text-muted-foreground">
                             {new Date(inv.created_at).toLocaleDateString('pt-BR')}
                           </TableCell>
-                          <TableCell>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteInvite(inv.id)} title="Remover convite">
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-primary"
+                                onClick={() => copyInviteLinkFor(inv.email, inv.id)}
+                                title="Copiar link de cadastro (email pré-preenchido)"
+                              >
+                                <Copy className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() => deleteInvite(inv.id)}
+                                title="Remover convite"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       )
@@ -459,10 +555,10 @@ export default function Team() {
               <div className="flex items-center gap-2 mt-2">
                 <Input
                   readOnly
-                  value={`${window.location.origin}/login`}
+                  value={inviteEmail.trim() ? buildSignupLink(inviteEmail.trim()) : `${window.location.origin}/login`}
                   className="text-xs h-8 bg-background"
                 />
-                <Button size="sm" variant="outline" onClick={copyInviteLink}>
+                <Button size="sm" variant="outline" onClick={copyInviteLink} disabled={!inviteEmail.trim()}>
                   {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                 </Button>
               </div>

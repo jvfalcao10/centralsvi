@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { Eye, EyeOff, Lock, Mail, User, Sparkles } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -14,12 +14,20 @@ type Mode = 'login' | 'signup' | 'forgot'
 export default function Login() {
   const { user, loading, isClient, isStaff, signupStatus } = useAuth()
   const { toast } = useToast()
-  const [email, setEmail] = useState('')
+  const [searchParams] = useSearchParams()
+  const initialMode = (searchParams.get('mode') === 'signup' ? 'signup' : 'login') as Mode
+  const initialEmail = searchParams.get('email') || ''
+  const [email, setEmail] = useState(initialEmail)
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [mode, setMode] = useState<Mode>('login')
+  const [mode, setMode] = useState<Mode>(initialMode)
+
+  useEffect(() => {
+    if (initialEmail) setEmail(initialEmail)
+    if (searchParams.get('mode') === 'signup') setMode('signup')
+  }, [initialEmail, searchParams])
 
   if (!loading && user) {
     if (isClient) return <Navigate to="/minha-area" replace />
