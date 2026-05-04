@@ -28,6 +28,7 @@ import ActivityLog from "@/pages/ActivityLog";
 import Team from "@/pages/Team";
 import Approvals from "@/pages/Approvals";
 import Comercial from "@/pages/Comercial";
+import ReportsOverview from "@/pages/reports/Overview";
 
 // Client pages
 import MinhaArea from "@/pages/MinhaArea";
@@ -104,6 +105,9 @@ const App = () => (
               } />
               <Route path="/comercial" element={
                 <ProtectedRoute requiredRole="seller"><AppLayout><Comercial /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/reports/overview" element={
+                <ProtectedRoute requiredRole="manager"><AppLayout><ReportsOverview /></AppLayout></ProtectedRoute>
               } />
 
               {/* Client-only */}

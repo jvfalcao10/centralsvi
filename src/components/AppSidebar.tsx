@@ -3,7 +3,7 @@ import { useLocation, Link } from 'react-router-dom'
 import {
   LayoutDashboard, GitBranch, Users, CheckSquare, DollarSign, Crosshair, FileText,
   ClipboardCheck, Clock, UserCog, UserCheck, Kanban, BarChart3, Sun, Moon, LogOut,
-  ChevronRight, ChevronDown, Briefcase, Sparkles, ShieldCheck, Settings,
+  ChevronRight, ChevronDown, Briefcase, Sparkles, ShieldCheck, Settings, Megaphone, PieChart,
 } from 'lucide-react'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
@@ -63,8 +63,8 @@ const NAV: NavEntry[] = [
 
   {
     type: 'group',
-    title: 'Conteúdo',
-    icon: Kanban,
+    title: 'Marketing',
+    icon: Megaphone,
     minRole: 'executor',
     items: [
       { title: 'Posts', url: '/content/posts', minRole: 'executor' },
@@ -92,14 +92,24 @@ const NAV: NavEntry[] = [
 
   {
     type: 'group',
-    title: 'Admin',
+    title: 'Relatórios',
+    icon: PieChart,
+    minRole: 'executor',
+    items: [
+      { title: 'Performance Geral', url: '/reports/overview', minRole: 'manager' },
+      { title: 'Atividades', url: '/activity', minRole: 'executor' },
+    ],
+  },
+
+  {
+    type: 'group',
+    title: 'Gestão Admin',
     icon: ShieldCheck,
     minRole: 'manager',
     badgeKeys: ['approvals', 'team'],
     items: [
       { title: 'Aprovações', url: '/admin/approvals', minRole: 'manager', badgeKey: 'approvals' },
       { title: 'Equipe', url: '/team', minRole: 'admin', badgeKey: 'team' },
-      { title: 'Atividades', url: '/activity', minRole: 'executor' },
     ],
   },
 ]
