@@ -39,6 +39,128 @@ const CASH_PROJECTION = [
   { day: '+60d', saldo: 55000 }, { day: '+90d', saldo: 72000 },
 ]
 
+function CustomTooltip({ active, payload, label }: any) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-card border border-border rounded-lg p-3 text-sm shadow-lg">
+        <p className="font-medium mb-1">{label}</p>
+        {payload.map((entry: any) => (
+          <p key={entry.name} style={{ color: entry.color }}>{entry.name}: {formatCurrency(entry.value)}</p>
+        ))}
+      </div>
+    )
+  }
+  return null
+}
+
+const HIGHLIGHT_COLOR_MAP: Record<'danger' | 'warning' | 'primary' | 'muted', string> = {
+  danger: 'text-danger',
+  warning: 'text-warning',
+  primary: 'text-primary',
+  muted: 'text-muted-foreground',
+}
+
+interface BillingRowDeps {
+  invoices: InvoiceWithClient[]
+  today: Date
+  usdRate: number
+  getDueDate: (dia: number) => Date
+  registeringPayment: string | null
+  registerPayment: (c: ActiveClient) => void
+}
+
+interface ClientBillingRowProps extends BillingRowDeps {
+  client: ActiveClient
+  highlight: 'danger' | 'warning' | 'primary' | 'muted'
+}
+
+function ClientBillingRow({
+  client, highlight, invoices, today, usdRate, getDueDate, registeringPayment, registerPayment,
+}: ClientBillingRowProps) {
+  const dueDate = client.dia_vencimento ? getDueDate(client.dia_vencimento) : null
+  const dueDateStr = dueDate ? dueDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '—'
+
+  const alreadyPaid = invoices.some(inv =>
+    inv.client_id === client.id &&
+    inv.status === 'pago' &&
+    inv.vencimento.startsWith(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`)
+  )
+
+  return (
+    <TableRow className="border-border hover:bg-muted/20">
+      <TableCell className="text-sm font-medium">{client.name}</TableCell>
+      <TableCell className="text-xs text-muted-foreground">{client.company || '—'}</TableCell>
+      <TableCell>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-sm font-bold text-success">{formatCurrency(mrrBRL(client.mrr, client.currency, usdRate))}</span>
+          {client.currency === 'USD' && (
+            <Badge variant="outline" className="text-xs bg-info/10 text-info border-info/30">🇺🇸 USD</Badge>
+          )}
+        </div>
+      </TableCell>
+      <TableCell>
+        <span className={`text-sm font-medium ${HIGHLIGHT_COLOR_MAP[highlight]}`}>Dia {client.dia_vencimento} · {dueDateStr}</span>
+      </TableCell>
+      <TableCell className="text-right">
+        {alreadyPaid ? (
+          <Badge variant="outline" className="text-xs bg-success/20 text-success border-success/30">
+            <CheckCircle className="h-3 w-3 mr-1" /> Pago
+          </Badge>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs gap-1 text-success hover:text-success"
+            disabled={registeringPayment === client.id}
+            onClick={() => registerPayment(client)}
+          >
+            <CheckCircle className="h-3 w-3" /> Registrar pag.
+          </Button>
+        )}
+      </TableCell>
+    </TableRow>
+  )
+}
+
+interface BillingSectionProps extends BillingRowDeps {
+  title: string
+  clients: ActiveClient[]
+  icon: any
+  highlight: 'danger' | 'warning' | 'primary' | 'muted'
+  borderColor: string
+}
+
+function BillingSection({
+  title, clients, icon: Icon, highlight, borderColor, ...deps
+}: BillingSectionProps) {
+  if (clients.length === 0) return null
+  return (
+    <div className={`rounded-xl border ${borderColor} overflow-hidden`}>
+      <div className="px-4 py-2.5 flex items-center gap-2 bg-muted/30 border-b border-border">
+        <Icon className={`h-4 w-4 ${HIGHLIGHT_COLOR_MAP[highlight]}`} />
+        <span className="text-sm font-semibold">{title}</span>
+        <Badge variant="outline" className="ml-auto text-xs">{clients.length} cliente{clients.length !== 1 ? 's' : ''}</Badge>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow className="border-border hover:bg-transparent">
+            <TableHead>Cliente</TableHead>
+            <TableHead>Empresa</TableHead>
+            <TableHead>MRR</TableHead>
+            <TableHead>Vencimento</TableHead>
+            <TableHead className="text-right">Ação</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {clients.map(c => (
+            <ClientBillingRow key={c.id} client={c} highlight={highlight} {...deps} />
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+
 const MONTHLY_DRE = [
   { month: 'Mar', receita: 26800, despesas: 14200, lucro: 12600 },
   { month: 'Abr', receita: 27500, despesas: 14800, lucro: 12700 },
@@ -250,112 +372,8 @@ export default function Financial() {
     { label: 'Já vencidos', value: clientsOverdue.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0), count: clientsOverdue.length, color: 'text-muted-foreground' },
   ]
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-card border border-border rounded-lg p-3 text-sm shadow-lg">
-          <p className="font-medium mb-1">{label}</p>
-          {payload.map((entry: any) => (
-            <p key={entry.name} style={{ color: entry.color }}>{entry.name}: {formatCurrency(entry.value)}</p>
-          ))}
-        </div>
-      )
-    }
-    return null
-  }
-
-  const ClientBillingRow = ({ client, highlight }: { client: ActiveClient; highlight: 'danger' | 'warning' | 'primary' | 'muted' }) => {
-    const colorMap = {
-      danger: 'text-danger',
-      warning: 'text-warning',
-      primary: 'text-primary',
-      muted: 'text-muted-foreground',
-    }
-    const dueDate = client.dia_vencimento ? getDueDate(client.dia_vencimento) : null
-    const dueDateStr = dueDate ? dueDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '—'
-
-    // Check if payment already registered this month
-    const alreadyPaid = invoices.some(inv =>
-      inv.client_id === client.id &&
-      inv.status === 'pago' &&
-      inv.vencimento.startsWith(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`)
-    )
-
-    return (
-      <TableRow className="border-border hover:bg-muted/20">
-        <TableCell className="text-sm font-medium">{client.name}</TableCell>
-        <TableCell className="text-xs text-muted-foreground">{client.company || '—'}</TableCell>
-        <TableCell>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-sm font-bold text-success">{formatCurrency(mrrBRL(client.mrr, client.currency, usdRate))}</span>
-            {client.currency === 'USD' && (
-              <Badge variant="outline" className="text-xs bg-info/10 text-info border-info/30">🇺🇸 USD</Badge>
-            )}
-          </div>
-        </TableCell>
-        <TableCell>
-          <span className={`text-sm font-medium ${colorMap[highlight]}`}>Dia {client.dia_vencimento} · {dueDateStr}</span>
-        </TableCell>
-        <TableCell className="text-right">
-          {alreadyPaid ? (
-            <Badge variant="outline" className="text-xs bg-success/20 text-success border-success/30">
-              <CheckCircle className="h-3 w-3 mr-1" /> Pago
-            </Badge>
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs gap-1 text-success hover:text-success"
-              disabled={registeringPayment === client.id}
-              onClick={() => registerPayment(client)}
-            >
-              <CheckCircle className="h-3 w-3" /> Registrar pag.
-            </Button>
-          )}
-        </TableCell>
-      </TableRow>
-    )
-  }
-
-  const BillingSection = ({
-    title,
-    clients,
-    icon: Icon,
-    highlight,
-    borderColor,
-  }: {
-    title: string
-    clients: ActiveClient[]
-    icon: any
-    highlight: 'danger' | 'warning' | 'primary' | 'muted'
-    borderColor: string
-  }) => {
-    if (clients.length === 0) return null
-    return (
-      <div className={`rounded-xl border ${borderColor} overflow-hidden`}>
-        <div className="px-4 py-2.5 flex items-center gap-2 bg-muted/30 border-b border-border">
-          <Icon className={`h-4 w-4 ${highlight === 'danger' ? 'text-danger' : highlight === 'warning' ? 'text-warning' : highlight === 'primary' ? 'text-primary' : 'text-muted-foreground'}`} />
-          <span className="text-sm font-semibold">{title}</span>
-          <Badge variant="outline" className="ml-auto text-xs">{clients.length} cliente{clients.length !== 1 ? 's' : ''}</Badge>
-        </div>
-        <Table>
-          <TableHeader>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableHead>Cliente</TableHead>
-              <TableHead>Empresa</TableHead>
-              <TableHead>MRR</TableHead>
-              <TableHead>Vencimento</TableHead>
-              <TableHead className="text-right">Ação</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {clients.map(c => (
-              <ClientBillingRow key={c.id} client={c} highlight={highlight} />
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    )
+  const billingRowDeps = {
+    invoices, today, usdRate, getDueDate, registeringPayment, registerPayment,
   }
 
   if (loading) return (
@@ -440,6 +458,7 @@ export default function Financial() {
             icon={AlertCircle}
             highlight="danger"
             borderColor="border-danger/30"
+            {...billingRowDeps}
           />
           <BillingSection
             title="Vence Esta Semana (próximos 7 dias)"
@@ -447,6 +466,7 @@ export default function Financial() {
             icon={Clock}
             highlight="warning"
             borderColor="border-warning/30"
+            {...billingRowDeps}
           />
           <BillingSection
             title="Vence Este Mês"
@@ -454,6 +474,7 @@ export default function Financial() {
             icon={Calendar}
             highlight="primary"
             borderColor="border-border"
+            {...billingRowDeps}
           />
           <BillingSection
             title="Já Vencidos Este Mês"
@@ -461,6 +482,7 @@ export default function Financial() {
             icon={CalendarCheck}
             highlight="muted"
             borderColor="border-border"
+            {...billingRowDeps}
           />
 
           {clientsWithDue.length === 0 && clientsNoDue.length === 0 && (

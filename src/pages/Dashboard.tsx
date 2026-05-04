@@ -23,6 +23,22 @@ interface KPICard {
   label: string; value: string; change: number; icon: React.ElementType; prefix?: string
 }
 
+function CustomTooltip({ active, payload, label }: any) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-card border border-border rounded-lg p-3 text-sm shadow-lg">
+        <p className="font-medium mb-1">{label}</p>
+        {payload.map((entry: any) => (
+          <p key={entry.name} style={{ color: entry.color }}>
+            {entry.name}: {formatCurrency(entry.value)}
+          </p>
+        ))}
+      </div>
+    )
+  }
+  return null
+}
+
 export default function Dashboard() {
   const { rate: usdRate, updatedAt: usdUpdatedAt, isEstimate: usdIsEstimate } = useUsdRateInfo()
   const [clients, setClients] = useState<{ status: string; mrr: number; currency: string }[]>([])
@@ -106,22 +122,6 @@ export default function Dashboard() {
     green: 'bg-success/20 text-success border-success/30',
     yellow: 'bg-warning/20 text-warning border-warning/30',
     red: 'bg-danger/20 text-danger border-danger/30',
-  }
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-card border border-border rounded-lg p-3 text-sm shadow-lg">
-          <p className="font-medium mb-1">{label}</p>
-          {payload.map((entry: any) => (
-            <p key={entry.name} style={{ color: entry.color }}>
-              {entry.name}: {formatCurrency(entry.value)}
-            </p>
-          ))}
-        </div>
-      )
-    }
-    return null
   }
 
   if (loading) return (
