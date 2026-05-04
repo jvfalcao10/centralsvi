@@ -37,6 +37,103 @@ const EMPTY_FORM = {
 // Stages shown in "Avançar" (excludes perdido)
 const ACTIVE_STAGES = PIPELINE_STAGES.filter(s => s.id !== 'perdido')
 
+// IMPORTANTE: este componente DEVE ficar fora do componente Pipeline.
+// Se for declarado dentro, ele é recriado a cada re-render, o que
+// desmonta/remonta os Inputs e faz o usuário perder o foco a cada tecla
+// (sintoma: "não dá pra digitar, só colar").
+function LeadFormFields({
+  f, setF, nameErr,
+}: {
+  f: typeof EMPTY_FORM
+  setF: (k: string, v: string) => void
+  nameErr: string
+}) {
+  return (
+    <div className="space-y-4 py-1">
+      <div className="space-y-1.5">
+        <Label>Nome <span className="text-destructive">*</span></Label>
+        <Input placeholder="Nome do lead" value={f.name} onChange={e => setF('name', e.target.value)} className={nameErr ? 'border-destructive' : ''} maxLength={100} />
+        {nameErr && <p className="text-xs text-destructive">{nameErr}</p>}
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label>Empresa</Label>
+          <Input placeholder="Empresa" value={f.company} onChange={e => setF('company', e.target.value)} maxLength={100} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Telefone</Label>
+          <Input placeholder="(00) 00000-0000" value={f.phone} onChange={e => setF('phone', e.target.value)} maxLength={20} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label>Email</Label>
+          <Input type="email" placeholder="email@exemplo.com" value={f.email} onChange={e => setF('email', e.target.value)} maxLength={255} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Segmento</Label>
+          <Input placeholder="Ex: saúde, varejo..." value={f.segment} onChange={e => setF('segment', e.target.value)} maxLength={60} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label>Origem</Label>
+          <Select value={f.source} onValueChange={v => setF('source', v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="organico">Orgânico</SelectItem>
+              <SelectItem value="pago">Pago</SelectItem>
+              <SelectItem value="indicacao">Indicação</SelectItem>
+              <SelectItem value="evento">Evento</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Etapa</Label>
+          <Select value={f.stage} onValueChange={v => setF('stage', v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {PIPELINE_STAGES.map(s => (
+                <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label>Plano</Label>
+          <Select value={f.plano || 'none'} onValueChange={v => setF('plano', v === 'none' ? '' : v)}>
+            <SelectTrigger><SelectValue placeholder="Selecionar plano" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Nenhum</SelectItem>
+              <SelectItem value="starter">Starter</SelectItem>
+              <SelectItem value="growth">Growth</SelectItem>
+              <SelectItem value="pro">Pro</SelectItem>
+              <SelectItem value="enterprise">Enterprise</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Ticket Estimado (R$)</Label>
+          <Input type="number" placeholder="0,00" min="0" step="0.01" value={f.ticket_estimado} onChange={e => setF('ticket_estimado', e.target.value)} />
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label>Notas</Label>
+        <Textarea placeholder="Observações sobre o lead..." value={f.notes} onChange={e => setF('notes', e.target.value)} rows={3} maxLength={1000} className="resize-none" />
+      </div>
+      <div className="space-y-1.5">
+        <Label>Instagram</Label>
+        <div className="relative">
+          <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="@perfil" value={f.instagram} onChange={e => setF('instagram', e.target.value)} className="pl-9" maxLength={60} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Pipeline() {
   const { toast } = useToast()
   const [leads, setLeads] = useState<Lead[]>([])
@@ -222,91 +319,6 @@ export default function Pipeline() {
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-    </div>
-  )
-
-  const LeadFormFields = ({ f, setF, nameErr }: { f: typeof EMPTY_FORM; setF: (k: string, v: string) => void; nameErr: string }) => (
-    <div className="space-y-4 py-1">
-      <div className="space-y-1.5">
-        <Label>Nome <span className="text-destructive">*</span></Label>
-        <Input placeholder="Nome do lead" value={f.name} onChange={e => setF('name', e.target.value)} className={nameErr ? 'border-destructive' : ''} maxLength={100} />
-        {nameErr && <p className="text-xs text-destructive">{nameErr}</p>}
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label>Empresa</Label>
-          <Input placeholder="Empresa" value={f.company} onChange={e => setF('company', e.target.value)} maxLength={100} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Telefone</Label>
-          <Input placeholder="(00) 00000-0000" value={f.phone} onChange={e => setF('phone', e.target.value)} maxLength={20} />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label>Email</Label>
-          <Input type="email" placeholder="email@exemplo.com" value={f.email} onChange={e => setF('email', e.target.value)} maxLength={255} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Segmento</Label>
-          <Input placeholder="Ex: saúde, varejo..." value={f.segment} onChange={e => setF('segment', e.target.value)} maxLength={60} />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label>Origem</Label>
-          <Select value={f.source} onValueChange={v => setF('source', v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="organico">Orgânico</SelectItem>
-              <SelectItem value="pago">Pago</SelectItem>
-              <SelectItem value="indicacao">Indicação</SelectItem>
-              <SelectItem value="evento">Evento</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Etapa</Label>
-          <Select value={f.stage} onValueChange={v => setF('stage', v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {PIPELINE_STAGES.map(s => (
-                <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label>Plano</Label>
-          <Select value={f.plano || 'none'} onValueChange={v => setF('plano', v === 'none' ? '' : v)}>
-            <SelectTrigger><SelectValue placeholder="Selecionar plano" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Nenhum</SelectItem>
-              <SelectItem value="starter">Starter</SelectItem>
-              <SelectItem value="growth">Growth</SelectItem>
-              <SelectItem value="pro">Pro</SelectItem>
-              <SelectItem value="enterprise">Enterprise</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Ticket Estimado (R$)</Label>
-          <Input type="number" placeholder="0,00" min="0" step="0.01" value={f.ticket_estimado} onChange={e => setF('ticket_estimado', e.target.value)} />
-        </div>
-      </div>
-      <div className="space-y-1.5">
-        <Label>Notas</Label>
-        <Textarea placeholder="Observações sobre o lead..." value={f.notes} onChange={e => setF('notes', e.target.value)} rows={3} maxLength={1000} className="resize-none" />
-      </div>
-      <div className="space-y-1.5">
-        <Label>Instagram</Label>
-        <div className="relative">
-          <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="@perfil" value={f.instagram} onChange={e => setF('instagram', e.target.value)} className="pl-9" maxLength={60} />
-        </div>
-      </div>
     </div>
   )
 

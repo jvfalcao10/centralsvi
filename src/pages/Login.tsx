@@ -42,7 +42,36 @@ export default function Login() {
     setIsLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
-      toast({ title: 'Erro ao entrar', description: error.message, variant: 'destructive' })
+      // Tradução amigável + dica para quem foi convidado mas ainda não criou conta
+      const isInvalidCreds = (error.message || '').toLowerCase().includes('invalid login')
+      if (isInvalidCreds && email.trim()) {
+        // Verifica se há invitation pendente para este email — se sim, oferece criar conta
+        const { data: invite } = await supabase
+          .from('invitations')
+          .select('id, role')
+          .eq('email', email.trim().toLowerCase())
+          .eq('accepted', false)
+          .maybeSingle()
+
+        if (invite) {
+          toast({
+            title: 'Você foi convidado, mas ainda não criou sua conta',
+            description: 'Clique em "Criar conta" acima — seu email já está pré-preenchido. Defina uma senha e seu acesso é liberado automaticamente.',
+            variant: 'destructive',
+          })
+          setMode('signup')
+          setIsLoading(false)
+          return
+        }
+
+        toast({
+          title: 'Email ou senha incorretos',
+          description: 'Confira seus dados. Se esqueceu a senha, use "Esqueci minha senha" abaixo.',
+          variant: 'destructive',
+        })
+      } else {
+        toast({ title: 'Erro ao entrar', description: error.message, variant: 'destructive' })
+      }
     }
     setIsLoading(false)
   }
