@@ -1,5 +1,8 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { Plus, ExternalLink, Sparkles, ArrowRightCircle, Trash2, Radar as RadarIcon } from 'lucide-react'
+import {
+  Plus, ExternalLink, Sparkles, ArrowRightCircle, Trash2,
+  Radar as RadarIcon, LayoutList, LayoutGrid,
+} from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
@@ -7,8 +10,13 @@ import {
   ContentTrend,
   TrendRelevance,
   PautaUrgency,
+  RadarScope,
+  RadarCategory,
   TREND_RELEVANCE_CONFIG,
   PAUTA_URGENCY_CONFIG,
+  RADAR_CATEGORY_CONFIG,
+  SVI_CATEGORIES,
+  CLIENT_CATEGORIES,
   formatTimestamp,
 } from '@/types'
 import { Badge } from '@/components/ui/badge'
@@ -40,6 +48,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { cn } from '@/lib/utils'
 
 interface StaffClient {
   id: string
@@ -52,6 +63,7 @@ const URGENCY_OPTIONS: PautaUrgency[] = ['evergreen', 'tendencia', 'sazonal']
 const PERIOD_OPTIONS = [
   { value: 'all', label: 'Todo período' },
   { value: '1', label: 'Últimas 24h' },
+  { value: '3', label: 'Últimas 72h' },
   { value: '7', label: 'Últimos 7 dias' },
   { value: '30', label: 'Últimos 30 dias' },
 ]
@@ -61,7 +73,7 @@ const EMPTY_TREND_FORM = {
   source: '',
   url: '',
   relevance: 'media' as TrendRelevance,
-  category: '',
+  category: '' as RadarCategory | '',
   summary: '',
 }
 
@@ -71,6 +83,16 @@ const EMPTY_PAUTA_FORM = {
   format_suggestion: '',
   urgency: 'tendencia' as PautaUrgency,
   notes: '',
+}
+
+function categoriesForScope(scope: RadarScope): RadarCategory[] {
+  return scope === 'svi' ? SVI_CATEGORIES : CLIENT_CATEGORIES
+}
+
+function normalizeCategory(raw: string | null | undefined): RadarCategory | null {
+  if (!raw) return null
+  const k = raw.toLowerCase().trim() as RadarCategory
+  return k in RADAR_CATEGORY_CONFIG ? k : null
 }
 
 export default function Radar() {
@@ -84,9 +106,12 @@ export default function Radar() {
   const [staffClients, setStaffClients] = useState<StaffClient[]>([])
   const [selectedStaffClientId, setSelectedStaffClientId] = useState<string>('')
 
+  const [scope, setScope] = useState<RadarScope>('svi')
+  const [selectedCats, setSelectedCats] = useState<Set<RadarCategory>>(new Set())
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban')
+
   const [relevanceFilter, setRelevanceFilter] = useState('all')
-  const [categoryFilter, setCategoryFilter] = useState('')
-  const [periodFilter, setPeriodFilter] = useState('all')
+  const [periodFilter, setPeriodFilter] = useState('3')
   const [sourceFilter, setSourceFilter] = useState('')
 
   const [showTrendForm, setShowTrendForm] = useState(false)
@@ -126,7 +151,6 @@ export default function Radar() {
     let q = supabase.from('content_trends').select('*').order('captured_at', { ascending: false })
 
     if (isClient && activeClientId) {
-      // WHY: RLS already filters, but we show global + own client trends
       q = q.or(`client_id.is.null,client_id.eq.${activeClientId}`)
     } else if (isStaff && activeClientId) {
       q = q.or(`client_id.is.null,client_id.eq.${activeClientId}`)
@@ -149,11 +173,20 @@ export default function Radar() {
     fetchTrends()
   }, [isClient, clientId, isStaff, selectedStaffClientId, fetchTrends])
 
+  useEffect(() => {
+    setSelectedCats(new Set())
+  }, [scope])
+
+  const scopeCategories = useMemo(() => categoriesForScope(scope), [scope])
+
   const filtered = useMemo(() => {
     const now = Date.now()
     return trends.filter(t => {
+      const cat = normalizeCategory(t.category)
+      if (!cat) return false
+      if (!scopeCategories.includes(cat)) return false
+      if (selectedCats.size > 0 && !selectedCats.has(cat)) return false
       if (relevanceFilter !== 'all' && t.relevance !== relevanceFilter) return false
-      if (categoryFilter && !(t.category || '').toLowerCase().includes(categoryFilter.toLowerCase())) return false
       if (sourceFilter && !(t.source || '').toLowerCase().includes(sourceFilter.toLowerCase())) return false
       if (periodFilter !== 'all') {
         const days = parseInt(periodFilter)
@@ -162,7 +195,32 @@ export default function Radar() {
       }
       return true
     })
-  }, [trends, relevanceFilter, categoryFilter, periodFilter, sourceFilter])
+  }, [trends, scopeCategories, selectedCats, relevanceFilter, sourceFilter, periodFilter])
+
+  const visibleColumns = useMemo(() => {
+    return selectedCats.size > 0
+      ? scopeCategories.filter(c => selectedCats.has(c))
+      : scopeCategories
+  }, [scopeCategories, selectedCats])
+
+  const grouped = useMemo(() => {
+    const map: Record<string, ContentTrend[]> = {}
+    for (const c of visibleColumns) map[c] = []
+    for (const t of filtered) {
+      const cat = normalizeCategory(t.category)
+      if (cat && map[cat]) map[cat].push(t)
+    }
+    return visibleColumns.map(cat => ({ cat, items: map[cat] || [] }))
+  }, [filtered, visibleColumns])
+
+  const toggleCat = (cat: RadarCategory) => {
+    setSelectedCats(prev => {
+      const next = new Set(prev)
+      if (next.has(cat)) next.delete(cat)
+      else next.add(cat)
+      return next
+    })
+  }
 
   const openNewTrend = () => {
     setTrendForm(EMPTY_TREND_FORM)
@@ -187,7 +245,7 @@ export default function Radar() {
       source: trendForm.source.trim(),
       url: trendForm.url.trim() || null,
       relevance: trendForm.relevance,
-      category: trendForm.category.trim() || null,
+      category: trendForm.category || null,
       summary: trendForm.summary.trim() || null,
     })
     setSavingTrend(false)
@@ -284,12 +342,19 @@ export default function Radar() {
     fetchTrends()
   }
 
+  const totalShown = filtered.length
+
   return (
     <div className="space-y-4 animate-fade-in">
+      {/* HEADER */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Radar de Tendências</h1>
-          <p className="text-sm text-muted-foreground">Sinais do mercado capturados pela equipe SVI.Co</p>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <RadarIcon className="h-6 w-6 text-primary" /> Radar de Tendências
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Notícias frescas do mercado, prontas pra virar pauta. {totalShown} resultado{totalShown === 1 ? '' : 's'} no filtro atual.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           {isStaff && (
@@ -314,6 +379,68 @@ export default function Radar() {
         </div>
       </div>
 
+      {/* SCOPE TABS + VIEW TOGGLE */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Tabs value={scope} onValueChange={(v) => setScope(v as RadarScope)}>
+          <TabsList>
+            <TabsTrigger value="svi" className="gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" /> SVI
+              <span className="text-xs text-muted-foreground ml-1">({SVI_CATEGORIES.length})</span>
+            </TabsTrigger>
+            <TabsTrigger value="clientes" className="gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-teal-500" /> Clientes
+              <span className="text-xs text-muted-foreground ml-1">({CLIENT_CATEGORIES.length})</span>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <ToggleGroup
+          type="single"
+          value={viewMode}
+          onValueChange={(v) => v && setViewMode(v as 'list' | 'kanban')}
+          className="border border-border rounded-md"
+        >
+          <ToggleGroupItem value="kanban" aria-label="Kanban" className="h-8 px-3 gap-1.5 text-xs">
+            <LayoutGrid className="h-3.5 w-3.5" /> Kanban
+          </ToggleGroupItem>
+          <ToggleGroupItem value="list" aria-label="Lista" className="h-8 px-3 gap-1.5 text-xs">
+            <LayoutList className="h-3.5 w-3.5" /> Lista
+          </ToggleGroupItem>
+        </ToggleGroup>
+      </div>
+
+      {/* CATEGORY CHIPS */}
+      <div className="flex flex-wrap gap-2">
+        {scopeCategories.map(cat => {
+          const cfg = RADAR_CATEGORY_CONFIG[cat]
+          const active = selectedCats.has(cat)
+          return (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => toggleCat(cat)}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 h-8 rounded-full border text-xs font-medium transition-colors',
+                active ? cfg.activeChipClass : cfg.chipClass,
+              )}
+            >
+              <span className={cn('h-1.5 w-1.5 rounded-full', cfg.dotClass)} />
+              {cfg.label}
+            </button>
+          )
+        })}
+        {selectedCats.size > 0 && (
+          <button
+            type="button"
+            onClick={() => setSelectedCats(new Set())}
+            className="text-xs text-muted-foreground hover:text-foreground px-2 h-8"
+          >
+            limpar
+          </button>
+        )}
+      </div>
+
+      {/* SECONDARY FILTERS */}
       <div className="flex flex-wrap gap-3">
         <Select value={relevanceFilter} onValueChange={setRelevanceFilter}>
           <SelectTrigger className="w-40"><SelectValue placeholder="Relevância" /></SelectTrigger>
@@ -324,18 +451,6 @@ export default function Radar() {
             ))}
           </SelectContent>
         </Select>
-        <Input
-          placeholder="Categoria"
-          value={categoryFilter}
-          onChange={e => setCategoryFilter(e.target.value)}
-          className="w-40"
-        />
-        <Input
-          placeholder="Fonte"
-          value={sourceFilter}
-          onChange={e => setSourceFilter(e.target.value)}
-          className="w-40"
-        />
         <Select value={periodFilter} onValueChange={setPeriodFilter}>
           <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -344,87 +459,37 @@ export default function Radar() {
             ))}
           </SelectContent>
         </Select>
+        <Input
+          placeholder="Filtrar por fonte"
+          value={sourceFilter}
+          onChange={e => setSourceFilter(e.target.value)}
+          className="w-48"
+        />
       </div>
 
+      {/* CONTENT */}
       {loading ? (
         <div className="flex items-center justify-center h-64">
           <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
         </div>
-      ) : filtered.length === 0 ? (
+      ) : totalShown === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-10 text-center text-muted-foreground">
           <RadarIcon className="h-8 w-8 mx-auto mb-2 opacity-40" />
-          <p>Nenhuma tendência capturada ainda.</p>
-          <p className="text-xs mt-1">A equipe SVI.Co adiciona tendências relevantes do seu nicho aqui.</p>
+          <p>Nenhuma tendência neste filtro.</p>
+          <p className="text-xs mt-1">Tente trocar o período, limpar categorias ou alternar entre SVI/Clientes.</p>
         </div>
+      ) : viewMode === 'kanban' ? (
+        <KanbanView
+          columns={grouped}
+          onConvert={openConvert}
+          onDelete={isStaff ? setDeleteTarget : undefined}
+        />
       ) : (
-        <div className="space-y-2">
-          {filtered.map(t => {
-            const rel = TREND_RELEVANCE_CONFIG[t.relevance]
-            return (
-              <div key={t.id} className="bg-card border border-border rounded-xl p-4 space-y-3 hover:border-primary/40 transition-colors">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="outline" className={`text-xs ${rel.className}`}>{rel.label}</Badge>
-                      <Badge variant="outline" className="text-xs">{t.source}</Badge>
-                      {t.category && (
-                        <Badge variant="outline" className="text-xs text-muted-foreground">{t.category}</Badge>
-                      )}
-                      {t.converted_to_pauta_id && (
-                        <Badge variant="outline" className="text-xs bg-success/15 text-success border-success/30">
-                          <Sparkles className="h-3 w-3 mr-1" /> Virou pauta
-                        </Badge>
-                      )}
-                      {t.client_id === null && (
-                        <Badge variant="outline" className="text-xs text-muted-foreground">Global</Badge>
-                      )}
-                    </div>
-                    <p className="text-sm font-semibold">{t.title}</p>
-                  </div>
-                  <span className="text-xs text-muted-foreground shrink-0">{formatTimestamp(t.captured_at)}</span>
-                </div>
-
-                {t.summary && (
-                  <p className="text-sm text-muted-foreground line-clamp-3">{t.summary}</p>
-                )}
-
-                <div className="flex items-center justify-between pt-1 border-t border-border flex-wrap gap-2">
-                  {t.url ? (
-                    <a
-                      href={t.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-primary hover:underline flex items-center gap-1"
-                    >
-                      Abrir fonte <ExternalLink className="h-3 w-3" />
-                    </a>
-                  ) : <span className="text-xs text-muted-foreground">Sem link de fonte</span>}
-
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs gap-1"
-                      onClick={() => openConvert(t)}
-                    >
-                      <ArrowRightCircle className="h-3.5 w-3.5" /> Transformar em pauta
-                    </Button>
-                    {isStaff && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => setDeleteTarget(t)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+        <ListView
+          items={filtered}
+          onConvert={openConvert}
+          onDelete={isStaff ? setDeleteTarget : undefined}
+        />
       )}
 
       {/* Add Trend Dialog (staff only) */}
@@ -453,7 +518,7 @@ export default function Radar() {
                 <Label htmlFor="rf-s">Fonte <span className="text-destructive">*</span></Label>
                 <Input
                   id="rf-s"
-                  placeholder="Ex: Instagram, TikTok, G1..."
+                  placeholder="Ex: G1, Valor, Instagram..."
                   value={trendForm.source}
                   onChange={e => setTrendForm(p => ({ ...p, source: e.target.value }))}
                   className={trendErrors.source ? 'border-destructive' : ''}
@@ -462,13 +527,22 @@ export default function Radar() {
                 {trendErrors.source && <p className="text-xs text-destructive">{trendErrors.source}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="rf-c">Categoria</Label>
-                <Input
-                  id="rf-c"
-                  value={trendForm.category}
-                  onChange={e => setTrendForm(p => ({ ...p, category: e.target.value }))}
-                  maxLength={60}
-                />
+                <Label>Categoria</Label>
+                <Select
+                  value={trendForm.category || '__none__'}
+                  onValueChange={(v) => setTrendForm(p => ({ ...p, category: v === '__none__' ? '' : (v as RadarCategory) }))}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— sem categoria —</SelectItem>
+                    {SVI_CATEGORIES.map(c => (
+                      <SelectItem key={c} value={c}>SVI · {RADAR_CATEGORY_CONFIG[c].label}</SelectItem>
+                    ))}
+                    {CLIENT_CATEGORIES.map(c => (
+                      <SelectItem key={c} value={c}>Cliente · {RADAR_CATEGORY_CONFIG[c].label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -652,6 +726,177 @@ export default function Radar() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  )
+}
+
+// ============================================================================
+// VIEWS
+// ============================================================================
+
+interface ViewProps {
+  items: ContentTrend[]
+  onConvert: (t: ContentTrend) => void
+  onDelete?: (t: ContentTrend) => void
+}
+
+function ListView({ items, onConvert, onDelete }: ViewProps) {
+  return (
+    <div className="space-y-2">
+      {items.map(t => (
+        <TrendCard key={t.id} trend={t} onConvert={onConvert} onDelete={onDelete} variant="full" />
+      ))}
+    </div>
+  )
+}
+
+interface KanbanProps {
+  columns: { cat: RadarCategory; items: ContentTrend[] }[]
+  onConvert: (t: ContentTrend) => void
+  onDelete?: (t: ContentTrend) => void
+}
+
+function KanbanView({ columns, onConvert, onDelete }: KanbanProps) {
+  return (
+    <div className="flex gap-3 overflow-x-auto pb-3 -mx-1 px-1 snap-x">
+      {columns.map(col => {
+        const cfg = RADAR_CATEGORY_CONFIG[col.cat]
+        return (
+          <div
+            key={col.cat}
+            className={cn(
+              'flex-shrink-0 w-80 rounded-xl border bg-card/40 snap-start',
+              cfg.columnClass,
+            )}
+          >
+            <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/60">
+              <div className="flex items-center gap-2">
+                <span className={cn('h-2 w-2 rounded-full', cfg.dotClass)} />
+                <span className="text-sm font-semibold">{cfg.label}</span>
+              </div>
+              <span className="text-xs text-muted-foreground tabular-nums">{col.items.length}</span>
+            </div>
+            <div className="p-2 space-y-2 max-h-[calc(100vh-360px)] overflow-y-auto">
+              {col.items.length === 0 ? (
+                <div className="text-xs text-muted-foreground text-center py-6 border border-dashed border-border/40 rounded-lg">
+                  sem novidade
+                </div>
+              ) : (
+                col.items.map(t => (
+                  <TrendCard
+                    key={t.id}
+                    trend={t}
+                    onConvert={onConvert}
+                    onDelete={onDelete}
+                    variant="compact"
+                  />
+                ))
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ============================================================================
+// CARD
+// ============================================================================
+
+interface TrendCardProps {
+  trend: ContentTrend
+  onConvert: (t: ContentTrend) => void
+  onDelete?: (t: ContentTrend) => void
+  variant: 'full' | 'compact'
+}
+
+function TrendCard({ trend: t, onConvert, onDelete, variant }: TrendCardProps) {
+  const rel = TREND_RELEVANCE_CONFIG[t.relevance]
+  const cat = normalizeCategory(t.category)
+  const catCfg = cat ? RADAR_CATEGORY_CONFIG[cat] : null
+  const compact = variant === 'compact'
+
+  return (
+    <div className={cn(
+      'bg-card border border-border rounded-lg hover:border-primary/40 transition-colors',
+      compact ? 'p-2.5 space-y-2' : 'p-4 space-y-3',
+    )}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 space-y-1.5 min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 h-5', rel.className)}>{rel.label}</Badge>
+            {catCfg && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 border-border">
+                <span className={cn('h-1 w-1 rounded-full mr-1', catCfg.dotClass)} />
+                {catCfg.label}
+              </Badge>
+            )}
+            {!compact && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 border-border text-muted-foreground">
+                {t.source}
+              </Badge>
+            )}
+            {t.converted_to_pauta_id && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-success/15 text-success border-success/30">
+                <Sparkles className="h-2.5 w-2.5 mr-0.5" /> pauta
+              </Badge>
+            )}
+          </div>
+          <p className={cn(
+            'font-semibold leading-snug',
+            compact ? 'text-xs line-clamp-3' : 'text-sm',
+          )}>
+            {t.title}
+          </p>
+        </div>
+        {!compact && (
+          <span className="text-xs text-muted-foreground shrink-0">{formatTimestamp(t.captured_at)}</span>
+        )}
+      </div>
+
+      {t.summary && !compact && (
+        <p className="text-sm text-muted-foreground line-clamp-3">{t.summary}</p>
+      )}
+
+      <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/60">
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground min-w-0">
+          {compact && <span className="truncate">{t.source}</span>}
+          {compact && <span>·</span>}
+          {compact && <span className="shrink-0">{formatTimestamp(t.captured_at)}</span>}
+          {t.url && (
+            <a
+              href={t.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline inline-flex items-center gap-1 ml-auto shrink-0"
+            >
+              {compact ? <ExternalLink className="h-3 w-3" /> : <>abrir <ExternalLink className="h-3 w-3" /></>}
+            </a>
+          )}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn('text-xs gap-1', compact ? 'h-6 px-2' : 'h-7')}
+            onClick={() => onConvert(t)}
+          >
+            <ArrowRightCircle className="h-3 w-3" />
+            {compact ? 'pauta' : 'Transformar em pauta'}
+          </Button>
+          {onDelete && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn('p-0 text-destructive hover:text-destructive hover:bg-destructive/10', compact ? 'h-6 w-6' : 'h-7 w-7')}
+              onClick={() => onDelete(t)}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

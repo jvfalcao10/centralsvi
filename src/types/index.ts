@@ -367,3 +367,34 @@ export const TREND_RELEVANCE_CONFIG: Record<TrendRelevance, { label: string; cla
   media:  { label: 'Média',  className: 'bg-warning/15 text-warning' },
   baixa:  { label: 'Baixa',  className: 'bg-muted text-muted-foreground' },
 }
+
+// --- Radar de Tendências: categorias canônicas ---
+export type RadarScope = 'svi' | 'clientes'
+export type RadarCategory =
+  | 'ia' | 'marketing' | 'vendas' | 'crm' | 'atendimento'
+  | 'medico' | 'agro' | 'solar'
+
+export const SVI_CATEGORIES: RadarCategory[] = ['ia', 'marketing', 'vendas', 'crm', 'atendimento']
+export const CLIENT_CATEGORIES: RadarCategory[] = ['medico', 'agro', 'solar']
+
+export const RADAR_CATEGORY_CONFIG: Record<RadarCategory, {
+  label: string
+  scope: RadarScope
+  chipClass: string
+  activeChipClass: string
+  dotClass: string
+  columnClass: string
+}> = {
+  ia:          { label: 'IA',          scope: 'svi',      chipClass: 'border-violet-500/30 text-violet-300 hover:bg-violet-500/10',  activeChipClass: 'bg-violet-500/25 border-violet-500/60 text-violet-200',  dotClass: 'bg-violet-500',  columnClass: 'border-violet-500/30' },
+  marketing:   { label: 'Marketing',   scope: 'svi',      chipClass: 'border-rose-500/30 text-rose-300 hover:bg-rose-500/10',        activeChipClass: 'bg-rose-500/25 border-rose-500/60 text-rose-200',        dotClass: 'bg-rose-500',    columnClass: 'border-rose-500/30' },
+  vendas:      { label: 'Vendas',      scope: 'svi',      chipClass: 'border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10',activeChipClass: 'bg-emerald-500/25 border-emerald-500/60 text-emerald-200',dotClass: 'bg-emerald-500', columnClass: 'border-emerald-500/30' },
+  crm:         { label: 'CRM',         scope: 'svi',      chipClass: 'border-sky-500/30 text-sky-300 hover:bg-sky-500/10',           activeChipClass: 'bg-sky-500/25 border-sky-500/60 text-sky-200',           dotClass: 'bg-sky-500',     columnClass: 'border-sky-500/30' },
+  atendimento: { label: 'Atendimento', scope: 'svi',      chipClass: 'border-amber-500/30 text-amber-300 hover:bg-amber-500/10',     activeChipClass: 'bg-amber-500/25 border-amber-500/60 text-amber-200',     dotClass: 'bg-amber-500',   columnClass: 'border-amber-500/30' },
+  medico:      { label: 'Médico',      scope: 'clientes', chipClass: 'border-teal-500/30 text-teal-300 hover:bg-teal-500/10',        activeChipClass: 'bg-teal-500/25 border-teal-500/60 text-teal-200',        dotClass: 'bg-teal-500',    columnClass: 'border-teal-500/30' },
+  agro:        { label: 'Agro',        scope: 'clientes', chipClass: 'border-lime-500/30 text-lime-300 hover:bg-lime-500/10',        activeChipClass: 'bg-lime-500/25 border-lime-500/60 text-lime-200',        dotClass: 'bg-lime-500',    columnClass: 'border-lime-500/30' },
+  solar:       { label: 'Solar',       scope: 'clientes', chipClass: 'border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/10',  activeChipClass: 'bg-yellow-500/25 border-yellow-500/60 text-yellow-200',  dotClass: 'bg-yellow-500',  columnClass: 'border-yellow-500/30' },
+}
+
+export const SVI_CATEGORY_KEYS = SVI_CATEGORIES as readonly RadarCategory[]
+export const CLIENT_CATEGORY_KEYS = CLIENT_CATEGORIES as readonly RadarCategory[]
+export const ALL_RADAR_CATEGORIES = [...SVI_CATEGORIES, ...CLIENT_CATEGORIES] as readonly RadarCategory[]
