@@ -89,6 +89,7 @@ export default function Team() {
   const { toast } = useToast()
   const { user: currentUser, profile } = useAuth()
   const [members, setMembers] = useState<TeamMember[]>([])
+  const [orphanMembers, setOrphanMembers] = useState<TeamMember[]>([])
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -144,9 +145,10 @@ export default function Team() {
       }
     })
 
-    // Filtra perfis órfãos (sem role) — usuários cujas roles foram revogadas
-    // permanecem em profiles (RLS de profiles não permite DELETE), mas não devem
-    // aparecer na Equipe pois não têm acesso real ao sistema.
+    // Mapeia TODOS os profiles, mas separa em "com role" (members) e "sem role" (orphans)
+    // Perfis sem role acontecem quando: (a) acesso foi revogado mas profile ficou,
+    // ou (b) staff convidado criou conta mas o trigger apply_invitation falhou.
+    // Os "sem role" aparecem na aba "Pendentes" pra admin reaplicar role manualmente.
     const merged: TeamMember[] = profiles
       .filter((p: any) => roleMap.has(p.user_id))
       .map((p: any) => ({
@@ -158,7 +160,19 @@ export default function Team() {
         last_activity_at: lastActivityMap.get(p.user_id) || null,
       }))
 
+    const orphans: TeamMember[] = profiles
+      .filter((p: any) => !roleMap.has(p.user_id))
+      .map((p: any) => ({
+        user_id: p.user_id,
+        name: p.name || 'Sem nome',
+        email: null,
+        role: 'user' as UserRole,
+        created_at: p.created_at,
+        last_activity_at: lastActivityMap.get(p.user_id) || null,
+      }))
+
     setMembers(merged)
+    setOrphanMembers(orphans)
     setInvitations(invites)
     setLoading(false)
   }, [])
@@ -343,6 +357,11 @@ export default function Team() {
         <TabsList>
           <TabsTrigger value="members">Time SVI ({staffMembersAll.length})</TabsTrigger>
           <TabsTrigger value="clients">Clientes ({clientMembersAll.length})</TabsTrigger>
+          {orphanMembers.length > 0 && (
+            <TabsTrigger value="orphans" className="text-warning data-[state=active]:text-warning">
+              Sem role ({orphanMembers.length})
+            </TabsTrigger>
+          )}
           <TabsTrigger value="pending">Convites Pendentes ({pendingInvites.length})</TabsTrigger>
           <TabsTrigger value="accepted">Histórico ({acceptedInvites.length})</TabsTrigger>
         </TabsList>
@@ -544,6 +563,84 @@ export default function Team() {
                   </TableBody>
                 </Table>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Orphan profiles (sem role) */}
+        <TabsContent value="orphans">
+          <Card className="border-warning/30 bg-warning/5">
+            <CardContent className="p-5 space-y-3">
+              <div>
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <UserCog className="h-4 w-4 text-warning" />
+                  Perfis sem role atribuída
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Pessoas que criaram conta mas não receberam role automática (ex: trigger de convite falhou,
+                  ou role foi revogada e perfil ficou). Atribua uma role pra dar acesso.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border bg-card mt-3">
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Atribuir role</TableHead>
+                    <TableHead>Cadastrado em</TableHead>
+                    <TableHead className="w-20 text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {orphanMembers.map(o => {
+                    const initials = o.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
+                    return (
+                      <TableRow key={o.user_id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback className="bg-warning/20 text-warning text-xs font-bold">{initials}</AvatarFallback>
+                            </Avatar>
+                            <p className="font-medium text-sm">{o.name}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Select onValueChange={(v: UserRole) => updateRole(o.user_id, v)}>
+                            <SelectTrigger className="w-[180px] h-8 text-xs">
+                              <SelectValue placeholder="Selecionar role..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="admin">Admin</SelectItem>
+                              <SelectItem value="manager">Gestor</SelectItem>
+                              <SelectItem value="seller">Vendedor</SelectItem>
+                              <SelectItem value="executor">Executor</SelectItem>
+                              <SelectItem value="client">Cliente externo</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {new Date(o.created_at).toLocaleDateString('pt-BR')}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            onClick={() => setMemberToRemove(o)}
+                            title="Não é desta agência (remover perfil)"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>

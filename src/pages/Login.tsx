@@ -79,7 +79,7 @@ export default function Login() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -89,13 +89,29 @@ export default function Login() {
     })
     if (error) {
       toast({ title: 'Erro ao criar conta', description: error.message, variant: 'destructive' })
-    } else {
-      toast({
-        title: 'Conta criada!',
-        description: 'Verifique seu email para confirmar o cadastro.',
-      })
-      setMode('login')
+      setIsLoading(false)
+      return
     }
+
+    // Se sessão já está ativa (sem confirmação de email), tenta aplicar invitation
+    // imediatamente — fallback caso o trigger Postgres não tenha rodado.
+    if (data.session) {
+      const { data: claimedRole } = await supabase.rpc('claim_my_invitation')
+      if (claimedRole) {
+        toast({
+          title: 'Conta ativada!',
+          description: `Acesso liberado como ${claimedRole}. Redirecionando...`,
+        })
+        // AuthContext detecta a sessão e faz hydrate; redirect acontece via Navigate
+        return
+      }
+    }
+
+    toast({
+      title: 'Conta criada!',
+      description: 'Verifique seu email para confirmar o cadastro.',
+    })
+    setMode('login')
     setIsLoading(false)
   }
 

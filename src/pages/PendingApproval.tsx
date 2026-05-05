@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { Clock, CheckCircle2, XCircle, LogOut, RefreshCw, Mail, Instagram } from 'lucide-react'
+import { Clock, CheckCircle2, XCircle, LogOut, RefreshCw, Mail, Instagram, Sparkles } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
+import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase'
 import logoBranca from '@/assets/logo-branca.png'
 
@@ -21,12 +22,26 @@ interface SignupReq {
 export default function PendingApproval() {
   const { user, role, signupStatus, isClient, isStaff, loading, signOut, refresh } = useAuth()
   const navigate = useNavigate()
+  const { toast } = useToast()
   const [req, setReq] = useState<SignupReq | null>(null)
   const [reloading, setReloading] = useState(false)
+  const [hasInvitation, setHasInvitation] = useState<boolean | null>(null)
+  const [claiming, setClaiming] = useState(false)
 
   useEffect(() => {
-    if (user) loadRequest()
+    if (user) {
+      loadRequest()
+      checkInvitation()
+    }
   }, [user])
+
+  // Auto-tentativa de claim quando o usuário caiu aqui sem role e sem signup_request
+  useEffect(() => {
+    if (user && !role && !signupStatus && !req && hasInvitation === true) {
+      tryClaim(true) // silent
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, role, signupStatus, req, hasInvitation])
 
   async function loadRequest() {
     if (!user) return
@@ -36,6 +51,37 @@ export default function PendingApproval() {
       .eq('user_id', user.id)
       .maybeSingle()
     if (data) setReq(data as SignupReq)
+  }
+
+  async function checkInvitation() {
+    if (!user?.email) return
+    const { data } = await supabase
+      .from('invitations')
+      .select('id')
+      .ilike('email', user.email.trim())
+      .eq('accepted', false)
+      .maybeSingle()
+    setHasInvitation(!!data)
+  }
+
+  async function tryClaim(silent = false) {
+    setClaiming(true)
+    const { data, error } = await supabase.rpc('claim_my_invitation')
+    setClaiming(false)
+    if (error) {
+      if (!silent) toast({ title: 'Erro ao ativar', description: error.message, variant: 'destructive' })
+      return
+    }
+    if (data) {
+      toast({ title: 'Conta ativada!', description: `Acesso liberado como ${data}. Redirecionando...` })
+      await refresh()
+    } else if (!silent) {
+      toast({
+        title: 'Convite não encontrado',
+        description: 'Não há convite pendente para este email. Peça para um admin enviar novo convite ou verificar o email exato cadastrado.',
+        variant: 'destructive',
+      })
+    }
   }
 
   async function handleRefresh() {
@@ -68,23 +114,55 @@ export default function PendingApproval() {
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-8 shadow-xl space-y-6">
-          {!status && (
+          {!status && hasInvitation === true && (
+            <>
+              <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+                <Sparkles className="h-8 w-8 text-primary" />
+              </div>
+              <div className="text-center space-y-2">
+                <h2 className="text-2xl font-bold">Ativando sua conta...</h2>
+                <p className="text-sm text-muted-foreground">
+                  Você foi convidado pela equipe SVI. Estamos aplicando o seu nível de acesso agora.
+                </p>
+              </div>
+              <Button onClick={() => tryClaim(false)} disabled={claiming} className="w-full">
+                {claiming ? (
+                  <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Ativando...</>
+                ) : (
+                  <><Sparkles className="h-4 w-4 mr-2" /> Ativar minha conta agora</>
+                )}
+              </Button>
+              <p className="text-xs text-center text-muted-foreground pt-1">
+                Se não funcionar, peça pro admin verificar se o email do convite bate com {user?.email}.
+              </p>
+            </>
+          )}
+
+          {!status && hasInvitation === false && (
             <>
               <div className="w-16 h-16 mx-auto rounded-full bg-muted flex items-center justify-center">
                 <LogOut className="h-8 w-8 text-muted-foreground" />
               </div>
               <div className="text-center space-y-2">
-                <h2 className="text-2xl font-bold">Conta sem cadastro ativo</h2>
+                <h2 className="text-2xl font-bold">Conta sem acesso configurado</h2>
                 <p className="text-sm text-muted-foreground">
-                  Você está logado mas não tem solicitação de acesso registrada.
-                  Faça logout e use <strong>Sou cliente SVI.Co</strong> na tela de login
-                  para criar sua solicitação.
+                  Você está logado mas não tem convite pendente nem solicitação de acesso de cliente.
+                </p>
+                <p className="text-xs text-muted-foreground pt-1">
+                  Se você é da equipe SVI, peça pro admin enviar um novo convite para <strong>{user?.email}</strong>.
+                  Se você é cliente, faça logout e use <strong>Sou cliente SVI.Co</strong> na tela de login.
                 </p>
               </div>
               <Button onClick={handleSignOut} className="w-full">
                 <LogOut className="h-4 w-4 mr-2" /> Fazer logout
               </Button>
             </>
+          )}
+
+          {!status && hasInvitation === null && (
+            <div className="flex items-center justify-center py-8">
+              <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            </div>
           )}
 
           {status === 'pending' && (
