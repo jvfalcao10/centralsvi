@@ -253,23 +253,36 @@ export default function Team() {
     }
     setRemoving(true)
 
-    const { error: rolesError } = await supabase.from('user_roles').delete().eq('user_id', memberToRemove.user_id)
+    // Se está em "Aguardando Acesso" (sem role), apaga perfil completamente via RPC
+    const isOrphan = orphanMembers.some(o => o.user_id === memberToRemove.user_id)
 
-    setRemoving(false)
-
-    if (rolesError) {
+    if (isOrphan) {
+      const { error } = await supabase.rpc('admin_delete_profile', { target_user_id: memberToRemove.user_id })
+      setRemoving(false)
+      if (error) {
+        toast({
+          title: 'Erro ao apagar perfil',
+          description: error.message.includes('admin_delete_profile')
+            ? 'A função admin_delete_profile não está aplicada no banco. Rode SETUP_ADMIN_DELETE_PROFILE.sql.'
+            : error.message,
+          variant: 'destructive',
+        })
+        return
+      }
+      toast({ title: 'Perfil apagado', description: `${memberToRemove.name} removido(a) do sistema.` })
+    } else {
+      const { error } = await supabase.from('user_roles').delete().eq('user_id', memberToRemove.user_id)
+      setRemoving(false)
+      if (error) {
+        toast({ title: 'Erro ao revogar acesso', description: error.message, variant: 'destructive' })
+        return
+      }
       toast({
-        title: 'Erro ao remover membro',
-        description: rolesError.message,
-        variant: 'destructive',
+        title: 'Acesso revogado',
+        description: `${memberToRemove.name} não tem mais permissão para acessar o sistema.`,
       })
-      return
     }
 
-    toast({
-      title: 'Acesso revogado',
-      description: `${memberToRemove.name} não tem mais permissão para acessar o sistema.`,
-    })
     setMemberToRemove(null)
     fetchData()
   }
@@ -359,7 +372,7 @@ export default function Team() {
           <TabsTrigger value="clients">Clientes ({clientMembersAll.length})</TabsTrigger>
           {orphanMembers.length > 0 && (
             <TabsTrigger value="orphans" className="text-warning data-[state=active]:text-warning">
-              Sem role ({orphanMembers.length})
+              Aguardando Acesso ({orphanMembers.length})
             </TabsTrigger>
           )}
           <TabsTrigger value="pending">Convites Pendentes ({pendingInvites.length})</TabsTrigger>
@@ -574,11 +587,11 @@ export default function Team() {
               <div>
                 <h3 className="text-sm font-semibold flex items-center gap-2">
                   <UserCog className="h-4 w-4 text-warning" />
-                  Perfis sem role atribuída
+                  Pessoas aguardando acesso
                 </h3>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Pessoas que criaram conta mas não receberam role automática (ex: trigger de convite falhou,
-                  ou role foi revogada e perfil ficou). Atribua uma role pra dar acesso.
+                  Criaram conta mas ainda não foram associadas a nenhuma role. Atribua uma role para liberar o acesso,
+                  ou apague o perfil se não for da agência.
                 </p>
               </div>
             </CardContent>
@@ -937,10 +950,17 @@ export default function Team() {
       <AlertDialog open={!!memberToRemove} onOpenChange={(open) => !open && setMemberToRemove(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Revogar acesso de {memberToRemove?.name}?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {memberToRemove && orphanMembers.some(o => o.user_id === memberToRemove.user_id)
+                ? `Apagar perfil de ${memberToRemove?.name}?`
+                : `Revogar acesso de ${memberToRemove?.name}?`
+              }
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação remove a role do usuário imediatamente. Ele deixa de aparecer na Equipe e perde acesso ao sistema.
-              O perfil em si fica preservado para auditoria. Para reativar, basta atribuir uma nova role via convite.
+              {memberToRemove && orphanMembers.some(o => o.user_id === memberToRemove.user_id)
+                ? 'Como esta pessoa não tem role atribuída, vamos apagar o perfil completamente. Para readicionar no futuro, será necessário um novo convite e cadastro do zero.'
+                : 'Esta ação remove a role do usuário imediatamente. Ele deixa de aparecer na Equipe e perde acesso ao sistema. O perfil em si fica preservado para auditoria. Para reativar, basta atribuir uma nova role via convite.'
+              }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
