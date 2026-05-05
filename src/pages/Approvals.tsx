@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { CheckCircle2, XCircle, Clock, Mail, Phone, Instagram, Building2, MessageSquare, Link as LinkIcon, RefreshCw, Search } from 'lucide-react'
+import { CheckCircle2, XCircle, Clock, Mail, Phone, Instagram, Building2, MessageSquare, Link as LinkIcon, RefreshCw, Search, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { formatTimestamp } from '@/types'
 
 interface SignupRequest {
@@ -48,6 +52,8 @@ export default function Approvals() {
   const [rejectDialog, setRejectDialog] = useState<SignupRequest | null>(null)
   const [rejectReason, setRejectReason] = useState('')
   const [acting, setActing] = useState(false)
+  const [deleteDialog, setDeleteDialog] = useState<SignupRequest | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -167,6 +173,7 @@ export default function Approvals() {
               key={r.id} req={r}
               onApprove={() => setApproveDialog(r)}
               onReject={() => setRejectDialog(r)}
+              onDelete={() => setDeleteDialog(r)}
             />
           ))}
         </TabsContent>
@@ -244,6 +251,49 @@ export default function Approvals() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete request */}
+      <AlertDialog open={!!deleteDialog} onOpenChange={o => !o && setDeleteDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar registro de {deleteDialog?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Remove permanentemente o registro de aprovação ({deleteDialog?.email}).
+              {deleteDialog?.status === 'approved' && deleteDialog?.client_id && (
+                <span className="block mt-2 text-warning text-xs">
+                  ⚠️ Este registro está vinculado a um cliente no CRM. Apagar aqui não remove o cliente — só o histórico de aprovação.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async (e) => {
+                e.preventDefault()
+                if (!deleteDialog) return
+                setDeleting(true)
+                const { error } = await supabase
+                  .from('client_signup_requests')
+                  .delete()
+                  .eq('id', deleteDialog.id)
+                setDeleting(false)
+                if (error) {
+                  toast({ title: 'Erro ao apagar', description: error.message, variant: 'destructive' })
+                  return
+                }
+                toast({ title: 'Registro apagado' })
+                setDeleteDialog(null)
+                load()
+              }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'Apagando...' : 'Apagar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
@@ -267,7 +317,7 @@ function StatCard({ label, value, icon: Icon, color }: { label: string; value: n
   )
 }
 
-function RequestCard({ req, onApprove, onReject }: { req: SignupRequest; onApprove: () => void; onReject: () => void }) {
+function RequestCard({ req, onApprove, onReject, onDelete }: { req: SignupRequest; onApprove: () => void; onReject: () => void; onDelete: () => void }) {
   return (
     <div className="bg-card border border-border rounded-xl p-5 hover:border-primary/40 transition-colors">
       <div className="flex items-start justify-between gap-4">
@@ -319,6 +369,17 @@ function RequestCard({ req, onApprove, onReject }: { req: SignupRequest; onAppro
               <XCircle className="h-4 w-4 mr-1.5" /> Rejeitar
             </Button>
           </div>
+        )}
+        {(req.status === 'approved' || req.status === 'rejected') && (
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+            onClick={onDelete}
+            title="Apagar registro"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         )}
       </div>
     </div>
