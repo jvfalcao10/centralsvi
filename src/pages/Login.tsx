@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { Eye, EyeOff, Lock, Mail, User, Sparkles } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth, defaultRouteForRole } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,7 +12,7 @@ import logoBranca from '@/assets/logo-branca.png'
 type Mode = 'login' | 'signup' | 'forgot'
 
 export default function Login() {
-  const { user, loading, isClient, isStaff, signupStatus } = useAuth()
+  const { user, loading, isClient, isStaff, signupStatus, role } = useAuth()
   const { toast } = useToast()
   const [searchParams] = useSearchParams()
   const initialMode = (searchParams.get('mode') === 'signup' ? 'signup' : 'login') as Mode
@@ -31,7 +31,7 @@ export default function Login() {
 
   if (!loading && user) {
     if (isClient) return <Navigate to="/minha-area" replace />
-    if (isStaff) return <Navigate to="/dashboard" replace />
+    if (isStaff) return <Navigate to={defaultRouteForRole(role)} replace />
     if (signupStatus) return <Navigate to="/pending-approval" replace />
     // usuário autenticado sem role e sem signup_request — caso residual
     return <Navigate to="/pending-approval" replace />

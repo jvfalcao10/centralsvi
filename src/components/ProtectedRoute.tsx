@@ -1,6 +1,6 @@
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
-import { useAuth, UserRole } from '@/contexts/AuthContext'
+import { useAuth, UserRole, defaultRouteForRole } from '@/contexts/AuthContext'
 import { ShieldAlert, Home, LogOut, Send, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase'
@@ -103,8 +103,8 @@ export default function ProtectedRoute({
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2 pt-2">
-            <Button variant="outline" onClick={() => navigate(-1)} className="flex-1">
-              <Home className="h-4 w-4 mr-2" /> Voltar
+            <Button variant="outline" onClick={() => navigate(defaultRouteForRole(role), { replace: true })} className="flex-1">
+              <Home className="h-4 w-4 mr-2" /> Ir para minha área
             </Button>
 
             {!requested ? (

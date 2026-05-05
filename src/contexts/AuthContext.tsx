@@ -6,6 +6,23 @@ import { Profile } from '@/types'
 export type UserRole = 'admin' | 'manager' | 'seller' | 'executor' | 'client' | 'user'
 export type SignupStatus = 'pending' | 'approved' | 'rejected' | null
 
+/** Primeira rota que cada role consegue acessar — usado no redirect pós-login. */
+export function defaultRouteForRole(role: UserRole | null): string {
+  switch (role) {
+    case 'admin':
+    case 'manager':
+      return '/dashboard'
+    case 'seller':
+      return '/pipeline'
+    case 'executor':
+      return '/content/posts'
+    case 'client':
+      return '/minha-area'
+    default:
+      return '/pending-approval'
+  }
+}
+
 interface AuthContextType {
   user: User | null
   session: Session | null
