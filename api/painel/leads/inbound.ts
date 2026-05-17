@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import { createAdminClient } from '../../_lib/supabase';
-import { humanizeDbError, safeEqual } from '../../_lib/errors';
+import { createAdminClient } from '../../_lib/supabase.js';
+import { humanizeDbError, safeEqual } from '../../_lib/errors.js';
 
 const schema = z.object({
   full_name: z.string().min(1).max(120),

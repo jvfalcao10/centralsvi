@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { z } from 'zod';
-import { createUserClient } from '../../_lib/supabase';
+import { createUserClient } from '../../_lib/supabase.js';
 
 const schema = z.object({ clientId: z.string().uuid() });
 

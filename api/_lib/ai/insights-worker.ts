@@ -1,4 +1,4 @@
-import { createAdminClient } from '../supabase';
+import { createAdminClient } from '../supabase.js';
 
 const PERPLEXITY_API = 'https://api.perplexity.ai/chat/completions';
 const MODEL = 'sonar-reasoning-pro';

@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { z } from 'zod';
-import { createUserClient, createAdminClient } from '../_lib/supabase';
-import { humanizeDbError } from '../_lib/errors';
+import { createUserClient, createAdminClient } from '../_lib/supabase.js';
+import { humanizeDbError } from '../_lib/errors.js';
 
 const inviteSchema = z.object({
   clientId: z.string().uuid(),

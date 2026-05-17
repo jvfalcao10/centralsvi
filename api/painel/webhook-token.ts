@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomBytes, createHash } from 'node:crypto';
 import { z } from 'zod';
-import { createUserClient, createAdminClient } from '../_lib/supabase';
+import { createUserClient, createAdminClient } from '../_lib/supabase.js';
 
 const schema = z.object({ clientSlug: z.string().min(1).max(64) });
 
