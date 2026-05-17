@@ -308,13 +308,13 @@ declare
   ];
 begin
   foreach t in array tables loop
-    execute format('drop policy if exists %1$I on public.%1$I', t || '_member_read');
+    execute format('drop policy if exists %1$I on public.%2$I', t || '_member_read', t);
     execute format(
       'create policy %1$I on public.%2$I for select ' ||
       'using (client_id in (select public.painel_user_client_ids()) or public.painel_is_svi_team())',
       t || '_member_read', t
     );
-    execute format('drop policy if exists %1$I on public.%1$I', t || '_member_write');
+    execute format('drop policy if exists %1$I on public.%2$I', t || '_member_write', t);
     execute format(
       'create policy %1$I on public.%2$I for all ' ||
       'using (client_id in (select public.painel_user_client_ids()) or public.painel_is_svi_team()) ' ||
