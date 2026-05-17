@@ -1,6 +1,6 @@
 import { Outlet, NavLink as RouterNavLink, useParams, Navigate, useLocation, Link, useOutletContext } from 'react-router-dom'
 import {
-  LayoutDashboard, Users, Megaphone, Sparkles, MessagesSquare, Settings,
+  LayoutDashboard, Users, Megaphone, Sparkles, Settings,
   ArrowLeftRight, Loader2, CheckSquare, FileText, MessageCircle, DollarSign,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -18,7 +18,6 @@ const NAV = [
   { to: 'aprovacoes', label: 'Aprovações', icon: CheckSquare },
   { to: 'conteudo', label: 'Conteúdo', icon: FileText },
   { to: 'insights', label: 'Insights IA', icon: Sparkles },
-  { to: 'chat', label: 'Agente IA', icon: MessagesSquare },
   { to: 'conversa', label: 'Falar com SVI', icon: MessageCircle },
   { to: 'financeiro', label: 'Financeiro', icon: DollarSign },
   { to: 'settings', label: 'Configurações', icon: Settings },

@@ -15,28 +15,28 @@ type Step = {
 
 const STEPS: Step[] = [
   {
-    key: 'meta_ads',
-    title: 'Conecte sua fonte de leads',
-    description: 'Plugue Meta Ads ou seu formulário no webhook pra leads entrarem aqui automaticamente.',
-    to: (slug) => `/cliente/${slug}/settings`,
-  },
-  {
-    key: 'whatsapp',
-    title: 'Ative a IA SDR no WhatsApp',
-    description: 'Cole a URL e token da sua UazAPI pra IA responder leads sozinha.',
-    to: (slug) => `/cliente/${slug}/settings`,
+    key: 'explore_dashboard',
+    title: 'Conheça sua visão geral',
+    description: 'Funil, leads, custo por aquisição e tendências dos seus últimos 30 dias.',
+    to: (slug) => `/cliente/${slug}`,
   },
   {
     key: 'first_lead',
-    title: 'Veja seu primeiro lead',
-    description: 'Quando entrar o primeiro lead, abra a CRM pra acompanhar.',
+    title: 'Veja seus leads',
+    description: 'Pipeline em tempo real. Cada lead que entrar nas campanhas aparece aqui automaticamente.',
     to: (slug) => `/cliente/${slug}/leads`,
   },
   {
     key: 'first_approval',
     title: 'Aprove seu primeiro post',
-    description: 'O time SVI vai enviar conteúdo pra você aprovar aqui.',
+    description: 'A equipe SVI envia conteúdo pra você aprovar — chega de WhatsApp.',
     to: (slug) => `/cliente/${slug}/aprovacoes`,
+  },
+  {
+    key: 'check_financeiro',
+    title: 'Veja seu financeiro',
+    description: 'Próxima fatura, histórico de pagamento e detalhes do contrato.',
+    to: (slug) => `/cliente/${slug}/financeiro`,
   },
   {
     key: 'talk_to_svi',

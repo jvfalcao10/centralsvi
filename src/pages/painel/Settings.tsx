@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
-  Copy, KeyRound, Loader2, MessageCircle, Plug, Building2, User,
+  Copy, KeyRound, Loader2, Plug, Building2, User,
   ShieldCheck, CheckCircle2, XCircle,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -20,7 +20,6 @@ const PROVIDER_LABEL: Record<string, string> = {
   meta_ads: 'Meta Ads',
   google_ads: 'Google Ads',
   kommo: 'Kommo CRM',
-  whatsapp: 'WhatsApp (UazAPI)',
   google_analytics: 'Google Analytics',
   custom: 'Webhook personalizado',
 }
@@ -80,7 +79,6 @@ export default function PainelSettings() {
             </h2>
           </div>
           <WebhookTokenCard slug={slug} />
-          <WhatsAppCard slug={slug} integrations={integrations ?? []} onChanged={refetch} />
         </>
       )}
     </div>
@@ -140,7 +138,7 @@ function CompanyCard({ clientId }: { clientId: string }) {
 }
 
 function IntegrationsStatusCard({ integrations, isStaff }: { integrations: any[]; isStaff: boolean }) {
-  const available = ['meta_ads', 'google_ads', 'whatsapp', 'google_analytics', 'kommo']
+  const available = ['meta_ads', 'google_ads', 'google_analytics', 'kommo']
   return (
     <Card>
       <CardHeader>
@@ -269,67 +267,3 @@ function WebhookTokenCard({ slug }: { slug: string }) {
   )
 }
 
-function WhatsAppCard({ slug, integrations, onChanged }: { slug: string; integrations: any[]; onChanged: () => void }) {
-  const existing = integrations.find((i) => i.provider === 'whatsapp')
-  const [baseUrl, setBaseUrl] = useState('')
-  const [instanceToken, setInstanceToken] = useState('')
-  const [token, setToken] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const appOrigin = typeof window !== 'undefined' ? window.location.origin : ''
-
-  async function save(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    const { data: { session } } = await supabase.auth.getSession()
-    const res = await fetch('/api/painel/integrations/whatsapp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-      body: JSON.stringify({ clientSlug: slug, base_url: baseUrl, instance_token: instanceToken }),
-    })
-    const data = await res.json()
-    setLoading(false)
-    if (!res.ok) { toast.error(data.message || data.error || 'Falha ao salvar'); return }
-    setToken(data.token)
-    toast.success('UazAPI configurada. Webhook token gerado.')
-    onChanged()
-  }
-
-  return (
-    <Card className="border-amber-300/40 dark:border-amber-800/40">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2"><MessageCircle className="w-4 h-4" />WhatsApp / UazAPI</CardTitle>
-        <CardDescription>
-          {existing
-            ? `Conectado: ${existing.account_name}. Preencha pra reconfigurar.`
-            : 'Configure a instância UazAPI pra IA SDR atender WhatsApp dos leads.'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={save} className="space-y-3">
-          <div>
-            <Label htmlFor="uaz-url">URL da instância UazAPI</Label>
-            <Input id="uaz-url" placeholder="https://api.uazapi.com" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} required />
-          </div>
-          <div>
-            <Label htmlFor="uaz-token">Token da instância</Label>
-            <Input id="uaz-token" type="password" placeholder="ya29...." value={instanceToken} onChange={(e) => setInstanceToken(e.target.value)} required />
-          </div>
-          <Button type="submit" disabled={loading}>
-            {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            {existing ? 'Reconfigurar' : 'Salvar e gerar webhook'}
-          </Button>
-        </form>
-
-        {token && (
-          <div className="mt-4 p-3 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 space-y-2">
-            <div className="text-xs font-medium">Configure este Webhook URL na UazAPI:</div>
-            <code className="block text-xs font-mono break-all select-all">
-              {appOrigin}/api/painel/whatsapp/{slug}?token={token}
-            </code>
-            <p className="text-xs text-muted-foreground">Salve agora — token não aparece de novo.</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}

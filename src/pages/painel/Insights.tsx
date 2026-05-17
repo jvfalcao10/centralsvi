@@ -50,10 +50,11 @@ export default function PainelInsights() {
             </div>
             <h3 className="font-semibold">Ainda sem insights</h3>
             <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-              A IA analisa sua operação todo dia às 6h. Os primeiros insights chegam quando houver pelo menos 7 dias de dados.
+              A análise inteligente roda todo dia às 6h e gera recomendações sobre o que está funcionando.
+              Os primeiros insights chegam quando houver pelo menos 7 dias de dados.
             </p>
             <div className="mt-6">
-              <Link to={`/cliente/${slug}/chat?scope=growth_agent`}><Button variant="outline">Conversar com Agente IA</Button></Link>
+              <Link to={`/cliente/${slug}/conversa`}><Button variant="outline">Falar com a SVI</Button></Link>
             </div>
           </CardContent>
         </Card>

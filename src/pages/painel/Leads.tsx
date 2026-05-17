@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Bot, Plus, Users, Download, Filter as FilterIcon, X } from 'lucide-react'
+import { Plus, Users, Download, Filter as FilterIcon, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -104,14 +104,9 @@ export default function PainelLeads() {
         <div>
           <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground font-medium">CRM</p>
           <h1 className="text-3xl font-semibold tracking-tighter mt-1">Leads</h1>
-          <p className="text-muted-foreground mt-1">Pipeline em tempo real. IA SDR pode atender por você.</p>
+          <p className="text-muted-foreground mt-1">Pipeline em tempo real dos leads do seu painel.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" asChild>
-            <Link to={`/cliente/${slug}/chat?scope=sdr_agent`}>
-              <Bot className="w-4 h-4 mr-2" />IA SDR
-            </Link>
-          </Button>
           <Button onClick={exportCsv} variant="outline" disabled={leads.length === 0}>
             <Download className="w-4 h-4 mr-2" />Exportar
           </Button>
