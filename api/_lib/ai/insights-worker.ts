@@ -3,7 +3,19 @@ import { createAdminClient } from '../supabase.js';
 const PERPLEXITY_API = 'https://api.perplexity.ai/chat/completions';
 const MODEL = 'sonar-reasoning-pro';
 
-async function snapshotClient(clientId: string) {
+/**
+ * Insights Onda 8 — Inteligência de Nicho.
+ *
+ * Pra cada cliente, busca via Perplexity (com search web):
+ *  - Notícias recentes (últimos 30d) sobre o segmento
+ *  - Ideias de conteúdo atuais (relevantes pra o nicho)
+ *  - Oportunidades de marketing / movimentos de mercado
+ *  - Análise interna se houver dados (campanhas, leads, spend)
+ *
+ * Resultado: 5-10 cards de insight por execução.
+ */
+
+async function getClientContext(clientId: string) {
   const admin = createAdminClient();
   const now = new Date();
   const d30 = new Date(now); d30.setDate(d30.getDate() - 30);
@@ -17,13 +29,13 @@ async function snapshotClient(clientId: string) {
     { count: campaigns },
     { count: won },
   ] = await Promise.all([
-    admin.from('clients').select('name, segment').eq('id', clientId).single(),
+    admin.from('clients').select('name, segment, company').eq('id', clientId).single(),
     admin.from('painel_leads').select('id', { count: 'exact', head: true })
       .eq('client_id', clientId).gte('created_at', d30.toISOString()),
     admin.from('painel_leads').select('id', { count: 'exact', head: true })
       .eq('client_id', clientId).gte('created_at', d60.toISOString()).lt('created_at', d30.toISOString()),
     admin.from('painel_campaign_metrics_daily').select('spend_brl, date')
-      .eq('client_id', clientId).gte('date', d60.toISOString().slice(0, 10)),
+      .eq('client_id', clientId).gte('date', d30.toISOString().slice(0, 10)),
     admin.from('painel_campaigns').select('id', { count: 'exact', head: true })
       .eq('client_id', clientId).eq('status', 'active'),
     admin.from('painel_leads').select('id', { count: 'exact', head: true })
@@ -31,46 +43,70 @@ async function snapshotClient(clientId: string) {
   ]);
 
   if (!client) return null;
-  const spend30 = (metrics ?? []).filter((m: any) => m.date >= d30.toISOString().slice(0, 10))
-    .reduce((s: number, r: any) => s + Number(r.spend_brl ?? 0), 0);
-  const spendPrev = (metrics ?? []).filter((m: any) => m.date < d30.toISOString().slice(0, 10))
-    .reduce((s: number, r: any) => s + Number(r.spend_brl ?? 0), 0);
+  const spend30 = (metrics ?? []).reduce((s: number, r: any) => s + Number(r.spend_brl ?? 0), 0);
+
   return {
     client_id: clientId,
-    client_name: client.name,
+    name: client.name,
+    company: (client as any).company || null,
     segment: (client as any).segment || null,
     leads_30d: leads30 ?? 0,
     leads_prev30d: leadsPrev ?? 0,
     spend_30d: spend30,
-    spend_prev30d: spendPrev,
     won_30d: won ?? 0,
     campaigns_active: campaigns ?? 0,
   };
 }
 
-const SYSTEM = `Você é o analista sênior da SVI. Recebe snapshot 30d de uma operação de marketing e devolve 1-4 insights JSON estritamente nesse formato:
-[{"title":"...","body":"...","severity":"info|low|medium|high|critical","kind":"campaign_analysis|risk|recommendation|win_pattern"}]
+const SYSTEM = `Você é o analista sênior da SVI, agência de marketing inteligente.
 
-Regras: português BR direto, sem floreio. Title até 80 chars, body até 400. Inclua APENAS insights ACIONÁVEIS (não factuais óbvios). Se nada interessante: devolva []. Responda JSON puro sem cerca de código nem markdown.`;
+Pra cada cliente, você gera **5 a 10 insights** focados no NICHO do cliente, mixando:
+- "news": notícias relevantes do setor nos últimos 30 dias (cite a fonte real)
+- "content_idea": ideias acionáveis de conteúdo (post, reels, vídeo) baseadas em tendências atuais
+- "opportunity": oportunidades de mercado, sazonalidade, movimentos da concorrência
+- "risk": riscos regulatórios, perda de relevância, ameaças
+- "recommendation": recomendação tática (ex: "aumentar budget em horário X", "testar criativo Y")
+
+Se houver dados internos (leads, spend), use-os pra contextualizar. Sem dados, foque em nicho + tendências.
+
+Formato resposta — JSON puro, sem markdown, sem cerca, sem texto antes/depois:
+[
+  {
+    "kind": "news|content_idea|opportunity|risk|recommendation",
+    "title": "máx 80 chars",
+    "body": "1-3 frases acionáveis, máx 350 chars",
+    "severity": "info|low|medium|high|critical",
+    "source_label": "Nome da fonte (opcional, só pra news)",
+    "source_url": "URL completa (opcional, só pra news)"
+  }
+]
+
+Regras: PT-BR direto, sem floreio. Sempre cite fonte real em news. Ideias de conteúdo devem ser específicas (não "fale sobre saúde", e sim "Reels mostrando 3 sinais de refluxo em bebê"). Se nada útil: devolva [].`;
 
 export async function generateInsightsForClient(clientId: string) {
-  const snap = await snapshotClient(clientId);
-  if (!snap) return { created: 0, skipped: true };
-  if (snap.leads_30d === 0 && snap.spend_30d === 0) return { created: 0, skipped: true };
+  const ctx = await getClientContext(clientId);
+  if (!ctx) return { created: 0, skipped: true };
 
   const apiKey = process.env.PERPLEXITY_API_KEY;
   if (!apiKey) {
-    console.error('[insights-worker] PERPLEXITY_API_KEY ausente');
+    console.error('[insights] PERPLEXITY_API_KEY ausente');
     return { created: 0, skipped: true };
   }
 
-  const userPrompt = `Snapshot 30d de "${snap.client_name}"${snap.segment ? ` (segmento: ${snap.segment})` : ''}:
-- Leads: ${snap.leads_30d} (vs ${snap.leads_prev30d} nos 30d anteriores)
-- Investido: R$ ${snap.spend_30d.toFixed(2)} (vs R$ ${snap.spend_prev30d.toFixed(2)})
-- Ganhos: ${snap.won_30d}
-- Campanhas ativas: ${snap.campaigns_active}
+  const segmento = ctx.segment || ctx.company || 'negócio desse cliente';
+  const hasInternalData = ctx.leads_30d > 0 || ctx.spend_30d > 0;
 
-Gere insights acionáveis em JSON.`;
+  const userPrompt = `Cliente: ${ctx.name} (${ctx.company || ctx.name})
+Segmento: ${segmento}
+${hasInternalData ? `
+Dados internos últimos 30d:
+- Leads: ${ctx.leads_30d} (vs ${ctx.leads_prev30d} antes)
+- Investido: R$ ${ctx.spend_30d.toFixed(2)}
+- Ganhos: ${ctx.won_30d}
+- Campanhas ativas: ${ctx.campaigns_active}
+` : '(Sem dados internos ainda — foque 100% em inteligência de nicho.)'}
+
+Gere 5-10 insights mixando news (com fonte real), content_idea (acionáveis pra hoje), opportunity, risk e recommendation. Considere o que está em alta no setor "${segmento}" nas últimas 4 semanas no Brasil.`;
 
   const res = await fetch(PERPLEXITY_API, {
     method: 'POST',
@@ -78,45 +114,58 @@ Gere insights acionáveis em JSON.`;
     body: JSON.stringify({
       model: MODEL,
       messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: userPrompt }],
-      max_tokens: 1200,
-      temperature: 0.2,
+      max_tokens: 3000,
+      temperature: 0.3,
+      // Perplexity busca web por default em sonar-reasoning-pro
     }),
   });
 
   if (!res.ok) {
-    console.error('[insights-worker] perplexity err', res.status);
+    const errText = await res.text().catch(() => '');
+    console.error('[insights] perplexity err', res.status, errText.slice(0, 200));
     return { created: 0, skipped: false };
   }
 
   const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
   const text = (data.choices?.[0]?.message?.content || '').trim();
-
-  // sonar-reasoning-pro às vezes envolve em <think>...</think> — tira.
   const cleaned = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
-  // Extrai JSON (defensivo)
+  // Tenta extrair JSON array
   const jsonMatch = cleaned.match(/\[[\s\S]*\]/);
-  if (!jsonMatch) return { created: 0, skipped: false };
+  if (!jsonMatch) {
+    console.error('[insights] sem JSON na resposta', cleaned.slice(0, 200));
+    return { created: 0, skipped: false };
+  }
 
-  let insights: Array<{ title: string; body: string; severity: string; kind: string }> = [];
+  let insights: Array<{
+    kind: string; title: string; body: string; severity: string;
+    source_label?: string; source_url?: string;
+  }> = [];
   try {
     insights = JSON.parse(jsonMatch[0]);
     if (!Array.isArray(insights)) insights = [];
-  } catch {
+  } catch (e) {
+    console.error('[insights] parse err', e);
     return { created: 0, skipped: false };
   }
 
   if (insights.length === 0) return { created: 0, skipped: false };
 
+  const VALID_KINDS = ['campaign_analysis','creative_fatigue','recommendation','win_pattern','risk','copy_suggestion','news','content_idea','opportunity'];
+  const VALID_SEVERITY = ['info','low','medium','high','critical'];
+
   const admin = createAdminClient();
-  const rows = insights.slice(0, 4).map((i) => ({
+  const rows = insights.slice(0, 12).map((i) => ({
     client_id: clientId,
-    kind: ['campaign_analysis','risk','recommendation','win_pattern','creative_fatigue','copy_suggestion'].includes(i.kind)
-      ? i.kind : 'recommendation',
+    kind: VALID_KINDS.includes(i.kind) ? i.kind : 'recommendation',
     title: String(i.title || '').slice(0, 120),
     body: String(i.body || '').slice(0, 1000),
-    severity: ['info','low','medium','high','critical'].includes(i.severity) ? i.severity : 'info',
-  }));
+    severity: VALID_SEVERITY.includes(i.severity) ? i.severity : 'info',
+    source_label: i.source_label ? String(i.source_label).slice(0, 80) : null,
+    source_url: i.source_url ? String(i.source_url).slice(0, 500) : null,
+  })).filter(r => r.title.length > 3 && r.body.length > 10);
+
+  if (rows.length === 0) return { created: 0, skipped: false };
 
   await admin.from('painel_insights').insert(rows);
   return { created: rows.length, skipped: false };
