@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Lightbulb, Clock, CheckCircle2, Wrench, ExternalLink, Calendar, FileText } from 'lucide-react'
+import { Lightbulb, Clock, CheckCircle2, Wrench, ExternalLink, Calendar, FileText, TrendingUp, ExternalLink as ExtIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -28,7 +28,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default function PainelConteudo() {
   const { client, slug } = usePainelContext()
-  const [tab, setTab] = useState<'posts' | 'pautas' | 'calendario'>('posts')
+  const [tab, setTab] = useState<'posts' | 'pautas' | 'calendario' | 'radar'>('posts')
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -52,6 +52,7 @@ export default function PainelConteudo() {
           <TabsTrigger value="posts">Posts</TabsTrigger>
           <TabsTrigger value="pautas">Pautas</TabsTrigger>
           <TabsTrigger value="calendario">Calendário</TabsTrigger>
+          <TabsTrigger value="radar"><TrendingUp className="w-3.5 h-3.5 mr-1" />Radar</TabsTrigger>
         </TabsList>
 
         <TabsContent value="posts" className="mt-4">
@@ -62,6 +63,9 @@ export default function PainelConteudo() {
         </TabsContent>
         <TabsContent value="calendario" className="mt-4">
           <CalendarTab clientId={client.id} />
+        </TabsContent>
+        <TabsContent value="radar" className="mt-4">
+          <RadarTab clientId={client.id} />
         </TabsContent>
       </Tabs>
     </div>
@@ -227,6 +231,78 @@ function CalendarTab({ clientId }: { clientId: string }) {
                 )
               })}
             </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+function RadarTab({ clientId }: { clientId: string }) {
+  const { data: trends, isLoading } = useQuery({
+    queryKey: ['painel-radar', clientId],
+    queryFn: async () => {
+      const since = new Date()
+      since.setDate(since.getDate() - 14)
+      const { data } = await supabase
+        .from('content_trends')
+        .select('id, title, source, url, relevance, category, summary, captured_at')
+        .or(`client_id.eq.${clientId},client_id.is.null`)
+        .gte('captured_at', since.toISOString())
+        .order('captured_at', { ascending: false })
+        .limit(50)
+      return data || []
+    },
+  })
+
+  if (isLoading) return <div className="space-y-3">{[0, 1, 2].map(i => <Skeleton key={i} className="h-20 w-full" />)}</div>
+
+  if ((trends || []).length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center text-sm text-muted-foreground">
+          <TrendingUp className="w-6 h-6 mx-auto mb-2" />
+          Nenhuma tendência captada nos últimos 14 dias.
+          <p className="text-xs mt-2">O Radar SVI captura temas em alta do seu nicho todo dia às 7h.</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">Tendências dos últimos 14 dias — capturadas pelo Radar SVI.</p>
+      {trends?.map((t: any) => (
+        <Card key={t.id} className="hover:shadow-md transition-shadow">
+          <CardContent className="p-4 flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <Badge
+                  variant={t.relevance === 'alta' ? 'default' : t.relevance === 'media' ? 'secondary' : 'outline'}
+                  className="text-[10px]"
+                >
+                  {t.relevance}
+                </Badge>
+                {t.category && <Badge variant="outline" className="text-[10px]">{t.category}</Badge>}
+                <span className="text-[10px] text-muted-foreground">{t.source}</span>
+                <span className="text-[10px] text-muted-foreground ml-auto">
+                  {new Date(t.captured_at).toLocaleDateString('pt-BR')}
+                </span>
+              </div>
+              <div className="font-medium text-sm">{t.title}</div>
+              {t.summary && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{t.summary}</p>}
+            </div>
+            {t.url && (
+              <a
+                href={t.url}
+                target="_blank"
+                rel="noreferrer"
+                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ExtIcon className="w-4 h-4" />
+              </a>
+            )}
           </CardContent>
         </Card>
       ))}

@@ -1,6 +1,8 @@
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Sparkles } from 'lucide-react'
+import { toast } from 'sonner'
+import { Sparkles, Loader2, Zap } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -19,6 +21,8 @@ const KIND_LABEL: Record<string, string> = {
 
 export default function PainelInsights() {
   const { client, slug } = usePainelContext()
+  const qc = useQueryClient()
+  const [generating, setGenerating] = useState(false)
 
   const { data: insights, isLoading } = useQuery({
     queryKey: ['painel-insights', client.id],
@@ -30,14 +34,47 @@ export default function PainelInsights() {
     },
   })
 
+  async function generateNow() {
+    setGenerating(true)
+    toast.info('Analisando seus dados…', { duration: 3000 })
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch('/api/painel/insights/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ clientSlug: slug }),
+    })
+    const data = await res.json()
+    setGenerating(false)
+    if (!res.ok) {
+      toast.error(data.message || data.error || 'Falha ao gerar insights')
+      return
+    }
+    if (data.skipped) {
+      toast.info('Sem dados suficientes ainda. Precisa de leads ou gasto registrado.')
+      return
+    }
+    if (data.created === 0) {
+      toast.info('Nenhum insight novo dessa vez. A IA não viu padrão claro pra acionar.')
+      return
+    }
+    toast.success(`${data.created} novo${data.created > 1 ? 's' : ''} insight${data.created > 1 ? 's' : ''} gerado${data.created > 1 ? 's' : ''}.`)
+    qc.invalidateQueries({ queryKey: ['painel-insights', client.id] })
+  }
+
   const isEmpty = !isLoading && (insights ?? []).length === 0
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground font-medium">Inteligência</p>
-        <h1 className="text-3xl font-semibold tracking-tighter mt-1">Insights IA</h1>
-        <p className="text-muted-foreground mt-1">Análises automáticas, padrões e recomendações geradas pela IA da SVI.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground font-medium">Inteligência</p>
+          <h1 className="text-3xl font-semibold tracking-tighter mt-1">Insights IA</h1>
+          <p className="text-muted-foreground mt-1">Análises, padrões e recomendações geradas via Perplexity Sonar Reasoning.</p>
+        </div>
+        <Button onClick={generateNow} disabled={generating}>
+          {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Zap className="w-4 h-4 mr-2" />}
+          {generating ? 'Analisando…' : 'Gerar agora'}
+        </Button>
       </div>
 
       {isLoading ? (
@@ -50,10 +87,14 @@ export default function PainelInsights() {
             </div>
             <h3 className="font-semibold">Ainda sem insights</h3>
             <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-              A análise inteligente roda todo dia às 6h e gera recomendações sobre o que está funcionando.
-              Os primeiros insights chegam quando houver pelo menos 7 dias de dados.
+              A análise roda todo dia às 6h da manhã. Clica em <strong>Gerar agora</strong> pra analisar imediatamente
+              (precisa ter pelo menos algum lead ou gasto registrado pra a IA ter o que analisar).
             </p>
-            <div className="mt-6">
+            <div className="mt-6 flex gap-2 justify-center">
+              <Button onClick={generateNow} disabled={generating}>
+                {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Zap className="w-4 h-4 mr-2" />}
+                Gerar agora
+              </Button>
               <Link to={`/cliente/${slug}/conversa`}><Button variant="outline">Falar com a SVI</Button></Link>
             </div>
           </CardContent>

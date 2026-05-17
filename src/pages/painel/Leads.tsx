@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Plus, Users, Download, Filter as FilterIcon, X } from 'lucide-react'
+import { Plus, Users, Download, Filter as FilterIcon, X, Kanban, List } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -10,11 +10,13 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { formatCurrency } from '@/lib/painel/format'
 import { LEAD_STATUS_LABELS, LEAD_STATUS_COLORS, type LeadStatus } from '@/lib/painel/types'
 import { usePainelContext } from '@/components/PainelLayout'
 import { LeadDetailDialog } from '@/components/painel/LeadDetailDialog'
 import { NewLeadDialog } from '@/components/painel/NewLeadDialog'
+import { LeadsKanban } from '@/components/painel/LeadsKanban'
 
 type DateRange = '7' | '30' | '90' | 'all'
 
@@ -116,6 +118,17 @@ export default function PainelLeads() {
         </div>
       </div>
 
+      <Tabs defaultValue="kanban">
+        <TabsList>
+          <TabsTrigger value="kanban"><Kanban className="w-3.5 h-3.5 mr-2" />Kanban</TabsTrigger>
+          <TabsTrigger value="lista"><List className="w-3.5 h-3.5 mr-2" />Lista</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="kanban" className="mt-4">
+          <LeadsKanban clientId={client.id} onOpenLead={(id) => setSelectedLeadId(id)} />
+        </TabsContent>
+
+        <TabsContent value="lista" className="mt-4 space-y-4">
       <Card>
         <CardContent className="p-4 flex flex-wrap items-center gap-3">
           <Select value={range} onValueChange={(v) => setRange(v as DateRange)}>
@@ -243,6 +256,8 @@ export default function PainelLeads() {
           </CardContent>
         </Card>
       )}
+        </TabsContent>
+      </Tabs>
 
       <LeadDetailDialog
         leadId={selectedLeadId}
