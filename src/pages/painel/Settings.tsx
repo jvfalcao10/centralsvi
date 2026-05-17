@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePainelContext } from '@/components/PainelLayout'
+import { TeamCard } from '@/components/painel/TeamCard'
 
 const PROVIDER_LABEL: Record<string, string> = {
   meta_ads: 'Meta Ads',
@@ -26,7 +27,7 @@ const PROVIDER_LABEL: Record<string, string> = {
 
 export default function PainelSettings() {
   const { client, slug } = usePainelContext()
-  const { isStaff } = useAuth()
+  const { isStaff, user } = useAuth()
 
   const { data: integrations, refetch } = useQuery({
     queryKey: ['painel-integrations', client.id],
@@ -37,6 +38,18 @@ export default function PainelSettings() {
       return data ?? []
     },
   })
+
+  const { data: myMembership } = useQuery({
+    queryKey: ['painel-my-membership', client.id, user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase.from('painel_members')
+        .select('role').eq('client_id', client.id).eq('user_id', user!.id).maybeSingle()
+      return (data as any)?.role || null
+    },
+  })
+
+  const isClientAdmin = myMembership === 'client_admin' || isStaff
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -54,6 +67,7 @@ export default function PainelSettings() {
 
       <AccountCard />
       <CompanyCard clientId={client.id} />
+      <TeamCard clientId={client.id} slug={slug} isAdmin={isClientAdmin} />
       <IntegrationsStatusCard integrations={integrations ?? []} isStaff={!!isStaff} />
 
       {isStaff && (

@@ -13,6 +13,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { formatCurrency } from '@/lib/painel/format'
 import { LEAD_STATUS_LABELS, LEAD_STATUS_COLORS, type LeadStatus } from '@/lib/painel/types'
 import { usePainelContext } from '@/components/PainelLayout'
+import { LeadDetailDialog } from '@/components/painel/LeadDetailDialog'
+import { NewLeadDialog } from '@/components/painel/NewLeadDialog'
 
 type DateRange = '7' | '30' | '90' | 'all'
 
@@ -30,6 +32,8 @@ export default function PainelLeads() {
   const [range, setRange] = useState<DateRange>('30')
   const [statusFilter, setStatusFilter] = useState<Set<LeadStatus>>(new Set())
   const [sourceQ, setSourceQ] = useState('')
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
+  const [newOpen, setNewOpen] = useState(false)
 
   const { data: allLeads, isLoading } = useQuery({
     queryKey: ['painel-leads', client.id, range],
@@ -111,7 +115,7 @@ export default function PainelLeads() {
           <Button onClick={exportCsv} variant="outline" disabled={leads.length === 0}>
             <Download className="w-4 h-4 mr-2" />Exportar
           </Button>
-          <Button>
+          <Button onClick={() => setNewOpen(true)}>
             <Plus className="w-4 h-4 mr-2" />Novo lead
           </Button>
         </div>
@@ -216,9 +220,14 @@ export default function PainelLeads() {
                   <th className="font-medium px-6 py-3 text-right">Criado</th>
                 </tr>
               </thead>
+              {/* prettier-ignore */}
               <tbody>
                 {leads.map((l: any) => (
-                  <tr key={l.id} className="border-b last:border-0 hover:bg-muted/40 cursor-pointer transition-colors">
+                  <tr
+                    key={l.id}
+                    onClick={() => setSelectedLeadId(l.id)}
+                    className="border-b last:border-0 hover:bg-muted/40 cursor-pointer transition-colors"
+                  >
                     <td className="px-6 py-4">
                       <div className="font-medium">{l.full_name}</div>
                       <div className="text-xs text-muted-foreground">{l.email || l.phone || '—'}</div>
@@ -239,6 +248,17 @@ export default function PainelLeads() {
           </CardContent>
         </Card>
       )}
+
+      <LeadDetailDialog
+        leadId={selectedLeadId}
+        open={!!selectedLeadId}
+        onClose={() => setSelectedLeadId(null)}
+      />
+      <NewLeadDialog
+        clientId={client.id}
+        open={newOpen}
+        onClose={() => setNewOpen(false)}
+      />
     </div>
   )
 }

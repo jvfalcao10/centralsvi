@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Pencil, Trash2, Calendar as CalendarIcon, ArrowRight, Lightbulb, Wrench, Clock, CheckCircle2, Sparkles, Stethoscope } from 'lucide-react'
+import { Plus, Pencil, Trash2, Calendar as CalendarIcon, ArrowRight, Lightbulb, Wrench, Clock, CheckCircle2, Sparkles, Stethoscope, Send } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
@@ -234,6 +234,28 @@ export default function Posts() {
     fetchPosts()
   }
 
+  const sendForApproval = async (post: ContentPost) => {
+    if (!post.client_id) {
+      toast({ title: 'Post sem cliente', description: 'Atribua um cliente ao post antes.', variant: 'destructive' })
+      return
+    }
+    const { error } = await supabase.from('painel_post_approvals').upsert({
+      post_id: post.id,
+      client_id: post.client_id,
+      status: 'aguardando',
+      decided_at: null,
+      decided_by: null,
+    }, { onConflict: 'post_id' })
+    if (error) {
+      toast({ title: 'Erro ao enviar pra aprovação', description: error.message, variant: 'destructive' })
+      return
+    }
+    toast({
+      title: 'Enviado pra aprovação do cliente',
+      description: 'Cliente recebeu notificação no painel.',
+    })
+  }
+
   const handleDelete = async () => {
     if (!deleteTarget) return
     setDeleting(true)
@@ -344,6 +366,11 @@ export default function Posts() {
                                     Mover para {c.label}
                                   </DropdownMenuItem>
                                 ))}
+                                {isStaff && post.client_id && (
+                                  <DropdownMenuItem onClick={() => sendForApproval(post)}>
+                                    <Send className="h-3.5 w-3.5 mr-2" />Enviar pra aprovação do cliente
+                                  </DropdownMenuItem>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
