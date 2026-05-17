@@ -1,7 +1,7 @@
 import { Outlet, NavLink as RouterNavLink, useParams, Navigate, useLocation, Link, useOutletContext } from 'react-router-dom'
 import {
-  LayoutDashboard, Users, Megaphone, Sparkles, Settings,
-  ArrowLeftRight, Loader2, CheckSquare, FileText, MessageCircle, DollarSign,
+  LayoutDashboard, Users, Sparkles, Settings,
+  ArrowLeftRight, Loader2, CheckSquare, FileText, MessageCircle, Inbox,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePainelOrg } from '@/hooks/usePainelOrg'
@@ -13,13 +13,12 @@ import { cn } from '@/lib/utils'
 
 const NAV = [
   { to: '', label: 'Visão geral', icon: LayoutDashboard, end: true },
+  { to: 'inbox', label: 'Inbox WhatsApp', icon: Inbox },
   { to: 'leads', label: 'CRM · Leads', icon: Users },
-  { to: 'campaigns', label: 'Campanhas', icon: Megaphone },
   { to: 'aprovacoes', label: 'Aprovações', icon: CheckSquare },
   { to: 'conteudo', label: 'Conteúdo', icon: FileText },
   { to: 'insights', label: 'Insights IA', icon: Sparkles },
   { to: 'conversa', label: 'Falar com SVI', icon: MessageCircle },
-  { to: 'financeiro', label: 'Financeiro', icon: DollarSign },
   { to: 'settings', label: 'Configurações', icon: Settings },
 ]
 

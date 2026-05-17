@@ -53,6 +53,7 @@ import PainelAprovacoes from "@/pages/painel/Aprovacoes";
 import PainelConteudo from "@/pages/painel/Conteudo";
 import PainelConversa from "@/pages/painel/Conversa";
 import PainelFinanceiro from "@/pages/painel/Financeiro";
+import PainelInbox from "@/pages/painel/Inbox";
 import AdminPaineis from "@/pages/painel/AdminPaineis";
 
 import NotFound from "./pages/NotFound";
@@ -171,6 +172,7 @@ const App = () => (
                 <ProtectedRoute allowClient><PainelLayout /></ProtectedRoute>
               }>
                 <Route index element={<PainelDashboard />} />
+                <Route path="inbox" element={<PainelInbox />} />
                 <Route path="leads" element={<PainelLeads />} />
                 <Route path="campaigns" element={<PainelCampaigns />} />
                 <Route path="aprovacoes" element={<PainelAprovacoes />} />
