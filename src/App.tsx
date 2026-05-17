@@ -56,6 +56,9 @@ import PainelFinanceiro from "@/pages/painel/Financeiro";
 import PainelInbox from "@/pages/painel/Inbox";
 import AdminPaineis from "@/pages/painel/AdminPaineis";
 
+// Landing pública SaaS
+import ProdutoLanding from "@/pages/landing/ProdutoLanding";
+
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -78,6 +81,7 @@ const App = () => (
               <Route path="/" element={<Navigate to="/login" replace />} />
 
               {/* Public */}
+              <Route path="/produto" element={<ProdutoLanding />} />
               <Route path="/login" element={<Login />} />
               <Route path="/client-signup" element={<ClientSignup />} />
               <Route path="/reset-password" element={<ResetPassword />} />
