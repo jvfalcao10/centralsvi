@@ -1,4 +1,33 @@
-# Resumo da noite — 17/05/2026
+# Resumo — 17/05/2026 (atualizado com Onda 4)
+
+## Onda 4 — features matadoras pra cliente final
+
+Tudo na mesma branch `feat/svi-os-integration`.
+
+**Migration nova:** [`supabase/migrations/20260517_painel_onda4.sql`](./supabase/migrations/20260517_painel_onda4.sql)
+Adiciona: `client_id` em `notifications`, tabelas `painel_onboarding_steps`, `painel_post_approvals`, `painel_post_comments`, `painel_threads`, `painel_thread_messages`. **Triggers automáticos:** novo lead → notif, insight high/critical → notif, post em aprovação → notif. **RPCs** `painel_mark_notifications_read` + `painel_mark_all_notifications_read`.
+
+**Features novas no painel cliente:**
+
+| Onde | O que faz |
+|---|---|
+| **Sino do header** `/cliente/:slug/*` | Badge contador + dropdown últimas 50 notificações + realtime via Supabase channel |
+| **Dashboard** `/cliente/:slug` | Onboarding checklist 5 steps (dismissible) + funil visual + donut de origens + sparklines 30d |
+| **Aprovações** `/cliente/:slug/aprovacoes` | Posts pra revisar: Aprovar / Pedir mudanças + thread comentários cliente↔SVI |
+| **Conteúdo** `/cliente/:slug/conteudo` | Tabs: Posts (kanban-lite) + Pautas + Calendário editorial — lê `content_posts` existente |
+| **Conversa** `/cliente/:slug/conversa` | Canal direto humano com gestor SVI (diferente do AI chat). Realtime + unread counters |
+| **Financeiro** `/cliente/:slug/financeiro` | MRR, próxima fatura, total pago, histórico, atrasos destacados — lê `invoices` existente |
+| **Leads** `/cliente/:slug/leads` | + filtros (date range + status multi + busca por origem) + **botão Exportar CSV** |
+
+**Sidebar painel cliente agora tem 10 abas:** Visão geral · CRM · Campanhas · **Aprovações** · **Conteúdo** · Insights IA · Agente IA · **Falar com SVI** · **Financeiro** · Configurações.
+
+**Build:** 3.494 módulos, 12s, zero erro.
+
+A migration Onda 4 precisa rodar junto com a Onda 1 (são duas migrations sequenciais).
+
+---
+
+# Resumo original — 17/05/2026 (Ondas 1+2+3)
 
 Bom dia. Aqui está exatamente o que aconteceu e o que falta pra ir pra produção.
 

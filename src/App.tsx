@@ -50,6 +50,10 @@ import PainelCampaigns from "@/pages/painel/Campaigns";
 import PainelInsights from "@/pages/painel/Insights";
 import PainelChat from "@/pages/painel/Chat";
 import PainelSettings from "@/pages/painel/Settings";
+import PainelAprovacoes from "@/pages/painel/Aprovacoes";
+import PainelConteudo from "@/pages/painel/Conteudo";
+import PainelConversa from "@/pages/painel/Conversa";
+import PainelFinanceiro from "@/pages/painel/Financeiro";
 import AdminPaineis from "@/pages/painel/AdminPaineis";
 
 import NotFound from "./pages/NotFound";
@@ -170,8 +174,12 @@ const App = () => (
                 <Route index element={<PainelDashboard />} />
                 <Route path="leads" element={<PainelLeads />} />
                 <Route path="campaigns" element={<PainelCampaigns />} />
+                <Route path="aprovacoes" element={<PainelAprovacoes />} />
+                <Route path="conteudo" element={<PainelConteudo />} />
                 <Route path="insights" element={<PainelInsights />} />
                 <Route path="chat" element={<PainelChat />} />
+                <Route path="conversa" element={<PainelConversa />} />
+                <Route path="financeiro" element={<PainelFinanceiro />} />
                 <Route path="settings" element={<PainelSettings />} />
               </Route>
 

@@ -1,20 +1,26 @@
-import { useMemo } from 'react'
 import { Outlet, NavLink as RouterNavLink, useParams, Navigate, useLocation, Link, useOutletContext } from 'react-router-dom'
-import { LayoutDashboard, Users, Megaphone, Sparkles, MessagesSquare, Settings, ArrowLeftRight, Loader2 } from 'lucide-react'
+import {
+  LayoutDashboard, Users, Megaphone, Sparkles, MessagesSquare, Settings,
+  ArrowLeftRight, Loader2, CheckSquare, FileText, MessageCircle, DollarSign,
+} from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePainelOrg } from '@/hooks/usePainelOrg'
-import { useTheme } from '@/contexts/ThemeContext'
 import { initials } from '@/lib/painel/format'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
+import { NotificationsBell } from '@/components/painel/NotificationsBell'
 import { cn } from '@/lib/utils'
 
 const NAV = [
   { to: '', label: 'Visão geral', icon: LayoutDashboard, end: true },
   { to: 'leads', label: 'CRM · Leads', icon: Users },
   { to: 'campaigns', label: 'Campanhas', icon: Megaphone },
+  { to: 'aprovacoes', label: 'Aprovações', icon: CheckSquare },
+  { to: 'conteudo', label: 'Conteúdo', icon: FileText },
   { to: 'insights', label: 'Insights IA', icon: Sparkles },
   { to: 'chat', label: 'Agente IA', icon: MessagesSquare },
+  { to: 'conversa', label: 'Falar com SVI', icon: MessageCircle },
+  { to: 'financeiro', label: 'Financeiro', icon: DollarSign },
   { to: 'settings', label: 'Configurações', icon: Settings },
 ]
 
@@ -113,13 +119,12 @@ export default function PainelLayout() {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-10 flex items-center justify-end px-6">
-          <div className="flex items-center gap-2">
-            <Avatar className="h-7 w-7">
-              <AvatarFallback className="text-xs">{initials(user.email || '')}</AvatarFallback>
-            </Avatar>
-            <span className="text-sm text-muted-foreground hidden sm:inline">{user.email}</span>
-          </div>
+        <header className="h-14 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-10 flex items-center justify-end px-6 gap-1">
+          <NotificationsBell clientId={client.id} />
+          <Avatar className="h-7 w-7 ml-1">
+            <AvatarFallback className="text-xs">{initials(user.email || '')}</AvatarFallback>
+          </Avatar>
+          <span className="text-sm text-muted-foreground hidden sm:inline ml-1">{user.email}</span>
         </header>
         <main className="flex-1 p-6 lg:p-8 overflow-x-hidden">
           <Outlet context={{ client, slug }} />
