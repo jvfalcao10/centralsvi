@@ -110,6 +110,7 @@ const NAV: NavEntry[] = [
     items: [
       { title: 'Aprovações', url: '/admin/approvals', minRole: 'manager', badgeKey: 'approvals' },
       { title: 'Equipe', url: '/team', minRole: 'admin', badgeKey: 'team' },
+      { title: 'Painéis Cliente', url: '/admin/paineis', minRole: 'manager' },
     ],
   },
 ]

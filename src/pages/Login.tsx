@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { Eye, EyeOff, Lock, Mail, User, Sparkles } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth, defaultRouteForRole } from '@/contexts/AuthContext'
@@ -29,11 +30,28 @@ export default function Login() {
     if (searchParams.get('mode') === 'signup') setMode('signup')
   }, [initialEmail, searchParams])
 
+  // Client com membership em painel SVI OS → manda pro primeiro painel acessível
+  const { data: firstPainelSlug } = useQuery({
+    queryKey: ['first-painel-slug', user?.id],
+    enabled: !!user && isClient,
+    queryFn: async (): Promise<string | null> => {
+      const { data } = await supabase
+        .from('painel_members')
+        .select('client_id, clients:client_id(slug)')
+        .eq('user_id', user!.id)
+        .limit(1)
+        .maybeSingle()
+      return ((data as any)?.clients?.slug as string) || null
+    },
+  })
+
   if (!loading && user) {
-    if (isClient) return <Navigate to="/minha-area" replace />
+    if (isClient) {
+      if (firstPainelSlug) return <Navigate to={`/cliente/${firstPainelSlug}`} replace />
+      return <Navigate to="/minha-area" replace />
+    }
     if (isStaff) return <Navigate to={defaultRouteForRole(role)} replace />
     if (signupStatus) return <Navigate to="/pending-approval" replace />
-    // usuário autenticado sem role e sem signup_request — caso residual
     return <Navigate to="/pending-approval" replace />
   }
 

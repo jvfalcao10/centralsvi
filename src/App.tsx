@@ -42,6 +42,16 @@ import Monitor from "@/pages/content/Monitor";
 import SviCompany from "@/pages/content/SviCompany";
 import SviDoctor from "@/pages/content/SviDoctor";
 
+// Painel cliente (SVI OS)
+import PainelLayout from "@/components/PainelLayout";
+import PainelDashboard from "@/pages/painel/Dashboard";
+import PainelLeads from "@/pages/painel/Leads";
+import PainelCampaigns from "@/pages/painel/Campaigns";
+import PainelInsights from "@/pages/painel/Insights";
+import PainelChat from "@/pages/painel/Chat";
+import PainelSettings from "@/pages/painel/Settings";
+import AdminPaineis from "@/pages/painel/AdminPaineis";
+
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -150,6 +160,24 @@ const App = () => (
                 <ProtectedRoute requiredRole="executor">
                   <AppLayout><SviDoctor /></AppLayout>
                 </ProtectedRoute>
+              } />
+
+              {/* SVI OS — Painel cliente multi-tenant.
+                  allowClient pra cliente acessar; staff também acessa direto. PainelLayout valida acesso ao slug. */}
+              <Route path="/cliente/:slug" element={
+                <ProtectedRoute allowClient><PainelLayout /></ProtectedRoute>
+              }>
+                <Route index element={<PainelDashboard />} />
+                <Route path="leads" element={<PainelLeads />} />
+                <Route path="campaigns" element={<PainelCampaigns />} />
+                <Route path="insights" element={<PainelInsights />} />
+                <Route path="chat" element={<PainelChat />} />
+                <Route path="settings" element={<PainelSettings />} />
+              </Route>
+
+              {/* SVI Interno — Admin de painéis */}
+              <Route path="/admin/paineis" element={
+                <ProtectedRoute requiredRole="manager"><AppLayout><AdminPaineis /></AppLayout></ProtectedRoute>
               } />
 
               <Route path="*" element={<NotFound />} />
