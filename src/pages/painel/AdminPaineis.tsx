@@ -25,7 +25,10 @@ export default function AdminPaineis() {
     },
   })
 
+  const [activatingId, setActivatingId] = useState<string | null>(null)
+
   async function activate(clientId: string) {
+    setActivatingId(clientId)
     const { data: { session } } = await supabase.auth.getSession()
     const res = await fetch('/api/painel/clients/activate', {
       method: 'POST',
@@ -33,9 +36,13 @@ export default function AdminPaineis() {
       body: JSON.stringify({ clientId }),
     })
     const data = await res.json()
-    if (!res.ok) { toast.error(data.message || data.error || 'Falha'); return }
-    toast.success('Painel ativado.')
-    refetch()
+    setActivatingId(null)
+    if (!res.ok) {
+      toast.error(data.message || data.error || 'Falha ao ativar painel')
+      return
+    }
+    toast.success('Painel ativado. Convide o cliente abaixo.', { duration: 4500 })
+    await refetch()
   }
 
   return (
@@ -85,8 +92,18 @@ export default function AdminPaineis() {
                         </Button>
                       </div>
                     ) : (
-                      <Button variant="outline" size="sm" onClick={() => activate(c.id)}>
-                        <Power className="w-3 h-3 mr-1" />Ativar painel
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => activate(c.id)}
+                        disabled={activatingId === c.id}
+                      >
+                        {activatingId === c.id ? (
+                          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        ) : (
+                          <Power className="w-3 h-3 mr-1" />
+                        )}
+                        {activatingId === c.id ? 'Ativando…' : 'Ativar painel'}
                       </Button>
                     )}
                   </td>
