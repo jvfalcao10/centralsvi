@@ -153,6 +153,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await admin.from('notifications').insert(rows);
   }
 
+  // 6. Se IA SDR está ativa pra esse cliente, dispara processo (fire-and-forget)
+  const { data: sdrConfig } = await admin
+    .from('painel_ai_sdr_configs')
+    .select('enabled')
+    .eq('client_id', client.id)
+    .maybeSingle();
+  if (sdrConfig?.enabled && process.env.SDR_INTERNAL_TOKEN) {
+    const host = req.headers.host;
+    const proto = req.headers['x-forwarded-proto'] || 'https';
+    const url = `${proto}://${host}/api/painel/sdr/process`;
+    fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        clientId: client.id,
+        threadId,
+        leadId,
+        internalToken: process.env.SDR_INTERNAL_TOKEN,
+      }),
+    }).catch(() => null);
+  }
+
   return res.status(200).json({ ok: true, lead_id: leadId, thread_id: threadId });
 }
 
