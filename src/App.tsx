@@ -42,18 +42,13 @@ import Monitor from "@/pages/content/Monitor";
 import SviCompany from "@/pages/content/SviCompany";
 import SviDoctor from "@/pages/content/SviDoctor";
 
-// Painel cliente (SVI OS)
+// Painel cliente (svi.ai)
 import PainelLayout from "@/components/PainelLayout";
 import PainelDashboard from "@/pages/painel/Dashboard";
 import PainelLeads from "@/pages/painel/Leads";
-import PainelCampaigns from "@/pages/painel/Campaigns";
-import PainelInsights from "@/pages/painel/Insights";
 import PainelSettings from "@/pages/painel/Settings";
-import PainelAprovacoes from "@/pages/painel/Aprovacoes";
-import PainelConteudo from "@/pages/painel/Conteudo";
-import PainelConversa from "@/pages/painel/Conversa";
-import PainelFinanceiro from "@/pages/painel/Financeiro";
 import PainelInbox from "@/pages/painel/Inbox";
+import PainelAISdr from "@/pages/painel/AISdr";
 import AdminPaineis from "@/pages/painel/AdminPaineis";
 
 // Landing pública SaaS
@@ -172,7 +167,7 @@ const App = () => (
                 </ProtectedRoute>
               } />
 
-              {/* SVI OS — Painel cliente multi-tenant.
+              {/* svi.ai — Painel cliente multi-tenant.
                   allowClient pra cliente acessar; staff também acessa direto. PainelLayout valida acesso ao slug. */}
               <Route path="/cliente/:slug" element={
                 <ProtectedRoute allowClient><PainelLayout /></ProtectedRoute>
@@ -180,12 +175,7 @@ const App = () => (
                 <Route index element={<PainelDashboard />} />
                 <Route path="inbox" element={<PainelInbox />} />
                 <Route path="leads" element={<PainelLeads />} />
-                <Route path="campaigns" element={<PainelCampaigns />} />
-                <Route path="aprovacoes" element={<PainelAprovacoes />} />
-                <Route path="conteudo" element={<PainelConteudo />} />
-                <Route path="insights" element={<PainelInsights />} />
-                <Route path="conversa" element={<PainelConversa />} />
-                <Route path="financeiro" element={<PainelFinanceiro />} />
+                <Route path="ia-sdr" element={<PainelAISdr />} />
                 <Route path="settings" element={<PainelSettings />} />
               </Route>
 

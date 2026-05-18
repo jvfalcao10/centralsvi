@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import {
-  ArrowRight, Check, MessageCircle, Kanban, Sparkles,
-  CheckCircle2, Users, LogOut, AlertCircle, Eye, FileText, Zap,
+  ArrowRight, Check, MessageCircle, Kanban, Bot,
+  Clock, Users, LogOut, AlertCircle, Eye, Inbox, Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Link } from 'react-router-dom'
@@ -113,8 +113,8 @@ export default function ProdutoLanding() {
 
           {/* Subheadline */}
           <p className="animate-appear delay-300 opacity-0 max-w-2xl text-lg sm:text-xl text-[#F5EFE0]/65 leading-relaxed">
-            Inbox WhatsApp, CRM e inteligência de conteúdo num painel só, pronto pra rodar
-            no seu WhatsApp em 24 horas.
+            Inbox WhatsApp, CRM Kanban e uma SDR de IA que atende seus leads 24 por 7,
+            num painel só, pronto em 24 horas.
           </p>
 
           {/* CTAs */}
@@ -224,10 +224,10 @@ export default function ProdutoLanding() {
                   </div>
                   <div className="bg-gradient-to-r from-[#D4AF37]/12 to-[#A8851F]/10 border border-[#D4AF37]/30 rounded-md p-3">
                     <div className="flex items-start gap-2">
-                      <Sparkles className="w-3.5 h-3.5 text-[#D4AF37] shrink-0 mt-0.5" />
+                      <Bot className="w-3.5 h-3.5 text-[#D4AF37] shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-[10px] font-semibold text-[#D4AF37] uppercase tracking-wider mb-0.5">Insight IA</p>
-                        <p className="text-[11px] text-[#F5EFE0]/75 leading-relaxed">CFM publicou nova resolução. 3 ideias de conteúdo prontas pra postar hoje.</p>
+                        <p className="text-[10px] font-semibold text-[#D4AF37] uppercase tracking-wider mb-0.5">IA SDR respondeu</p>
+                        <p className="text-[11px] text-[#F5EFE0]/75 leading-relaxed">Lead Maria Silva qualificada. Agendou avaliação pra quinta 15h. Pronto pra confirmar.</p>
                       </div>
                     </div>
                   </div>
@@ -278,9 +278,9 @@ export default function ProdutoLanding() {
             <div className="space-y-3">
               <div className="text-[11px] uppercase tracking-[0.18em] text-[#D4AF37] font-semibold mb-1">Com o svi.ai</div>
               {[
-                { icon: MessageCircle, title: 'Tudo num inbox só', desc: 'Todo WhatsApp da empresa entra num painel, qualquer pessoa do time responde e nada cai no esquecimento.' },
+                { icon: Bot, title: 'IA SDR atendendo sozinha', desc: 'Lead manda mensagem, a IA responde na hora, qualifica e marca a reunião. Você acorda com agenda cheia.' },
+                { icon: Inbox, title: 'Inbox compartilhado', desc: 'Todo WhatsApp da empresa num painel, time inteiro vê o mesmo, ninguém perde conversa esquecida no celular.' },
                 { icon: Kanban, title: 'Kanban honesto', desc: 'Você abre o painel e vê quem tá quente, quem tá frio e o que travou, em dez segundos.' },
-                { icon: Sparkles, title: 'Conteúdo no piloto', desc: 'Designer manda, você aprova com um clique, IA sugere pauta do seu nicho, feed nunca mais para.' },
               ].map((card, i) => {
                 const Icon = card.icon
                 return (
@@ -315,11 +315,11 @@ export default function ProdutoLanding() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
-              { icon: MessageCircle, verb: 'Centralize', title: 'Inbox WhatsApp', desc: 'Centraliza todas as conversas da empresa num painel único, com histórico, etiquetas e respostas rápidas.' },
+              { icon: Bot, verb: 'Atende', title: 'IA SDR autônoma', desc: 'Responde no WhatsApp 24 por 7, qualifica o lead, marca a reunião e só te chama quando faz sentido.' },
+              { icon: Inbox, verb: 'Centralize', title: 'Inbox compartilhado', desc: 'Todas as conversas num painel único, com histórico, etiquetas e visão de quem respondeu o quê.' },
               { icon: Kanban, verb: 'Organize', title: 'CRM Kanban', desc: 'Arraste o lead pela etapa real do funil e enxergue dinheiro parado em cada coluna.' },
-              { icon: Sparkles, verb: 'Antecipe', title: 'IA de Nicho', desc: 'Receba insights diários sobre o seu setor, pauta de conteúdo e ideias prontas pra usar.' },
-              { icon: CheckCircle2, verb: 'Aprove', title: 'Aprovação de Posts', desc: 'Designer envia, você aprova ou comenta em um clique e a fila do conteúdo nunca trava.' },
-              { icon: Users, verb: 'Distribua', title: 'Time multi-usuário', desc: 'Adicione vendedores, secretária e sócio com permissão separada e visão clara de quem responde o quê.' },
+              { icon: Clock, verb: 'Resgate', title: 'Resposta na hora', desc: 'Lead que esperou cinco minutos foi pro concorrente. A IA SDR responde em segundos, sempre.' },
+              { icon: Users, verb: 'Distribua', title: 'Time multi-usuário', desc: 'Vendedor, secretária e sócio com permissão separada e visão clara do que cada um faz.' },
               { icon: LogOut, verb: 'Saia', title: 'Sem lock-in', desc: 'Cancela quando quiser, exporta seus dados quando quiser, sem contrato anual e sem letra miúda.' },
             ].map((f, i) => {
               const Icon = f.icon
@@ -365,11 +365,10 @@ export default function ProdutoLanding() {
             <p className="text-xs text-[#F5EFE0]/45 mb-6">10 vagas. Quem entra agora trava esse preço pra sempre.</p>
             <ul className="space-y-2.5 mb-8 text-sm">
               {[
+                'IA SDR autônoma no WhatsApp',
                 'Inbox WhatsApp ilimitado',
                 'CRM Kanban + Lista',
-                'IA de nicho diária',
-                'Aprovação de posts',
-                'Até 5 usuários do time',
+                'Até 5 usuários no time',
                 'Setup feito pela equipe',
                 'Suporte humano no WhatsApp',
               ].map((feat, i) => (
@@ -417,6 +416,10 @@ export default function ProdutoLanding() {
               {
                 q: 'Tem fidelidade ou contrato anual?',
                 a: 'Não tem. Você paga mensal, cancela quando quiser e leva seus dados na saída. Se não fizer diferença na sua operação em 30 dias, é só sair.',
+              },
+              {
+                q: 'Como a IA SDR funciona na prática?',
+                a: 'Você escreve a persona dela (quem ela é, o que oferece, preço, horário) e a IA atende todo lead novo no WhatsApp da empresa. Qualifica, responde dúvida, marca call. Quando o lead pede pra falar com humano ou cita preço alto, ela passa pra você com o resumo da conversa.',
               },
               {
                 q: 'Funciona pra qualquer tipo de negócio?',

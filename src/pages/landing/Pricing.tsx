@@ -1,16 +1,16 @@
-import { ArrowRight, Check, Sparkles, MessageCircle, Kanban, Users, Shield, Zap, Headphones } from 'lucide-react'
+import { ArrowRight, Check, Sparkles, MessageCircle, Kanban, Users, Shield, Zap, Headphones, Bot } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Link } from 'react-router-dom'
 
 const INCLUDED = [
+  'IA SDR autônoma no WhatsApp 24 por 7',
   'Inbox WhatsApp ilimitado',
   'CRM Kanban com arrastar e soltar',
-  'IA de nicho diária com notícias e ideias',
-  'Aprovação de posts em 1 clique',
   'Até 5 usuários no time',
   'Notificações em tempo real',
   'Integração via webhook aberto',
   'Export CSV de leads e conversas',
+  'Setup feito pela equipe',
   'Suporte humano no WhatsApp',
 ]
 
@@ -26,6 +26,10 @@ const FAQ = [
   {
     q: 'Tem fidelidade ou contrato anual?',
     a: 'Não tem. Você paga mensal, cancela quando quiser e leva seus dados na saída. Se não fizer diferença na sua operação em 30 dias, é só sair.',
+  },
+  {
+    q: 'Como a IA SDR funciona na prática?',
+    a: 'Você escreve a persona dela (quem ela é, o que vende, preço, horário) e a IA atende todo lead novo no WhatsApp. Qualifica, tira dúvida, marca call. Quando o lead pede pra falar com humano ou cita situação delicada, ela passa pra você com o resumo da conversa.',
   },
   {
     q: 'Funciona pra qualquer tipo de negócio?',
@@ -46,9 +50,9 @@ const FAQ = [
 ]
 
 const VALUE_BLOCKS = [
-  { icon: MessageCircle, title: 'WhatsApp ligado', desc: 'Toda mensagem entra no painel, sem perder lead no celular do vendedor.' },
+  { icon: Bot, title: 'IA SDR atende 24 por 7', desc: 'Responde no WhatsApp na hora, qualifica e marca a reunião sem você precisar abrir o celular.' },
+  { icon: MessageCircle, title: 'WhatsApp centralizado', desc: 'Toda mensagem entra no painel, sem perder lead espalhado em celular de vendedor.' },
   { icon: Kanban, title: 'Pipeline visual', desc: 'Arrasta o lead pelo funil. Time inteiro vê o mesmo, sem planilha.' },
-  { icon: Sparkles, title: 'IA do seu nicho', desc: 'Insights diários sobre seu setor. Você aparece pronto pra conversa.' },
   { icon: Users, title: 'Time multi-usuário', desc: 'Vendedor, secretária e sócio com permissões separadas.' },
   { icon: Shield, title: 'Sem letra miúda', desc: 'Cancela quando quiser, exporta os dados, leva tudo embora.' },
   { icon: Headphones, title: 'Setup feito pela equipe', desc: 'Configuramos a conta, conectamos o WhatsApp e treinamos seu time.' },
