@@ -50,7 +50,7 @@ export default function AdminPaineis() {
       <div>
         <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground font-medium">SVI · Interno</p>
         <h1 className="text-3xl font-semibold tracking-tighter mt-1">Painéis de Cliente</h1>
-        <p className="text-muted-foreground mt-1">Ative o painel SVI OS pra cada cliente. Convide membros pra cada painel.</p>
+        <p className="text-muted-foreground mt-1">Ative o Sistema de Vendas Inteligente (svi.ai) pra cada cliente. Convide membros pra cada painel.</p>
       </div>
 
       <Card>
