@@ -1,4 +1,4 @@
-import { ArrowRight, Check, X, Sparkles } from 'lucide-react'
+import { ArrowRight, Check, Sparkles, Zap, Shield, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Link } from 'react-router-dom'
 
@@ -13,25 +13,6 @@ const INCLUDED = [
   'Export CSV de leads e conversas',
   'Suporte humano no WhatsApp',
 ]
-
-const COMPARISON: { feature: string; svi: string | boolean; kommo: string | boolean }[] = [
-  { feature: 'Preço mensal (5 usuários)', svi: 'R$ 197 fundador / R$ 297 cheio', kommo: 'R$ 1.250 (US$ 250)' },
-  { feature: 'Inbox WhatsApp nativo', svi: true, kommo: true },
-  { feature: 'CRM Kanban com drag-and-drop', svi: true, kommo: true },
-  { feature: 'IA gerando insights do seu nicho', svi: true, kommo: false },
-  { feature: 'Aprovação de posts pelo cliente', svi: true, kommo: false },
-  { feature: 'Suporte em português nativo', svi: true, kommo: 'Parcial, robotizado' },
-  { feature: 'Onboarding com humano', svi: true, kommo: false },
-  { feature: 'Webhook aberto pra n8n/Make', svi: true, kommo: 'Só plano Enterprise' },
-  { feature: 'White-label da sua agência', svi: 'Em breve', kommo: 'Só plano Enterprise' },
-  { feature: 'Setup em até 24h', svi: true, kommo: false },
-]
-
-function Cell({ value }: { value: string | boolean }) {
-  if (value === true) return <Check className="w-4 h-4 text-emerald-400 mx-auto" />
-  if (value === false) return <X className="w-4 h-4 text-red-400/60 mx-auto" />
-  return <span className="text-xs text-gray-300">{value}</span>
-}
 
 export default function Pricing() {
   return (
@@ -144,44 +125,53 @@ export default function Pricing() {
         </div>
       </section>
 
-      {/* Comparativo Kommo */}
-      <section className="border-t border-white/5 py-20 px-6">
-        <div className="max-w-5xl mx-auto">
+      {/* Caso real Exatta Solar */}
+      <section className="border-t border-white/5 py-20 px-6 relative">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] rounded-full bg-emerald-500/10 blur-[120px]" />
+        </div>
+        <div className="relative max-w-5xl mx-auto">
           <div className="text-center mb-12">
-            <p className="text-xs uppercase tracking-[0.18em] text-blue-400 font-semibold mb-3">Comparativo direto</p>
+            <p className="text-xs uppercase tracking-[0.18em] text-emerald-300 font-semibold mb-3">Caso real</p>
             <h2 className="text-4xl md:text-5xl font-bold gradient-text mb-3">
-              svi.ai vs Kommo
+              Exatta Solar contratou
+              <br />o mesmo motor por R$ 9.000.
             </h2>
-            <p className="text-gray-400">Mesma promessa, 5x mais barato, com IA dia 1.</p>
+            <p className="text-gray-400 max-w-2xl mx-auto">
+              Antes, o sistema era projeto sob medida: setup, integração WhatsApp, fluxo de qualificação, dashboard.
+              Hoje, virou produto. Você ativa em 24h e paga uma assinatura.
+            </p>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02]">
-            <table className="w-full text-sm">
-              <thead className="bg-white/[0.03] border-b border-white/10">
-                <tr>
-                  <th className="text-left p-4 font-semibold text-gray-300">Recurso</th>
-                  <th className="p-4 font-semibold text-center">
-                    <span className="text-blue-300">svi.ai</span>
-                  </th>
-                  <th className="p-4 font-semibold text-center text-gray-500">Kommo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {COMPARISON.map((row, i) => (
-                  <tr key={i} className="border-t border-white/5 hover:bg-white/[0.02]">
-                    <td className="p-4 text-gray-300">{row.feature}</td>
-                    <td className="p-4 text-center"><Cell value={row.svi} /></td>
-                    <td className="p-4 text-center"><Cell value={row.kommo} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid md:grid-cols-3 gap-4 mb-10">
+            {[
+              { num: 'R$ 9.000', label: 'Projeto pago pela Exatta Solar', tone: 'text-gray-400' },
+              { num: 'R$ 197', label: 'Sua assinatura mensal', tone: 'text-emerald-300' },
+              { num: '< 24h', label: 'Pra entrar no ar', tone: 'text-gray-400' },
+            ].map((m, i) => (
+              <div key={i} className="bg-white/[0.03] border border-white/10 rounded-xl p-6 text-center">
+                <div className={`text-3xl font-bold tabular-nums mb-2 ${m.tone}`}>{m.num}</div>
+                <div className="text-xs text-gray-400">{m.label}</div>
+              </div>
+            ))}
           </div>
 
-          <p className="text-[11px] text-gray-600 text-center mt-4">
-            Preços Kommo baseados no plano Avançado (US$ 250/mês para 5 usuários), conversão US$ 1 = R$ 5.
-            Comparativo atualizado em maio/2026.
-          </p>
+          <div className="grid md:grid-cols-3 gap-4">
+            {[
+              { icon: MessageCircle, title: 'WhatsApp ligado', desc: 'Toda mensagem entra no painel, sem perder lead no celular do vendedor.' },
+              { icon: Sparkles, title: 'IA do seu nicho', desc: 'Insights diários sobre seu setor. Você aparece pronto pra conversa.' },
+              { icon: Zap, title: 'Pipeline visual', desc: 'Arrasta o lead pelo funil. Time inteiro vê o mesmo, sem planilha.' },
+            ].map((f, i) => {
+              const Icon = f.icon
+              return (
+                <div key={i} className="bg-white/[0.02] border border-white/10 rounded-xl p-5">
+                  <Icon className="w-5 h-5 text-blue-300 mb-3" />
+                  <h3 className="font-semibold mb-1.5 text-sm">{f.title}</h3>
+                  <p className="text-xs text-gray-400 leading-relaxed">{f.desc}</p>
+                </div>
+              )
+            })}
+          </div>
         </div>
       </section>
 
@@ -200,8 +190,8 @@ export default function Pricing() {
                 a: 'Atualizações de produto, suporte humano via WhatsApp, hospedagem, banco de dados, segurança e toda a infraestrutura de IA. Sem taxa de setup e sem cobrança por uso.',
               },
               {
-                q: 'Por que vocês cobram metade do Kommo?',
-                a: 'Operamos enxuto, no Brasil, sem comissão de revenda internacional e sem chefes em San Francisco. Sobra margem pra repassar pra você.',
+                q: 'Por que pagar assinatura se posso fazer um sistema sob medida?',
+                a: 'Você pode. A Exatta Solar pagou R$ 9.000 e levou meses. A vantagem do svi.ai é que o motor já está pronto: assinou, conectou seu WhatsApp e tá rodando em 24h. Sem projeto, sem desenvolvedor, sem manutenção.',
               },
               {
                 q: 'O que acontece quando lotarem os 10 fundadores?',

@@ -95,7 +95,7 @@ export default function ProdutoLanding() {
           {/* Subheadline */}
           <p className="animate-appear delay-300 opacity-0 max-w-2xl text-lg sm:text-xl text-gray-400 leading-relaxed">
             Inbox WhatsApp, CRM Kanban e IA de mercado no mesmo painel.
-            Substitui Kommo, Trello e ChatGPT por uma assinatura só, no idioma do Brasil.
+            Já roda na operação de empresas como Exatta Solar e Spa Nature, no idioma do Brasil.
           </p>
 
           {/* CTAs */}
@@ -249,16 +249,48 @@ export default function ProdutoLanding() {
         </div>
       </section>
 
-      {/* Pricing comparativo */}
+      {/* Caso real Exatta Solar */}
+      <section className="py-24 px-6 border-t border-white/5 relative">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] rounded-full bg-emerald-500/10 blur-[120px]" />
+        </div>
+        <div className="relative max-w-4xl mx-auto">
+          <div className="text-center mb-10">
+            <p className="text-xs uppercase tracking-[0.18em] text-emerald-300 font-semibold mb-3">Caso real</p>
+            <h2 className="text-4xl md:text-5xl font-bold gradient-text mb-4">
+              Sistema entregue à Exatta Solar
+              <br />por R$ 9.000.
+            </h2>
+            <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+              O mesmo motor de IA + CRM agora vira assinatura, com setup imediato e sem projeto custom.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-4 mb-10">
+            {[
+              { num: 'R$ 9.000', label: 'Pago em projeto pela Exatta Solar' },
+              { num: 'R$ 197/mês', label: 'Mesmo motor, agora SaaS' },
+              { num: '< 24h', label: 'Pra entrar no ar com seu time' },
+            ].map((m, i) => (
+              <div key={i} className="bg-white/[0.03] border border-white/10 rounded-xl p-5 text-center">
+                <div className="text-2xl font-bold tabular-nums mb-1">{m.num}</div>
+                <div className="text-xs text-gray-400">{m.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing */}
       <section className="py-24 px-6 border-t border-white/5">
         <div className="max-w-3xl mx-auto text-center">
           <p className="text-xs uppercase tracking-[0.18em] text-blue-400 font-semibold mb-3">Preço</p>
           <h2 className="text-4xl md:text-5xl font-bold gradient-text mb-4">
-            Por R$ 197/mês.
-            <br />Kommo cobra R$ 1.250.
+            R$ 197/mês.
+            <br />Sem setup, sem surpresa.
           </h2>
           <p className="text-gray-400 text-lg">
-            Mesmo Inbox WhatsApp. Mesmo CRM. Bônus: IA de nicho entregando insights todo dia.
+            Tudo incluso: Inbox WhatsApp, CRM Kanban, IA de nicho, aprovação de posts e suporte humano.
           </p>
 
           <div className="mt-12 inline-flex flex-col bg-white/[0.03] border border-white/10 rounded-2xl p-8 text-left max-w-sm shadow-[0_0_60px_-15px_rgba(59,130,246,0.3)]">
