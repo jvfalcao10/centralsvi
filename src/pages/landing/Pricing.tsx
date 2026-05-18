@@ -3,13 +3,13 @@ import { Button } from '@/components/ui/button'
 import { Link } from 'react-router-dom'
 
 const INCLUDED = [
-  'Inbox WhatsApp ilimitado (via UazAPI)',
+  'Inbox WhatsApp ilimitado',
   'CRM Kanban com arrastar e soltar',
-  'IA de nicho diária via Perplexity sonar-reasoning-pro',
+  'IA de nicho diária com notícias e ideias',
   'Aprovação de posts em 1 clique',
   'Até 5 usuários do time',
   'Notificações em tempo real',
-  'Webhook aberto pra integrar com n8n',
+  'Integração via webhook aberto',
   'Export CSV de leads e conversas',
   'Suporte humano no WhatsApp',
 ]
@@ -197,7 +197,7 @@ export default function Pricing() {
               },
               {
                 q: 'O que entra nesse preço além do que está na lista?',
-                a: 'Atualizações de produto, suporte humano via WhatsApp, hospedagem, banco de dados e o uso da IA Perplexity. Você só paga UazAPI separado (R$ 138/mês) se quiser usar Inbox WhatsApp.',
+                a: 'Atualizações de produto, suporte humano via WhatsApp, hospedagem, banco de dados, segurança e toda a infraestrutura de IA. Sem taxa de setup e sem cobrança por uso.',
               },
               {
                 q: 'Por que vocês cobram metade do Kommo?',

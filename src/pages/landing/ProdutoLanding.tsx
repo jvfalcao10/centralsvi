@@ -232,7 +232,7 @@ export default function ProdutoLanding() {
             {[
               { icon: MessageCircle, color: 'emerald', title: 'Inbox WhatsApp', desc: 'Recebe e responde direto do painel. Sem perder lead no meio de 50 conversas.' },
               { icon: Kanban, color: 'blue', title: 'CRM Kanban', desc: 'Arrasta lead entre etapas. Conta valor por coluna. Pipeline visual e simples.' },
-              { icon: Sparkles, color: 'purple', title: 'IA de Nicho', desc: 'Perplexity busca notícias, ideias e oportunidades do seu setor todo dia 6h.' },
+              { icon: Sparkles, color: 'purple', title: 'IA de Nicho', desc: 'Notícias, ideias de conteúdo e oportunidades do seu setor entregues todo dia 6h.' },
               { icon: Zap, color: 'amber', title: 'Aprovação 1-clique', desc: 'Cliente aprova post em segundos. Fim do WhatsApp pra aprovar criativo.' },
               { icon: Check, color: 'green', title: 'Multi-tenant', desc: 'Você atende N clientes com 1 deploy. Cada cliente vê só os dados dele.' },
               { icon: ArrowRight, color: 'red', title: 'Sem lock-in', desc: 'Export CSV nativo. Webhook aberto. Levou tudo, levou os dados.' },
@@ -258,7 +258,7 @@ export default function ProdutoLanding() {
             <br />Kommo cobra R$ 1.250.
           </h2>
           <p className="text-gray-400 text-lg">
-            Mesmo Inbox WhatsApp. Mesmo CRM. Bônus: IA de nicho via Perplexity todo dia.
+            Mesmo Inbox WhatsApp. Mesmo CRM. Bônus: IA de nicho entregando insights todo dia.
           </p>
 
           <div className="mt-12 inline-flex flex-col bg-white/[0.03] border border-white/10 rounded-2xl p-8 text-left max-w-sm shadow-[0_0_60px_-15px_rgba(59,130,246,0.3)]">
@@ -272,7 +272,7 @@ export default function ProdutoLanding() {
               {[
                 'Inbox WhatsApp ilimitado',
                 'CRM Kanban + Lista',
-                'IA de nicho diária (Perplexity)',
+                'IA de nicho diária',
                 'Aprovação de posts',
                 'Até 5 usuários do time',
                 'Webhook aberto',

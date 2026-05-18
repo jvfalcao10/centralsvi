@@ -80,7 +80,7 @@ export default function PainelInsights() {
 
   async function generateNow() {
     setGenerating(true)
-    toast.info('Analisando seu nicho via Perplexity…', { duration: 4000 })
+    toast.info('Analisando seu nicho com IA…', { duration: 4000 })
     const { data: { session } } = await supabase.auth.getSession()
     const res = await fetch('/api/painel/insights/generate', {
       method: 'POST',
