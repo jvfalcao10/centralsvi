@@ -256,7 +256,7 @@ export default function ProdutoLanding() {
               {[
                 { icon: AlertCircle, title: 'WhatsApp espalhado', desc: 'Cada vendedor com um chip, cada lead num celular, nada conversa com nada e cliente bom some.' },
                 { icon: Eye, title: '"E aquele cliente?"', desc: 'Você perde tempo perguntando status, cobrando follow-up e descobrindo proposta esquecida há duas semanas.' },
-                { icon: FileText, title: 'Conteúdo refém de você', desc: 'Designer mandando arte no WhatsApp pessoal, aprovação travada, post atrasa e o feed fica mudo.' },
+                { icon: Clock, title: 'Lead esperou, lead perdeu', desc: 'Cada minuto sem resposta no WhatsApp é cliente migrando pro concorrente que respondeu na hora.' },
               ].map((card, i) => {
                 const Icon = card.icon
                 return (
