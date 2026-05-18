@@ -51,9 +51,12 @@ export default function ProdutoLanding() {
           <div className="w-7 h-7 rounded-md bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs">
             S
           </div>
-          <span className="font-semibold tracking-tight">SVI Platform</span>
+          <span className="font-semibold tracking-tight">svi.ai</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <Link to="/precos" className="text-sm text-gray-300 hover:text-white">
+            Preços
+          </Link>
           <Link to="/login">
             <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-white/10">
               Entrar
@@ -61,7 +64,7 @@ export default function ProdutoLanding() {
           </Link>
           <Link to="/login">
             <Button className="bg-white text-black hover:bg-gray-200">
-              Começar grátis<ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+              Quero ser fundador<ArrowRight className="ml-1.5 h-3.5 w-3.5" />
             </Button>
           </Link>
         </div>
@@ -78,35 +81,35 @@ export default function ProdutoLanding() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 backdrop-blur-sm rounded-full pl-1.5 pr-4 py-1 text-sm animate-appear opacity-0">
             <span className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wider">
-              Beta
+              Fundador
             </span>
-            <span className="text-gray-300">O Kommo brasileiro com IA · 5x mais barato</span>
+            <span className="text-gray-300">Primeiros 10 clientes pagam R$ 197/mês pra sempre</span>
           </div>
 
           {/* Headline */}
           <h1 className="animate-appear delay-150 opacity-0 gradient-text text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight leading-[1.05] max-w-4xl">
-            Atendimento, vendas
-            <br />e IA, num painel só.
+            Sistema de Vendas
+            <br />Inteligente.
           </h1>
 
           {/* Subheadline */}
           <p className="animate-appear delay-300 opacity-0 max-w-2xl text-lg sm:text-xl text-gray-400 leading-relaxed">
-            WhatsApp Inbox + CRM Kanban + Inteligência de mercado por nicho.
-            Tudo em tempo real, sem precisar de Kommo, RD ou Pipedrive.
+            Inbox WhatsApp, CRM Kanban e IA de mercado no mesmo painel.
+            Substitui Kommo, Trello e ChatGPT por uma assinatura só, no idioma do Brasil.
           </p>
 
           {/* CTAs */}
           <div className="animate-appear delay-450 opacity-0 flex flex-wrap justify-center gap-3 pt-2">
             <Link to="/login">
               <Button size="lg" className="bg-white text-black hover:bg-gray-100 font-semibold shadow-2xl shadow-white/10">
-                Começar grátis<ArrowRight className="ml-2 h-4 w-4" />
+                Quero ser fundador<ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
-            <a href="#features">
+            <Link to="/precos">
               <Button size="lg" variant="outline" className="border-white/20 bg-white/5 text-white hover:bg-white/10 backdrop-blur-sm font-semibold">
-                Ver demo de 2 min
+                Ver preço e comparativo
               </Button>
-            </a>
+            </Link>
           </div>
 
           {/* Social proof bar */}
@@ -259,17 +262,17 @@ export default function ProdutoLanding() {
           </p>
 
           <div className="mt-12 inline-flex flex-col bg-white/[0.03] border border-white/10 rounded-2xl p-8 text-left max-w-sm shadow-[0_0_60px_-15px_rgba(59,130,246,0.3)]">
-            <div className="text-sm text-gray-400 mb-1">Plano Único</div>
+            <div className="text-sm text-blue-300 mb-1 font-semibold">Plano Fundador</div>
             <div className="flex items-baseline gap-2 mb-1">
               <span className="text-5xl font-bold tabular-nums">R$ 197</span>
               <span className="text-sm text-gray-400">/ mês</span>
             </div>
-            <p className="text-xs text-gray-500 mb-6">cancele quando quiser</p>
+            <p className="text-xs text-gray-500 mb-6">trava esse preço pra sempre. Sobe pra R$ 297 a partir do 11º cliente.</p>
             <ul className="space-y-2.5 mb-8 text-sm">
               {[
                 'Inbox WhatsApp ilimitado',
                 'CRM Kanban + Lista',
-                'IA de nicho diária',
+                'IA de nicho diária (Perplexity)',
                 'Aprovação de posts',
                 'Até 5 usuários do time',
                 'Webhook aberto',
@@ -283,10 +286,10 @@ export default function ProdutoLanding() {
             </ul>
             <Link to="/login">
               <Button size="lg" className="w-full bg-white text-black hover:bg-gray-100 font-semibold">
-                Começar grátis · 14 dias
+                Quero garantir minha vaga
               </Button>
             </Link>
-            <p className="text-[10px] text-gray-500 text-center mt-3">sem cartão de crédito</p>
+            <p className="text-[10px] text-gray-500 text-center mt-3">14 dias grátis, sem cartão</p>
           </div>
         </div>
       </section>
@@ -296,9 +299,13 @@ export default function ProdutoLanding() {
         <div className="max-w-6xl mx-auto flex items-center justify-between text-xs text-gray-500">
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 rounded-md bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-[10px]">S</div>
-            <span>© SVI · {new Date().getFullYear()}</span>
+            <span>© svi.ai · {new Date().getFullYear()}</span>
           </div>
-          <span>Feito no Sul do Pará · com IA brasileira</span>
+          <div className="flex items-center gap-4">
+            <Link to="/precos" className="hover:text-white">Preços</Link>
+            <Link to="/login" className="hover:text-white">Entrar</Link>
+            <span>Software brasileiro, com IA brasileira</span>
+          </div>
         </div>
       </footer>
     </div>

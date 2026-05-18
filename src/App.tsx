@@ -58,6 +58,7 @@ import AdminPaineis from "@/pages/painel/AdminPaineis";
 
 // Landing pública SaaS
 import ProdutoLanding from "@/pages/landing/ProdutoLanding";
+import Pricing from "@/pages/landing/Pricing";
 
 import NotFound from "./pages/NotFound";
 
@@ -82,6 +83,7 @@ const App = () => (
 
               {/* Public */}
               <Route path="/produto" element={<ProdutoLanding />} />
+              <Route path="/precos" element={<Pricing />} />
               <Route path="/login" element={<Login />} />
               <Route path="/client-signup" element={<ClientSignup />} />
               <Route path="/reset-password" element={<ResetPassword />} />
