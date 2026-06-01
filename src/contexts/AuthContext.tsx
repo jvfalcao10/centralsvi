@@ -3,7 +3,7 @@ import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { Profile } from '@/types'
 
-export type UserRole = 'admin' | 'manager' | 'seller' | 'executor' | 'client' | 'user'
+export type UserRole = 'admin' | 'manager' | 'seller' | 'executor' | 'traffic' | 'client' | 'user'
 export type SignupStatus = 'pending' | 'approved' | 'rejected' | null
 
 /** Primeira rota que cada role consegue acessar — usado no redirect pós-login. */
@@ -16,6 +16,8 @@ export function defaultRouteForRole(role: UserRole | null): string {
       return '/pipeline'
     case 'executor':
       return '/content/posts'
+    case 'traffic':
+      return '/operacional/trafego'
     case 'client':
       return '/minha-area'
     default:
@@ -31,11 +33,13 @@ interface AuthContextType {
   signupStatus: SignupStatus
   loading: boolean
   signOut: () => Promise<void>
-  /** Checa se o usuário atende ao role mínimo de staff (hierarquia). Client sempre retorna false. */
+  /** Checa se o usuário atende ao role mínimo de staff (hierarquia). Client e Traffic sempre retornam false. */
   can: (requiredRole: UserRole) => boolean
   /** True se o role atual é 'client' (usuário externo aprovado). */
   isClient: boolean
-  /** True se é qualquer role de staff (admin/manager/seller/executor). */
+  /** True se o role atual é 'traffic' (gestor de tráfego, escopo restrito). */
+  isTraffic: boolean
+  /** True se é qualquer role de staff (admin/manager/seller/executor/traffic). */
   isStaff: boolean
   /** Força refetch de role + signup status (após aprovação, por exemplo). */
   refresh: () => Promise<void>
@@ -58,6 +62,7 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
   can: () => false,
   isClient: false,
+  isTraffic: false,
   isStaff: false,
   refresh: async () => {},
 })
@@ -100,13 +105,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (data && data.length > 0) {
         const roles = data.map((r: any) => r.role as UserRole)
-        // Prioriza role de staff mais alta; se só tem 'client', usa 'client'
+        // Prioriza role de staff mais alta da hierarquia; se só tem 'traffic'/'client', usa esse
         const staffRoles = roles.filter(r => r in STAFF_HIERARCHY)
         if (staffRoles.length > 0) {
           const highest = staffRoles.reduce((best, curr) =>
             (STAFF_HIERARCHY[curr] ?? 0) > (STAFF_HIERARCHY[best] ?? 0) ? curr : best
           )
           setRole(highest)
+        } else if (roles.includes('traffic')) {
+          setRole('traffic')
         } else if (roles.includes('client')) {
           setRole('client')
         } else {
@@ -175,13 +182,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const can = (requiredRole: UserRole): boolean => {
-    // Client role nunca tem acesso a rotas de staff
-    if (!role || role === 'client' || role === 'user') return false
+    // Client e Traffic nunca passam em check de hierarquia staff
+    if (!role || role === 'client' || role === 'user' || role === 'traffic') return false
     return (STAFF_HIERARCHY[role] ?? 0) >= (STAFF_HIERARCHY[requiredRole] ?? 0)
   }
 
   const isClient = role === 'client'
-  const isStaff = role ? role in STAFF_HIERARCHY : false
+  const isTraffic = role === 'traffic'
+  const isStaff = role ? (role in STAFF_HIERARCHY || role === 'traffic') : false
 
   const refresh = async () => {
     if (user) await hydrate(user.id)
@@ -191,7 +199,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider
       value={{
         user, session, profile, role, signupStatus, loading,
-        signOut, can, isClient, isStaff, refresh,
+        signOut, can, isClient, isTraffic, isStaff, refresh,
       }}
     >
       {children}

@@ -4,6 +4,7 @@ import {
   LayoutDashboard, GitBranch, Users, CheckSquare, DollarSign, Crosshair, FileText,
   ClipboardCheck, Clock, UserCog, UserCheck, Kanban, BarChart3, Sun, Moon, LogOut,
   ChevronRight, ChevronDown, Briefcase, Sparkles, ShieldCheck, Settings, Megaphone, PieChart,
+  Activity,
 } from 'lucide-react'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
@@ -44,6 +45,11 @@ interface NavSingle {
 }
 
 type NavEntry = NavGroup | NavSingle
+
+/** Menu reduzido para role 'traffic' (gestor de tráfego, escopo restrito). */
+const NAV_TRAFFIC: NavEntry[] = [
+  { type: 'item', title: 'Tráfego', url: '/operacional/trafego', icon: Activity, minRole: 'executor' },
+]
 
 const NAV: NavEntry[] = [
   { type: 'item', title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard, minRole: 'manager' },
@@ -129,25 +135,28 @@ export function AppSidebar() {
   const { state } = useSidebar()
   const collapsed = state === 'collapsed'
   const location = useLocation()
-  const { profile, role, signOut, can } = useAuth()
+  const { profile, role, signOut, can, isTraffic } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const badges = useNavBadges()
 
   const isActive = (url: string) => location.pathname === url
   const isInGroup = (group: NavGroup) => group.items.some(i => isActive(i.url))
+  const navEntries = isTraffic ? NAV_TRAFFIC : NAV
+  // Role 'traffic' não passa no can() padrão (não está na hierarquia), então não filtramos por can() pra ela.
+  const canEntry = (minRole: UserRole) => isTraffic || can(minRole)
 
   // Auto-expand groups whose route is active
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   useEffect(() => {
     const next: Record<string, boolean> = {}
-    NAV.forEach(entry => {
+    navEntries.forEach(entry => {
       if (entry.type === 'group') {
         next[entry.title] = isInGroup(entry) || openGroups[entry.title] === true
       }
     })
     setOpenGroups(prev => ({ ...prev, ...next }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname])
+  }, [location.pathname, isTraffic])
 
   const toggleGroup = (title: string) =>
     setOpenGroups(prev => ({ ...prev, [title]: !prev[title] }))
@@ -184,8 +193,8 @@ export function AppSidebar() {
 
       <SidebarContent className="px-2">
         <SidebarMenu>
-          {NAV.map(entry => {
-            if (!can(entry.minRole)) return null
+          {navEntries.map(entry => {
+            if (!canEntry(entry.minRole)) return null
 
             if (entry.type === 'item') {
               const active = isActive(entry.url)

@@ -77,6 +77,7 @@ const ROLE_CONFIG: Record<UserRole, { label: string; description: string; icon: 
   manager: { label: 'Gestor', description: 'Pipeline + Clientes + Onboarding + Financeiro', icon: Shield, className: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   seller: { label: 'Vendedor', description: 'Prospecção + Scripts + Pipeline', icon: Crosshair, className: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
   executor: { label: 'Executor', description: 'Entregas + Scripts (apenas próprias)', icon: Wrench, className: 'bg-green-500/20 text-green-400 border-green-500/30' },
+  traffic: { label: 'Gestor de Tráfego', description: 'Acesso restrito ao módulo Tráfego', icon: Wrench, className: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
   client: { label: 'Cliente', description: 'Acesso ao painel de conteúdo (cliente externo)', icon: User, className: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
   user: { label: 'Usuário', description: 'Acesso básico', icon: UserCog, className: 'bg-slate-500/20 text-slate-400 border-slate-500/30' },
 }
@@ -193,7 +194,7 @@ export default function Team() {
   useEffect(() => { fetchData() }, [fetchData])
 
   function roleRank(r: UserRole): number {
-    return { admin: 4, manager: 3, seller: 2, executor: 1, user: 0 }[r] ?? 0
+    return { admin: 4, manager: 3, seller: 2, executor: 1, traffic: 1, user: 0 }[r] ?? 0
   }
 
   async function updateRole(userId: string, newRole: UserRole) {
@@ -458,6 +459,7 @@ export default function Team() {
                               <SelectItem value="manager">Gestor</SelectItem>
                               <SelectItem value="seller">Vendedor</SelectItem>
                               <SelectItem value="executor">Executor</SelectItem>
+                              <SelectItem value="traffic">Gestor de Tráfego</SelectItem>
                             </SelectContent>
                           </Select>
                         </TableCell>
@@ -631,6 +633,7 @@ export default function Team() {
                               <SelectItem value="manager">Gestor</SelectItem>
                               <SelectItem value="seller">Vendedor</SelectItem>
                               <SelectItem value="executor">Executor</SelectItem>
+                              <SelectItem value="traffic">Gestor de Tráfego</SelectItem>
                               <SelectItem value="client">Cliente externo</SelectItem>
                             </SelectContent>
                           </Select>
@@ -804,6 +807,11 @@ export default function Team() {
                   <SelectItem value="executor">
                     <div className="flex items-center gap-2">
                       <Wrench className="h-3.5 w-3.5 text-green-400" /> Executor — Entregas, Scripts
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="traffic">
+                    <div className="flex items-center gap-2">
+                      <Wrench className="h-3.5 w-3.5 text-rose-400" /> Gestor de Tráfego — Acesso restrito ao módulo Tráfego
                     </div>
                   </SelectItem>
                 </SelectContent>

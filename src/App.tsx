@@ -56,6 +56,10 @@ import AdminPaineis from "@/pages/painel/AdminPaineis";
 import ProdutoLanding from "@/pages/landing/ProdutoLanding";
 import Pricing from "@/pages/landing/Pricing";
 
+// Relatórios públicos (link compartilhado)
+import TrafegoReport from "@/pages/r/TrafegoReport";
+import TrafegoApprove from "@/pages/r/TrafegoApprove";
+
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -80,6 +84,8 @@ const App = () => (
               {/* Public */}
               <Route path="/produto" element={<ProdutoLanding />} />
               <Route path="/precos" element={<Pricing />} />
+              <Route path="/r/trafego/:slug" element={<TrafegoReport />} />
+              <Route path="/aprovar/trafego/:slug" element={<TrafegoApprove />} />
               <Route path="/login" element={<Login />} />
               <Route path="/client-signup" element={<ClientSignup />} />
               <Route path="/reset-password" element={<ResetPassword />} />
@@ -123,7 +129,7 @@ const App = () => (
                 <ProtectedRoute requiredRole="seller"><AppLayout><Comercial /></AppLayout></ProtectedRoute>
               } />
               <Route path="/operacional/trafego" element={
-                <ProtectedRoute requiredRole="manager"><AppLayout><Trafego /></AppLayout></ProtectedRoute>
+                <ProtectedRoute requiredRole="manager" allowTraffic><AppLayout><Trafego /></AppLayout></ProtectedRoute>
               } />
               <Route path="/reports/overview" element={
                 <ProtectedRoute requiredRole="manager"><AppLayout><ReportsOverview /></AppLayout></ProtectedRoute>
