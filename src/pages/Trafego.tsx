@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
+import { toast } from 'sonner'
+
+const REFRESH_WEBHOOK_URL = 'https://n8n-n8n-start.wrqknp.easypanel.host/webhook/traffic-refresh'
 import { Input } from '@/components/ui/input'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -125,6 +128,7 @@ export default function Trafego() {
   const [severityFilter, setSeverityFilter] = useState<'TODOS' | Severity>('TODOS')
   const [statusFilter, setStatusFilter] = useState<'TODOS' | 'ATIVA' | 'PROBLEMA'>('TODOS')
   const [search, setSearch] = useState('')
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   const { data, isLoading, isFetching, refetch, error } = useQuery({
     queryKey: ['meta-ad-accounts-latest'],
@@ -137,6 +141,24 @@ export default function Trafego() {
     },
     refetchInterval: 60_000,
   })
+
+  async function handleRefresh() {
+    if (isRefreshing) return
+    setIsRefreshing(true)
+    try {
+      const resp = await fetch(REFRESH_WEBHOOK_URL, { method: 'POST' })
+      if (!resp.ok) throw new Error(`Webhook respondeu ${resp.status}`)
+      toast.success('Sincronizando com a Meta...')
+      // n8n leva ~3-5s pra rodar o sweep e gravar no Supabase
+      await new Promise((r) => setTimeout(r, 4500))
+      await refetch()
+      toast.success('Dados atualizados')
+    } catch (e) {
+      toast.error('Falha ao sincronizar: ' + (e as Error).message)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
 
   const rows = data ?? []
 
@@ -191,12 +213,12 @@ export default function Trafego() {
           </p>
         </div>
         <button
-          onClick={() => refetch()}
-          disabled={isFetching}
+          onClick={handleRefresh}
+          disabled={isRefreshing || isFetching}
           className="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-md border border-border hover:bg-accent transition-colors disabled:opacity-50"
         >
-          {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-          Atualizar
+          {(isRefreshing || isFetching) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          {isRefreshing ? 'Sincronizando...' : 'Atualizar'}
         </button>
       </div>
 
