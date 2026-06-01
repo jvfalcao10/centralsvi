@@ -85,6 +85,7 @@ const NAV: NavEntry[] = [
       { title: 'Clientes', url: '/clients', minRole: 'executor', badgeKey: 'clients' },
       { title: 'Onboarding', url: '/onboarding', minRole: 'manager' },
       { title: 'Entregas', url: '/deliveries', minRole: 'executor', badgeKey: 'deliveries' },
+      { title: 'Tráfego', url: '/operacional/trafego', minRole: 'manager' },
     ],
   },
 
