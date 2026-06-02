@@ -210,7 +210,7 @@ export default function TrafegoApprove() {
                 className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-emerald-500 text-white font-medium hover:bg-emerald-600 transition-colors disabled:opacity-50"
               >
                 {submitting === 'approve' ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                Aprovar e enviar pro cliente
+                Aprovar
               </button>
               <button
                 onClick={() => submit('reject')}
@@ -223,7 +223,7 @@ export default function TrafegoApprove() {
             </div>
 
             <p className="text-[11px] text-muted-foreground">
-              Aprovar envia a mensagem imediatamente no grupo WhatsApp <span className="font-mono">{data.group_chatid}</span>.
+              Aprovar libera o link público do relatório. O envio pro WhatsApp do cliente é feito manualmente pela equipe SVI.
             </p>
           </div>
         )}
@@ -231,7 +231,7 @@ export default function TrafegoApprove() {
         {submitSuccess && !alreadyDecided && (
           <div className={`p-4 rounded-lg border ${submitSuccess === 'approved' ? 'border-emerald-500/40 bg-emerald-500/5 text-emerald-500' : 'border-rose-500/40 bg-rose-500/5 text-rose-500'}`}>
             <p className="font-medium text-sm">
-              {submitSuccess === 'approved' ? 'Aprovado. Enviando pro cliente...' : 'Reprovado. Cliente não receberá esta versão.'}
+              {submitSuccess === 'approved' ? 'Aprovado. Link público liberado. Equipe envia manual pro WhatsApp do cliente.' : 'Reprovado. Cliente não receberá esta versão.'}
             </p>
           </div>
         )}
