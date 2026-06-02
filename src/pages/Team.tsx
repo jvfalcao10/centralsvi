@@ -73,8 +73,8 @@ interface Invitation {
 }
 
 const ROLE_CONFIG: Record<UserRole, { label: string; description: string; icon: any; className: string }> = {
-  admin: { label: 'Admin', description: 'Acesso total ao sistema', icon: Crown, className: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
-  manager: { label: 'Gestor', description: 'Pipeline + Clientes + Onboarding + Financeiro', icon: Shield, className: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  admin: { label: 'Admin', description: 'Acesso total ao sistema (inclui Financeiro)', icon: Crown, className: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+  manager: { label: 'Gestor', description: 'Acesso a tudo, menos Financeiro', icon: Shield, className: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   seller: { label: 'Vendedor', description: 'Prospecção + Scripts + Pipeline', icon: Crosshair, className: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
   executor: { label: 'Executor', description: 'Entregas + Scripts (apenas próprias)', icon: Wrench, className: 'bg-green-500/20 text-green-400 border-green-500/30' },
   client: { label: 'Cliente', description: 'Acesso ao painel de conteúdo (cliente externo)', icon: User, className: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
@@ -793,7 +793,7 @@ export default function Team() {
                   </SelectItem>
                   <SelectItem value="manager">
                     <div className="flex items-center gap-2">
-                      <Shield className="h-3.5 w-3.5 text-blue-400" /> Gestor — Pipeline, Clientes, Financeiro
+                      <Shield className="h-3.5 w-3.5 text-blue-400" /> Gestor — Tudo, menos Financeiro
                     </div>
                   </SelectItem>
                   <SelectItem value="seller">
