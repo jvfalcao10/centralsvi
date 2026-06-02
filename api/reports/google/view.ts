@@ -3,8 +3,9 @@ import { createAdminClient } from '../../_lib/supabase.js';
 
 /**
  * Acesso PUBLICO do relatorio pelo slug (link que vai pro cliente).
- * Sem login. Usa service role e so devolve relatorios com status = 'published'.
- * Nunca expoe client_id, created_by nem nada interno.
+ * Rota ESTATICA com query param (?slug=...) — rotas dinamicas [slug].ts caem
+ * no fallback do SPA neste projeto Vite. Sem login. Usa service role e so
+ * devolve relatorios com status = 'published'. Nunca expoe dado interno.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -26,6 +27,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (error) return res.status(500).json({ error: 'load_failed' });
   if (!data) return res.status(404).json({ error: 'not_found' });
 
-  res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
+  res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=120');
   return res.status(200).json({ report: data });
 }
