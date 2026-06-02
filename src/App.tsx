@@ -29,6 +29,8 @@ import Team from "@/pages/Team";
 import Approvals from "@/pages/Approvals";
 import Comercial from "@/pages/Comercial";
 import ReportsOverview from "@/pages/reports/Overview";
+import GoogleReports from "@/pages/reports/GoogleReports";
+import PublicGoogleReport from "@/pages/reports/PublicGoogleReport";
 
 // Client pages
 import MinhaArea from "@/pages/MinhaArea";
@@ -83,6 +85,7 @@ const App = () => (
               <Route path="/client-signup" element={<ClientSignup />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/pending-approval" element={<PendingApproval />} />
+              <Route path="/r/:slug" element={<PublicGoogleReport />} />
 
               {/* Staff-only */}
               <Route path="/dashboard" element={
@@ -123,6 +126,9 @@ const App = () => (
               } />
               <Route path="/reports/overview" element={
                 <ProtectedRoute requiredRole="manager"><AppLayout><ReportsOverview /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/reports/google" element={
+                <ProtectedRoute requiredRole="executor"><AppLayout><GoogleReports /></AppLayout></ProtectedRoute>
               } />
 
               {/* Client-only */}
