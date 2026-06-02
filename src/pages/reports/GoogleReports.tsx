@@ -284,7 +284,15 @@ export default function GoogleReports() {
             >
               <Upload className="w-6 h-6 mx-auto text-muted-foreground mb-2" />
               <p className="text-sm text-muted-foreground">Arraste os prints aqui ou clique pra escolher (até 10)</p>
-              <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => onPick(e.target.files)} />
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => { onPick(e.target.files); e.currentTarget.value = '' }}
+              />
             </div>
             {files.length > 0 && (
               <div className="flex flex-wrap gap-2 pt-1">
