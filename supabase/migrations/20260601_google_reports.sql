@@ -1,5 +1,5 @@
--- Relatórios Google (GMN) · prints viram link visual pro cliente
--- Equipe sobe os prints do painel, Claude Vision lê os números e gera o relatório.
+-- Relatórios Google (GBP) · prints viram link visual pro cliente
+-- Equipe sobe os prints do painel GMN, Claude Vision lê os números e gera o relatório.
 -- O cliente abre um link público (/r/:slug) e vê os resultados. Sem PDF.
 
 create table if not exists public.google_reports (
@@ -8,11 +8,10 @@ create table if not exists public.google_reports (
   client_name text not null default '',
   slug text not null unique,
   period_label text not null default '',
-  -- métricas extraídas dos prints: [{ key, label, current, previous, delta_pct, unit }]
+  -- métricas de visão geral: [{ key, label, current, previous, delta_pct, unit }]
   metrics jsonb not null default '[]'::jsonb,
-  -- análise da IA: { resumo_cliente, resultados[], otimizacoes[], destaque, observacoes }
+  -- análise: { resumo_cliente, destaque, observacoes, modules[], diagnostico:{pontos[],acoes[]} }
   analysis jsonb not null default '{}'::jsonb,
-  -- único campo que a equipe digita: bloco sobre as mensagens de avaliação
   review_messages text not null default '',
   status text not null default 'draft', -- draft | published
   created_by uuid,
@@ -25,24 +24,25 @@ create index if not exists google_reports_client_idx on public.google_reports (c
 alter table public.google_reports enable row level security;
 
 -- Equipe SVI vê/edita tudo; cliente vê só os relatórios do próprio client_id.
--- (O acesso público sem login NÃO passa por aqui — vem por uma function serverless
+-- (Acesso público sem login NÃO passa por aqui — vem por uma function serverless
 --  que usa service role e só devolve relatórios com status = 'published'.)
+-- painel_user_client_ids() retorna SETOF, então usamos "in (select ...)" e não "= any()".
 drop policy if exists google_reports_member_read on public.google_reports;
 create policy google_reports_member_read on public.google_reports
   for select using (
     public.painel_is_svi_team()
-    or client_id = any(public.painel_user_client_ids())
+    or client_id in (select public.painel_user_client_ids())
   );
 
 drop policy if exists google_reports_member_write on public.google_reports;
 create policy google_reports_member_write on public.google_reports
   for all using (
     public.painel_is_svi_team()
-    or client_id = any(public.painel_user_client_ids())
+    or client_id in (select public.painel_user_client_ids())
   )
   with check (
     public.painel_is_svi_team()
-    or client_id = any(public.painel_user_client_ids())
+    or client_id in (select public.painel_user_client_ids())
   );
 
 create or replace function public.google_reports_touch()
