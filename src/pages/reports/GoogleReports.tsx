@@ -37,6 +37,15 @@ type Report = {
   analysis: Analysis
   review_messages: string
   status: 'draft' | 'published'
+  created_at?: string
+}
+
+function horaCriacao(iso?: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const dia = String(d.getDate()).padStart(2, '0')
+  const mes = String(d.getMonth() + 1).padStart(2, '0')
+  return `${dia}/${mes} ${String(d.getHours()).padStart(2, '0')}h${String(d.getMinutes()).padStart(2, '0')}`
 }
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
@@ -119,7 +128,7 @@ export default function GoogleReports() {
     queryFn: async (): Promise<Report[]> => {
       const { data, error } = await supabase
         .from('google_reports')
-        .select('id, slug, client_name, period_label, metrics, analysis, review_messages, status')
+        .select('id, slug, client_name, period_label, metrics, analysis, review_messages, status, created_at')
         .eq('client_id', clientId)
         .order('created_at', { ascending: false })
         .limit(12)
@@ -284,7 +293,15 @@ export default function GoogleReports() {
             >
               <Upload className="w-6 h-6 mx-auto text-muted-foreground mb-2" />
               <p className="text-sm text-muted-foreground">Arraste os prints aqui ou clique pra escolher (até 10)</p>
-              <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => onPick(e.target.files)} />
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => { onPick(e.target.files); e.currentTarget.value = '' }}
+              />
             </div>
             {files.length > 0 && (
               <div className="flex flex-wrap gap-2 pt-1">
@@ -456,10 +473,16 @@ export default function GoogleReports() {
           <CardContent className="space-y-2">
             {reports.map((r) => (
               <div key={r.id} className="flex items-center justify-between gap-3 py-2 border-b last:border-0">
-                <button className="text-sm font-medium hover:text-primary text-left" onClick={() => setCurrent(r)}>
-                  {r.period_label || 'Sem período'}
+                <button className="text-left min-w-0 flex-1 group" onClick={() => setCurrent(r)}>
+                  <div className="text-sm font-medium group-hover:text-primary flex items-baseline gap-2">
+                    <span>{r.period_label || 'Sem período'}</span>
+                    <span className="text-[11px] font-normal text-muted-foreground">{horaCriacao(r.created_at)}</span>
+                  </div>
+                  {r.analysis?.destaque && (
+                    <div className="text-xs text-muted-foreground truncate">{r.analysis.destaque}</div>
+                  )}
                 </button>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <Badge variant={r.status === 'published' ? 'default' : 'secondary'} className="text-[10px]">
                     {r.status === 'published' ? 'Publicado' : 'Rascunho'}
                   </Badge>

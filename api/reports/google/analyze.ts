@@ -6,6 +6,28 @@ const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-sonnet-4-6';
 const BUCKET = 'gbp-reports';
 
+/** Quebra linha (uma em branco) depois de cada frase, pra mensagem ficar boa de ler no WhatsApp. Protege abreviacoes. */
+function spaceSentences(s: string): string {
+  if (!s) return '';
+  const ABBR = ['Dr', 'Dra', 'Sr', 'Sra', 'Srta', 'Sta', 'Av', 'Ex', 'etc'];
+  let t = s;
+  ABBR.forEach((a) => { t = t.replace(new RegExp(`\\b${a}\\.`, 'g'), `${a}__D__`); });
+  t = t.replace(/([.!?])\s+/g, '$1\n\n');
+  return t.replace(/__D__/g, '.').trim();
+}
+
+/** Remove travessao (—) e meia-risca (–) de qualquer texto, deixando fluido. Nao toca em hifen normal (URLs). */
+function noDash(v: any): any {
+  if (typeof v === 'string') return v.replace(/\s*[—–]\s*/g, ' ').replace(/ {2,}/g, ' ').trim();
+  if (Array.isArray(v)) return v.map(noDash);
+  if (v && typeof v === 'object') {
+    const o: any = {};
+    for (const k of Object.keys(v)) o[k] = noDash(v[k]);
+    return o;
+  }
+  return v;
+}
+
 const schema = z.object({
   clientId: z.string().uuid(),
   periodLabel: z.string().max(60).optional().default(''),
@@ -32,9 +54,10 @@ const SYSTEM = [
   '2. metrics: resuma os principais KPIs em 4 a 6 cards de visao geral, com os numeros lidos (key, label, current, previous, delta_pct, unit).',
   '3. diagnostico: organize em pontos (gargalos e oportunidades; cada um com tipo "gargalo" ou "oportunidade", titulo e texto) e acoes (proximos passos; cada um com titulo e texto). Baseie-se na analise da equipe e nos numeros dos prints.',
   '4. resumo_cliente, destaque: 2-3 frases resumindo a quinzena/periodo e a frase de maior impacto.',
-  '5. whatsapp: mensagens prontas pra equipe copiar e mandar pro cliente no WhatsApp. Tom de mensagem (curto, caloroso, sem jargao). Campos: saudacao; intro (1 frase, ex "Segue o relatorio de otimizacao do seu Google Meu Negocio"); resumo (3 bullets dos pontos mais fortes, cada um numa linha comecando com "- "); avaliacoes (1-2 frases sobre a importancia de juntar avaliacoes no Google); pedido_avaliacao (um texto curto que o CLIENTE vai ENCAMINHAR pra amigos, familia e pacientes pedindo uma avaliacao no Google — escrito na PRIMEIRA PESSOA, na voz do cliente, pronto pra repassar).',
+  '5. whatsapp: mensagens prontas pra equipe copiar e mandar pro cliente no WhatsApp. Tom de mensagem (curto, caloroso, sem jargao). Campos: saudacao; intro (1 frase, ex "Segue o relatorio de otimizacao do seu Google Meu Negocio"); resumo (3 bullets dos pontos mais fortes, cada um numa linha comecando com "- "); avaliacoes (2 a 3 frases fluidas sobre por que as avaliacoes no Google importam, e TERMINE avisando que logo abaixo voce deixou uma mensagem pronta pra ele enviar e comecar a receber avaliacoes); pedido_avaliacao (texto curto que o CLIENTE vai ENCAMINHAR pra amigos, familia e clientes pedindo uma avaliacao no Google, escrito na PRIMEIRA PESSOA, na voz do cliente, pronto pra repassar).',
   '',
   'REGRAS CRITICAS:',
+  '- NUNCA use travessao (—) nem meia-risca (–) em nenhum texto. Escreva fluido, com virgula ou ponto. Frases naturais e curtas.',
   '- Numeros e percentuais: SOMENTE os que voce le nas imagens. NUNCA invente.',
   '- Quando a equipe escreveu analise, priorize as ideias dela. Nao adicione afirmacao que contradiz os dados.',
   '- Linguagem simples, sem jargao. Leitor e o dono do negocio. Postura humilde, sem soberba.',
@@ -55,7 +78,7 @@ const SYSTEM = [
   '    "saudacao": "Oi! Tudo bem?",',
   '    "intro": "Segue o relatorio de otimizacao do seu Google Meu Negocio.",',
   '    "resumo": "- ponto forte 1\\n- ponto forte 2\\n- ponto forte 3",',
-  '    "avaliacoes": "As avaliacoes sao o que mais pesa pra aparecer no Google. Cada nova avaliacao ajuda muito.",',
+  '    "avaliacoes": "As avaliacoes no Google sao um dos fatores que mais ajudam o seu negocio a aparecer nas primeiras posicoes. Elas tambem dao confianca pra quem ainda nao conhece voce. Cada uma conta muito, e o melhor: nao custa nada. Logo abaixo eu ja deixei uma mensagem pronta pra voce enviar e comecar a receber mais avaliacoes.",',
   '    "pedido_avaliacao": "Oi! Tudo bem? Se puder, deixa uma avaliacao da clinica no Google, ajuda demais. E so clicar aqui:"',
   '  },',
   '  "observacoes": "ressalvas, prints ilegiveis ou dados ausentes"',
@@ -167,6 +190,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   };
   const period = periodLabel || analysis.period_inferred || '';
 
+  // Mensagens de WhatsApp com quebra de linha entre frases (resumo fica como bullets)
+  const wa = analysis.whatsapp && typeof analysis.whatsapp === 'object' ? analysis.whatsapp : {};
+  const whatsapp = {
+    saudacao: spaceSentences(wa.saudacao || ''),
+    intro: spaceSentences(wa.intro || ''),
+    resumo: wa.resumo || '',
+    avaliacoes: spaceSentences(wa.avaliacoes || ''),
+    pedido_avaliacao: spaceSentences(wa.pedido_avaliacao || ''),
+  };
+
   // 5. Salva (draft)
   const { data: row, error: insErr } = await sb
     .from('google_reports')
@@ -176,14 +209,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       slug,
       period_label: period,
       metrics,
-      analysis: {
+      analysis: noDash({
         resumo_cliente: analysis.resumo_cliente || '',
         destaque: analysis.destaque || '',
         observacoes: analysis.observacoes || '',
         modules,
         diagnostico,
-        whatsapp: analysis.whatsapp && typeof analysis.whatsapp === 'object' ? analysis.whatsapp : {},
-      },
+        whatsapp,
+      }),
       review_messages: reviewMessages,
       status: 'draft',
       created_by: auth.user.id,
