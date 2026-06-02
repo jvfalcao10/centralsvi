@@ -71,8 +71,8 @@ export default function TrafegoReport() {
 
   if (isLoading) return <Loading />
   if (error || !data) return <Notice title="Relatório não encontrado">O link expirou ou está incorreto. Solicite um novo relatório com a equipe SVI Company.</Notice>
-  if (data.status === 'pending') return <Notice title="Relatório em finalização">Estamos finalizando seu relatório semanal. Em breve estará disponível.</Notice>
   if (data.status === 'rejected' || data.status === 'failed') return <Notice title="Relatório indisponível">Entre em contato com a equipe SVI Company para mais detalhes.</Notice>
+  // status pending também mostra (serve como preview interno antes da aprovação)
 
   const ctrPct = (data.ctr * 100).toFixed(2).replace('.', ',')
   const insight = interpretar(data.ctr, data.reach)
