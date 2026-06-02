@@ -95,7 +95,7 @@ const NAV: NavEntry[] = [
     ],
   },
 
-  { type: 'item', title: 'Financeiro', url: '/financial', icon: DollarSign, minRole: 'manager', badgeKey: 'invoices' },
+  { type: 'item', title: 'Financeiro', url: '/financial', icon: DollarSign, minRole: 'admin', badgeKey: 'invoices' },
 
   {
     type: 'group',

@@ -108,7 +108,7 @@ const App = () => (
                 <ProtectedRoute requiredRole="executor"><AppLayout><Deliveries /></AppLayout></ProtectedRoute>
               } />
               <Route path="/financial" element={
-                <ProtectedRoute requiredRole="manager"><AppLayout><Financial /></AppLayout></ProtectedRoute>
+                <ProtectedRoute requiredRole="admin"><AppLayout><Financial /></AppLayout></ProtectedRoute>
               } />
               <Route path="/prospecting" element={
                 <ProtectedRoute requiredRole="seller"><AppLayout><Prospecting /></AppLayout></ProtectedRoute>
