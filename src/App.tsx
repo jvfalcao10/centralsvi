@@ -30,7 +30,6 @@ import Approvals from "@/pages/Approvals";
 import Comercial from "@/pages/Comercial";
 import ReportsOverview from "@/pages/reports/Overview";
 import GoogleReports from "@/pages/reports/GoogleReports";
-import PublicGoogleReport from "@/pages/reports/PublicGoogleReport";
 
 // Client pages
 import MinhaArea from "@/pages/MinhaArea";
@@ -85,7 +84,6 @@ const App = () => (
               <Route path="/client-signup" element={<ClientSignup />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/pending-approval" element={<PendingApproval />} />
-              <Route path="/r/:slug" element={<PublicGoogleReport />} />
 
               {/* Staff-only */}
               <Route path="/dashboard" element={

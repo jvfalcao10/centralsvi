@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   MapPin, Loader2, Upload, Sparkles, Link as LinkIcon, Copy, Check,
-  Eye, EyeOff, Image as ImageIcon, X, TrendingUp, TrendingDown, Minus,
+  Eye, EyeOff, Image as ImageIcon, X, TrendingUp, TrendingDown, Minus, MessageCircle,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -19,12 +19,14 @@ type Metric = { key: string; label: string; current: number | null; previous: nu
 type Module = { titulo: string; valor: string; delta_pct: number | null; legenda: string; image_url: string }
 type Ponto = { tipo: 'gargalo' | 'oportunidade'; titulo: string; texto: string }
 type Acao = { titulo: string; texto: string }
+type Whatsapp = { saudacao?: string; intro?: string; resumo?: string; avaliacoes?: string; pedido_avaliacao?: string }
 type Analysis = {
   resumo_cliente?: string
   destaque?: string
   observacoes?: string
   modules?: Module[]
   diagnostico?: { pontos?: Ponto[]; acoes?: Acao[] }
+  whatsapp?: Whatsapp
 }
 type Report = {
   id: string
@@ -173,6 +175,24 @@ export default function GoogleReports() {
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
     toast.success('Link copiado')
+  }
+
+  async function copyText(text: string) {
+    await navigator.clipboard.writeText(text)
+    toast.success('Mensagem copiada')
+  }
+
+  /** Sequência pronta de mensagens pro WhatsApp, na ordem de envio. */
+  function whatsappMessages(r: Report): { label: string; text: string }[] {
+    const w = r.analysis?.whatsapp || {}
+    const link = publicUrl(r.slug)
+    const msgs: { label: string; text: string }[] = []
+    if (w.saudacao) msgs.push({ label: '1 · Saudação', text: w.saudacao })
+    msgs.push({ label: '2 · Relatório + link', text: `${w.intro || 'Segue o relatório de otimização do seu Google Meu Negócio.'}\n\n${link}` })
+    if (w.resumo) msgs.push({ label: '3 · Resumo', text: w.resumo })
+    if (w.avaliacoes) msgs.push({ label: '4 · Importância das avaliações', text: w.avaliacoes })
+    if (w.pedido_avaliacao) msgs.push({ label: '5 · Texto pro cliente pedir avaliação', text: `${w.pedido_avaliacao}\n[cole aqui o link de avaliação do Google]` })
+    return msgs
   }
 
   const preview = current
@@ -377,6 +397,28 @@ export default function GoogleReports() {
                   <LinkIcon className="w-3.5 h-3.5" /> abrir
                 </a>
               )}
+            </div>
+
+            {/* Mensagens prontas pro WhatsApp */}
+            <div className="space-y-2 pt-3 border-t">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="w-4 h-4 text-primary" />
+                <p className="text-sm font-semibold">Mensagens pro WhatsApp</p>
+                <span className="text-xs text-muted-foreground">copia e cola na ordem</span>
+              </div>
+              {whatsappMessages(preview).map((m, i) => (
+                <div key={i} className="rounded-lg border bg-muted/30 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">{m.label}</p>
+                      <p className="text-sm whitespace-pre-line break-words">{m.text}</p>
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={() => copyText(m.text)} title="Copiar">
+                      <Copy className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
