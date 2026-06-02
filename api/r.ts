@@ -89,10 +89,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const pontos = Array.isArray(a.diagnostico?.pontos) ? a.diagnostico.pontos : [];
   const acoes = Array.isArray(a.diagnostico?.acoes) ? a.diagnostico.acoes : [];
 
-  // OG: 3 bullets BONS (prioriza crescimento; quedas ficam de fora do card do cliente)
-  const numeric = metrics.filter((m) => typeof m.delta_pct === 'number');
-  const ogPick = [...numeric].sort((x, y) => y.delta_pct - x.delta_pct).slice(0, 3);
-  const bullets = ogPick.map((m) => `${m.label} ${m.current ?? ''}${m.unit || ''} (${m.delta_pct > 0 ? '+' : ''}${m.delta_pct}%)`.trim());
+  // OG: até 3 bullets BONS — SÓ crescimento entra no card do cliente. Sem positivos, cai no destaque.
+  const ogPick = metrics
+    .filter((m) => typeof m.delta_pct === 'number' && m.delta_pct > 0)
+    .sort((x, y) => y.delta_pct - x.delta_pct)
+    .slice(0, 3);
+  const bullets = ogPick.map((m) => `${m.label} ${m.current ?? ''}${m.unit || ''} (+${m.delta_pct}%)`.trim());
   const ogDesc = ([data.period_label, ...(bullets.length ? bullets : [a.destaque])].filter(Boolean) as string[]).join(' · ').slice(0, 200);
   const ogTitle = `Análise do Google · ${data.client_name}`;
 
