@@ -104,6 +104,7 @@ const NAV: NavEntry[] = [
     minRole: 'executor',
     items: [
       { title: 'Performance Geral', url: '/reports/overview', minRole: 'manager' },
+      { title: 'Relatório Google', url: '/reports/google', minRole: 'executor' },
       { title: 'Atividades', url: '/activity', minRole: 'executor' },
     ],
   },
