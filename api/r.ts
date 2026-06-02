@@ -1,8 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createAdminClient } from './_lib/supabase.js';
 
-const OG_IMAGE = 'https://storage.googleapis.com/gpt-engineer-file-uploads/iTwj66SatlYPSNq7ZvcurdSvxZH2/social-images/social-1773019952562-svi_logo.webp';
-
 const CSS = `
 *{box-sizing:border-box;margin:0;padding:0}
 .svir-root{--gold:#D4A82C;--gold-bright:#F0C744;--gold-light:#FDEBA8;--gold-dark:#9B7518;--amber:#E89A1C;--black:#0A0608;--black-2:#120B0F;--ink:#1A1218;--ink-2:#241820;--ink-3:#2E2028;--text:#F7F2E7;--text-2:#DCD1B8;--text-m:#A89B82;--text-mm:#6E634F;--green:#4ABE7C;--red:#E0726A;--line:rgba(245,241,232,0.08);--line-2:rgba(245,241,232,0.12);
@@ -95,6 +93,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .sort((x, y) => y.delta_pct - x.delta_pct)
     .slice(0, 3);
   const bullets = ogPick.map((m) => `${m.label} ${m.current ?? ''}${m.unit || ''} (+${m.delta_pct}%)`.trim());
+
+  // Imagem de preview gerada na hora (arte preto+dourado com cliente, data e bullets)
+  const ogImg = `https://${host}/api/oimg?client=${encodeURIComponent(data.client_name || '')}&period=${encodeURIComponent(data.period_label || '')}&b=${encodeURIComponent(bullets.join('|'))}`;
   const ogDesc = ([data.period_label, ...(bullets.length ? bullets : [a.destaque])].filter(Boolean) as string[]).join(' · ').slice(0, 200);
   const ogTitle = `Análise do Google · ${data.client_name}`;
 
@@ -140,13 +141,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 <meta property="og:type" content="article">
 <meta property="og:title" content="${esc(ogTitle)}">
 <meta property="og:description" content="${esc(ogDesc)}">
-<meta property="og:image" content="${OG_IMAGE}">
+<meta property="og:image" content="${ogImg}">
 <meta property="og:url" content="${esc(pageUrl)}">
 <meta property="og:site_name" content="SVI Company">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${esc(ogTitle)}">
 <meta name="twitter:description" content="${esc(ogDesc)}">
-<meta name="twitter:image" content="${OG_IMAGE}">
+<meta name="twitter:image" content="${ogImg}">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap">
 <style>${CSS}</style>
 </head><body><div class="svir-root"><div class="svir-wrap">
