@@ -100,7 +100,7 @@ export default function PublicGoogleReport() {
 
   useEffect(() => {
     let alive = true
-    fetch(`/api/reports/google/${slug}`)
+    fetch(`/api/reports/google/view?slug=${encodeURIComponent(slug || '')}`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((d) => { if (alive) { setReport(d.report); setState('ok') } })
       .catch(() => { if (alive) setState('notfound') })
