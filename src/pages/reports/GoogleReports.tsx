@@ -46,31 +46,38 @@ function hojeData() {
   return `${d.getDate()} de ${MESES[d.getMonth()].toLowerCase()} de ${d.getFullYear()}`
 }
 
-/** Comprime o print no navegador (max 1280px, jpeg) e devolve base64 puro. */
+/** Comprime o print no navegador (max 1100px, jpeg) e devolve base64 puro. Falha alto. */
 async function fileToBase64(file: File): Promise<{ data: string; mediaType: 'image/jpeg' }> {
+  if (/heic|heif/i.test(file.type) || /\.(heic|heif)$/i.test(file.name)) {
+    throw new Error('formato HEIC não funciona, mande PNG ou JPG (no iPhone use um print da tela)')
+  }
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const r = new FileReader()
     r.onload = () => resolve(r.result as string)
-    r.onerror = reject
+    r.onerror = () => reject(new Error('não consegui ler o arquivo'))
     r.readAsDataURL(file)
   })
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
     const i = new Image()
-    i.onload = () => resolve(i)
-    i.onerror = reject
+    const t = setTimeout(() => reject(new Error('tempo esgotado lendo a imagem')), 15000)
+    i.onload = () => { clearTimeout(t); resolve(i) }
+    i.onerror = () => { clearTimeout(t); reject(new Error('não consegui decodificar a imagem (formato?)')) }
     i.src = dataUrl
   })
-  const max = 1280
-  const scale = Math.min(1, max / Math.max(img.width, img.height))
+  const max = 1100
+  const scale = Math.min(1, max / Math.max(img.width || 1, img.height || 1))
   const canvas = document.createElement('canvas')
-  canvas.width = Math.round(img.width * scale)
-  canvas.height = Math.round(img.height * scale)
-  const ctx = canvas.getContext('2d')!
+  canvas.width = Math.max(1, Math.round((img.width || 1) * scale))
+  canvas.height = Math.max(1, Math.round((img.height || 1) * scale))
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('navegador não suporta canvas')
   ctx.fillStyle = '#fff'
   ctx.fillRect(0, 0, canvas.width, canvas.height)
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-  const out = canvas.toDataURL('image/jpeg', 0.82)
-  return { data: out.split(',')[1], mediaType: 'image/jpeg' }
+  const out = canvas.toDataURL('image/jpeg', 0.72)
+  const data = out.split(',')[1]
+  if (!data) throw new Error('falha ao comprimir a imagem')
+  return { data, mediaType: 'image/jpeg' }
 }
 
 function DeltaBadge({ pct }: { pct: number | null }) {
@@ -124,9 +131,15 @@ export default function GoogleReports() {
   const publicUrl = (slug: string) => `${window.location.origin}/r/${slug}`
 
   function onPick(list: FileList | null) {
-    if (!list) return
-    const imgs = Array.from(list).filter((f) => f.type.startsWith('image/'))
-    setFiles((prev) => [...prev, ...imgs].slice(0, 10))
+    if (!list || list.length === 0) return
+    const all = Array.from(list)
+    const imgs = all.filter((f) => f.type.startsWith('image/') || /\.(png|jpe?g|webp|heic|heif)$/i.test(f.name))
+    const ignored = all.length - imgs.length
+    if (ignored > 0) toast.error(`${ignored} arquivo(s) ignorado(s) (não é imagem)`)
+    if (imgs.length) {
+      setFiles((prev) => [...prev, ...imgs].slice(0, 12))
+      toast.success(`${imgs.length} print(s) adicionado(s)`)
+    }
   }
 
   async function generate() {
@@ -134,15 +147,27 @@ export default function GoogleReports() {
     if (files.length === 0) return toast.error('Suba pelo menos um print')
     setGenerating(true)
     try {
-      const images = await Promise.all(files.map(fileToBase64))
+      // Cada print falha sozinho (com o nome), sem derrubar o lote nem pendurar
+      const settled = await Promise.allSettled(files.map(fileToBase64))
+      const images: { data: string; mediaType: string }[] = []
+      const fails: string[] = []
+      settled.forEach((r, i) => {
+        if (r.status === 'fulfilled') images.push(r.value)
+        else fails.push(`${files[i].name.slice(0, 20)}: ${r.reason?.message || 'erro'}`)
+      })
+      if (fails.length) toast.error(`Print com problema — ${fails.join(' · ')}`)
+      if (images.length === 0) { toast.error('Nenhum print pôde ser lido. Tente PNG/JPG.'); setGenerating(false); return }
+
       const { data: { session } } = await supabase.auth.getSession()
       const res = await fetch('/api/reports/google/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
         body: JSON.stringify({ clientId, periodLabel: period, analysis, reviewMessages, images }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.detail?.formErrors?.join(', ') || data.error || 'Falha na análise')
+      const txt = await res.text()
+      let data: any = {}
+      try { data = JSON.parse(txt) } catch { throw new Error(`Servidor respondeu ${res.status}: ${txt.slice(0, 120) || 'sem corpo'}`) }
+      if (!res.ok) throw new Error(data.detail?.formErrors?.join(', ') || data.detail || data.error || `Falha (${res.status})`)
       setCurrent(data.report)
       setFiles([])
       qc.invalidateQueries({ queryKey: ['google-reports', clientId] })
