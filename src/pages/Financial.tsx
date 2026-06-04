@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { DollarSign, TrendingUp, TrendingDown, Percent, Plus, CheckCircle, Send, AlertCircle, Clock, Calendar, CalendarCheck, Pencil, Trash2, Undo2 } from 'lucide-react'
+import { DollarSign, TrendingUp, TrendingDown, Percent, Plus, CheckCircle, Send, AlertCircle, Clock, Calendar, CalendarCheck, Pencil, Trash2, Undo2, ExternalLink, Repeat } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { Invoice, Expense, formatCurrency, formatDate } from '@/types'
@@ -21,6 +21,22 @@ import {
 } from 'recharts'
 
 type InvoiceWithClient = Invoice & { clients?: { name: string } }
+
+type CobrancaManual = {
+  id: string
+  cliente_nome: string
+  descricao: string
+  metodo: string
+  recorrencia: string
+  dia_mes: number | null
+  valor: number | null
+  contato: string | null
+  observacoes: string | null
+  status: string
+  proximo_vencimento: string | null
+  clickup_task_id: string | null
+  ativo: boolean
+}
 
 type ActiveClient = {
   id: string
@@ -197,6 +213,7 @@ export default function Financial() {
   const usdRate = useUsdRate()
   const [invoices, setInvoices] = useState<InvoiceWithClient[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [cobrancasManuais, setCobrancasManuais] = useState<CobrancaManual[]>([])
   const [activeClientsMrr, setActiveClientsMrr] = useState<number | null>(null)
   const [activeClients, setActiveClients] = useState<ActiveClient[]>([])
   const [loading, setLoading] = useState(true)
@@ -211,13 +228,15 @@ export default function Financial() {
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null)
 
   const fetchData = useCallback(async () => {
-    const [{ data: inv }, { data: exp }, { data: clientsData }] = await Promise.all([
+    const [{ data: inv }, { data: exp }, { data: clientsData }, { data: cobrancasData }] = await Promise.all([
       supabase.from('invoices').select('*, clients(name)').order('vencimento'),
       supabase.from('expenses').select('*').order('vencimento'),
       supabase.from('clients').select('id, name, company, mrr, currency, status, dia_vencimento, instagram'),
+      supabase.from('cobrancas_manuais').select('*').eq('ativo', true).order('proximo_vencimento', { ascending: true, nullsFirst: false }),
     ])
     setInvoices(inv || [])
     setExpenses(exp || [])
+    setCobrancasManuais((cobrancasData as CobrancaManual[]) || [])
     if (clientsData) {
       const active = clientsData.filter(c => c.status === 'ativo')
       setActiveClients(active as ActiveClient[])
@@ -225,6 +244,31 @@ export default function Financial() {
     }
     setLoading(false)
   }, [])
+
+  const markCobrancaPaga = async (c: CobrancaManual) => {
+    if (c.recorrencia === 'avulso') {
+      // Avulso: marca como inativo (some da lista)
+      await supabase.from('cobrancas_manuais').update({ ativo: false, status: 'pago' }).eq('id', c.id)
+    } else {
+      // Recorrente: avança o proximo_vencimento pro próximo ciclo
+      let next: Date | null = null
+      if (c.recorrencia === 'mensal' && c.dia_mes) {
+        const d = new Date(c.proximo_vencimento || new Date())
+        d.setMonth(d.getMonth() + 1)
+        next = d
+      } else if (c.recorrencia === 'semanal') {
+        const d = new Date(c.proximo_vencimento || new Date())
+        d.setDate(d.getDate() + 7)
+        next = d
+      }
+      await supabase.from('cobrancas_manuais').update({
+        proximo_vencimento: next ? next.toISOString().split('T')[0] : c.proximo_vencimento,
+        status: 'ativo',
+      }).eq('id', c.id)
+    }
+    toast({ title: `${c.cliente_nome} marcada como recebida` })
+    fetchData()
+  }
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -388,6 +432,7 @@ export default function Financial() {
         <TabsList className="bg-muted">
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
           <TabsTrigger value="cobranca">Cobrança</TabsTrigger>
+          <TabsTrigger value="manuais">Cobranças Manuais</TabsTrigger>
           <TabsTrigger value="receivable">Contas a Receber</TabsTrigger>
           <TabsTrigger value="payable">Contas a Pagar</TabsTrigger>
           <TabsTrigger value="dre">DRE</TabsTrigger>
@@ -506,6 +551,95 @@ export default function Financial() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        {/* COBRANÇAS MANUAIS (pix/boleto não-MRR + recorrência semanal + avulsos) */}
+        <TabsContent value="manuais" className="space-y-4 mt-4">
+          <Card className="border-border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Repeat className="h-4 w-4 text-primary" /> Cobranças Manuais (Pix / Boleto)
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Cobranças que não são MRR automático — pix mensal, boletos manuais, pendências avulsas. Cada linha tem espelho no ClickUp (lista 💰 Cobranças Recorrentes SVI).
+              </p>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead>Método</TableHead>
+                    <TableHead>Recorrência</TableHead>
+                    <TableHead>Contato</TableHead>
+                    <TableHead>Próximo Venc.</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {cobrancasManuais.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-muted-foreground text-sm py-8">
+                        Nenhuma cobrança manual ativa. Migration ainda não rodou?
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {cobrancasManuais.map(c => {
+                    const venc = c.proximo_vencimento ? new Date(c.proximo_vencimento) : null
+                    const vencStr = venc ? venc.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '—'
+                    const isOverdue = venc && venc < new Date()
+                    return (
+                      <TableRow key={c.id} className="border-border hover:bg-muted/20">
+                        <TableCell className="text-sm font-medium">{c.cliente_nome}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-[280px] truncate" title={c.descricao}>
+                          {c.descricao}
+                          {c.observacoes && (
+                            <div className="text-[10px] text-warning mt-0.5">⚠ {c.observacoes}</div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-[10px] capitalize">{c.metodo}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={`text-[10px] capitalize ${c.recorrencia === 'avulso' ? 'bg-warning/10 text-warning border-warning/30' : 'bg-primary/10 text-primary border-primary/30'}`}>
+                            {c.recorrencia} {c.dia_mes ? `(dia ${c.dia_mes})` : ''}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{c.contato || '—'}</TableCell>
+                        <TableCell className={`text-sm ${isOverdue ? 'text-danger font-bold' : 'text-foreground'}`}>{vencStr}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            {c.clickup_task_id && (
+                              <a
+                                href={`https://app.clickup.com/t/${c.clickup_task_id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Abrir no ClickUp"
+                              >
+                                <Button variant="ghost" size="icon" className="h-7 w-7">
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                </Button>
+                              </a>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs gap-1 text-success hover:text-success"
+                              onClick={() => markCobrancaPaga(c)}
+                              title={c.recorrencia === 'avulso' ? 'Marcar como resolvido' : 'Recebido — avança próximo vencimento'}
+                            >
+                              <CheckCircle className="h-3.5 w-3.5" /> {c.recorrencia === 'avulso' ? 'Resolvido' : 'Recebido'}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* RECEIVABLE */}
