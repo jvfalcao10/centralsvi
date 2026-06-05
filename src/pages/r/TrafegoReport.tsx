@@ -15,6 +15,13 @@ interface ReportRow {
   reach: number
   clicks: number
   ctr: number
+  frequency: number | null
+  conv_count: number | null
+  first_reply_count: number | null
+  d2_count: number | null
+  leads_count: number | null
+  purchase_count: number | null
+  cpmsg_cents: number | null
   currency: string
   status: string
   generated_at: string
@@ -77,6 +84,11 @@ export default function TrafegoReport() {
   const ctrPct = (data.ctr * 100).toFixed(2).replace('.', ',')
   const insight = interpretar(data.ctr, data.reach)
 
+  const conv = data.conv_count ?? 0
+  const leads = data.leads_count ?? 0
+  const purchases = data.purchase_count ?? 0
+  const hasResults = conv > 0 || leads > 0 || purchases > 0
+
   return (
     <div style={styles.root}>
       <style>{globalCss}</style>
@@ -126,7 +138,7 @@ export default function TrafegoReport() {
       </section>
 
       {/* Pessoas alcançadas */}
-      <section style={{ ...styles.section, paddingBottom: 80 }}>
+      <section style={{ ...styles.section, paddingBottom: hasResults ? 32 : 80 }}>
         <div style={styles.container}>
           <div style={styles.secondaryMetric}>
             <p style={styles.metricEyebrow}>Pessoas únicas alcançadas</p>
@@ -137,6 +149,39 @@ export default function TrafegoReport() {
           </div>
         </div>
       </section>
+
+      {/* Resultados — só aparece se houver conversa/lead/compra */}
+      {hasResults && (
+        <section style={{ ...styles.section, paddingBottom: 80 }}>
+          <div style={styles.container}>
+            <h2 style={styles.sectionHeadDark}>O que veio dessas pessoas</h2>
+            <div style={styles.resultCards}>
+              {conv > 0 && (
+                <ResultCard
+                  label="Conversas iniciadas"
+                  value={nf(conv)}
+                  help="Pessoas que clicaram no anúncio e mandaram a primeira mensagem no WhatsApp."
+                  big
+                />
+              )}
+              {leads > 0 && (
+                <ResultCard
+                  label="Cadastros recebidos"
+                  value={nf(leads)}
+                  help="Pessoas que preencheram o formulário direto no Facebook/Instagram."
+                />
+              )}
+              {purchases > 0 && (
+                <ResultCard
+                  label="Compras registradas"
+                  value={nf(purchases)}
+                  help="Pessoas que finalizaram compra após verem ou clicarem no anúncio."
+                />
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* 3 cards explicativos — fundo claro */}
       <section style={styles.sectionLight}>
@@ -182,6 +227,11 @@ export default function TrafegoReport() {
                 <>
                   Dessas, <strong style={{ color: COLORS.text }}>{nf(data.clicks)} pessoas</strong> clicaram para saber
                   mais sobre você (<strong style={{ color: COLORS.text }}>{ctrPct}%</strong> de interesse).{' '}
+                </>
+              )}
+              {conv > 0 && (
+                <>
+                  E o mais importante: <strong style={{ color: COLORS.goldBright }}>{nf(conv)} {conv === 1 ? 'pessoa começou' : 'pessoas começaram'} uma conversa no WhatsApp</strong>{leads > 0 && <> e mais <strong style={{ color: COLORS.text }}>{nf(leads)} {leads === 1 ? 'cadastro foi' : 'cadastros foram'}</strong> recebidos</>}.{' '}
                 </>
               )}
               {insight.frase}
@@ -393,6 +443,20 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'center' as const,
     margin: '0 0 32px',
   },
+  sectionHeadDark: {
+    fontSize: 12,
+    color: COLORS.goldBright,
+    fontWeight: 500,
+    letterSpacing: '0.15em',
+    textTransform: 'uppercase' as const,
+    textAlign: 'center' as const,
+    margin: '0 0 32px',
+  },
+  resultCards: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+    gap: 16,
+  },
   cards: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
@@ -478,6 +542,34 @@ function ExplainCard({ label, value, help }: { label: string; value: string; hel
       <p style={cardStyles.label}>{label}</p>
       <p style={cardStyles.value}>{value}</p>
       <p style={cardStyles.help}>{help}</p>
+    </div>
+  )
+}
+
+function ResultCard({ label, value, help, big }: { label: string; value: string; help: string; big?: boolean }) {
+  return (
+    <div style={{
+      background: big
+        ? `linear-gradient(160deg, rgba(240,199,68,0.16) 0%, rgba(212,168,44,0.06) 60%, rgba(155,117,24,0.02) 100%)`
+        : COLORS.ink2,
+      border: big
+        ? `1px solid rgba(240,199,68,0.30)`
+        : `1px solid ${COLORS.line2}`,
+      borderRadius: 20,
+      padding: '32px 24px',
+      textAlign: 'center' as const,
+    }}>
+      <p style={{ ...cardStyles.label, color: big ? COLORS.goldBright : COLORS.textM }}>{label}</p>
+      <p style={{
+        fontSize: big ? 48 : 36,
+        fontWeight: 700,
+        color: COLORS.text,
+        letterSpacing: '-0.025em',
+        margin: '0 0 16px',
+        lineHeight: 1,
+        fontVariantNumeric: 'tabular-nums' as any,
+      }}>{value}</p>
+      <p style={{ fontSize: 13, color: COLORS.text2, lineHeight: 1.6, margin: 0 }}>{help}</p>
     </div>
   )
 }
