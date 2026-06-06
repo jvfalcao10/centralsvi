@@ -54,10 +54,10 @@ CREATE POLICY traffic_audits_select_authenticated ON traffic_account_audits
   FOR SELECT
   TO authenticated
   USING (
-    public.has_min_role(auth.uid(), 'manager')
+    public.has_min_role('manager'::app_role)
     OR EXISTS (
       SELECT 1 FROM public.user_roles ur
-      WHERE ur.user_id = auth.uid() AND ur.role = 'traffic'
+      WHERE ur.user_id = auth.uid() AND ur.role = 'traffic'::app_role
     )
   );
 
