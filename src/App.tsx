@@ -29,6 +29,8 @@ import Team from "@/pages/Team";
 import Approvals from "@/pages/Approvals";
 import Comercial from "@/pages/Comercial";
 import Trafego from "@/pages/Trafego";
+import TrafegoAnalises from "@/pages/TrafegoAnalises";
+import TrafegoAnaliseDetalhe from "@/pages/TrafegoAnaliseDetalhe";
 import ReportsOverview from "@/pages/reports/Overview";
 import GoogleReports from "@/pages/reports/GoogleReports";
 
@@ -131,6 +133,12 @@ const App = () => (
               } />
               <Route path="/operacional/trafego" element={
                 <ProtectedRoute requiredRole="manager" allowTraffic><AppLayout><Trafego /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/operacional/trafego/analises" element={
+                <ProtectedRoute requiredRole="manager" allowTraffic><AppLayout><TrafegoAnalises /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/operacional/trafego/analises/:accountId" element={
+                <ProtectedRoute requiredRole="manager" allowTraffic><AppLayout><TrafegoAnaliseDetalhe /></AppLayout></ProtectedRoute>
               } />
               <Route path="/reports/overview" element={
                 <ProtectedRoute requiredRole="manager"><AppLayout><ReportsOverview /></AppLayout></ProtectedRoute>

@@ -49,6 +49,7 @@ type NavEntry = NavGroup | NavSingle
 /** Menu reduzido para role 'traffic' (gestor de tráfego, escopo restrito). */
 const NAV_TRAFFIC: NavEntry[] = [
   { type: 'item', title: 'Tráfego', url: '/operacional/trafego', icon: Activity, minRole: 'executor' },
+  { type: 'item', title: 'Análises', url: '/operacional/trafego/analises', icon: Activity, minRole: 'executor' },
 ]
 
 const NAV: NavEntry[] = [
@@ -92,6 +93,7 @@ const NAV: NavEntry[] = [
       { title: 'Onboarding', url: '/onboarding', minRole: 'manager' },
       { title: 'Entregas', url: '/deliveries', minRole: 'executor', badgeKey: 'deliveries' },
       { title: 'Tráfego', url: '/operacional/trafego', minRole: 'manager' },
+      { title: 'Análises de Tráfego', url: '/operacional/trafego/analises', minRole: 'manager' },
     ],
   },
 
