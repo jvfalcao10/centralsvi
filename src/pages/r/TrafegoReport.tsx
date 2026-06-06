@@ -76,6 +76,23 @@ export default function TrafegoReport() {
     },
   })
 
+  // Histórico das últimas 8 semanas do mesmo account_id (incluindo a atual)
+  const { data: history } = useQuery({
+    queryKey: ['weekly-traffic-history', data?.account_id],
+    enabled: !!data?.account_id,
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from('weekly_traffic_reports' as never)
+        .select('slug,period_start,period_end,spend_cents,reach,conv_count,leads_count,purchase_count,cpmsg_cents,frequency')
+        .eq('account_id', data!.account_id)
+        .in('status', ['approved', 'sent', 'pending'])
+        .order('period_end', { ascending: false })
+        .limit(8)
+      if (error) throw error
+      return (rows || []) as unknown as ReportRow[]
+    },
+  })
+
   if (isLoading) return <Loading />
   if (error || !data) return <Notice title="Relatório não encontrado">O link expirou ou está incorreto. Solicite um novo relatório com a equipe SVI Company.</Notice>
   if (data.status === 'rejected' || data.status === 'failed') return <Notice title="Relatório indisponível">Entre em contato com a equipe SVI Company para mais detalhes.</Notice>
@@ -88,6 +105,23 @@ export default function TrafegoReport() {
   const leads = data.leads_count ?? 0
   const purchases = data.purchase_count ?? 0
   const hasResults = conv > 0 || leads > 0 || purchases > 0
+
+  // Histórico para evolução + comparativo (exclui semana atual)
+  const historyAsc = (history ?? []).slice().sort((a, b) => a.period_end.localeCompare(b.period_end))
+  const previousWeeks = (history ?? []).filter(h => h.period_end !== data.period_end).slice(0, 4)
+  const hasHistory = historyAsc.length >= 2
+  const hasComparison = previousWeeks.length >= 2
+
+  const avg = (arr: number[]) => arr.length ? arr.reduce((s, n) => s + n, 0) / arr.length : 0
+  const delta = (curr: number, base: number) => base === 0 ? null : ((curr - base) / base) * 100
+
+  const avgSpend = avg(previousWeeks.map(h => h.spend_cents))
+  const avgConv = avg(previousWeeks.map(h => h.conv_count ?? 0))
+  const avgReach = avg(previousWeeks.map(h => h.reach))
+
+  const dSpend = delta(data.spend_cents, avgSpend)
+  const dConv = delta(conv, avgConv)
+  const dReach = delta(data.reach, avgReach)
 
   return (
     <div style={styles.root}>
@@ -178,6 +212,68 @@ export default function TrafegoReport() {
                   help="Pessoas que finalizaram compra após verem ou clicarem no anúncio."
                 />
               )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Comparativo com média das semanas anteriores */}
+      {hasComparison && (
+        <section style={{ ...styles.section, paddingBottom: 32 }}>
+          <div style={styles.container}>
+            <h2 style={styles.sectionHeadDark}>Comparado com as últimas semanas</h2>
+            <p style={styles.compareIntro}>
+              Vendo apenas a média das últimas {previousWeeks.length} semanas anteriores, esta semana ficou:
+            </p>
+            <div style={styles.compareCards}>
+              <CompareCard
+                label="Investimento"
+                current={brl(data.spend_cents)}
+                base={`média anterior: ${brl(avgSpend)}`}
+                deltaPct={dSpend}
+                lowerIsBetter={false}
+                neutralIfClose
+              />
+              <CompareCard
+                label="Conversas no WhatsApp"
+                current={nf(conv)}
+                base={`média anterior: ${nf(Math.round(avgConv))}`}
+                deltaPct={dConv}
+                lowerIsBetter={false}
+              />
+              <CompareCard
+                label="Pessoas alcançadas"
+                current={nf(data.reach)}
+                base={`média anterior: ${nf(Math.round(avgReach))}`}
+                deltaPct={dReach}
+                lowerIsBetter={false}
+                neutralIfClose
+              />
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Evolução nas últimas semanas */}
+      {hasHistory && (
+        <section style={{ ...styles.section, paddingBottom: 64 }}>
+          <div style={styles.container}>
+            <h2 style={styles.sectionHeadDark}>Evolução das últimas {historyAsc.length} semanas</h2>
+            <div style={styles.historyGrid}>
+              <HistoryChart
+                title="Conversas no WhatsApp"
+                rows={historyAsc}
+                getValue={h => h.conv_count ?? 0}
+                fmt={v => nf(v)}
+                currentPeriodEnd={data.period_end}
+              />
+              <HistoryChart
+                title="Investimento em mídia"
+                rows={historyAsc}
+                getValue={h => h.spend_cents}
+                fmt={v => brl(v)}
+                currentPeriodEnd={data.period_end}
+              />
             </div>
           </div>
         </section>
@@ -457,6 +553,25 @@ const styles: Record<string, React.CSSProperties> = {
     gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
     gap: 16,
   },
+  compareIntro: {
+    fontSize: 14,
+    color: COLORS.textM,
+    textAlign: 'center' as const,
+    maxWidth: 580,
+    margin: '0 auto 28px',
+    lineHeight: 1.6,
+  },
+  compareCards: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gap: 14,
+  },
+  historyGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+    gap: 20,
+    marginTop: 8,
+  },
   cards: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
@@ -542,6 +657,156 @@ function ExplainCard({ label, value, help }: { label: string; value: string; hel
       <p style={cardStyles.label}>{label}</p>
       <p style={cardStyles.value}>{value}</p>
       <p style={cardStyles.help}>{help}</p>
+    </div>
+  )
+}
+
+function CompareCard({
+  label, current, base, deltaPct, lowerIsBetter, neutralIfClose,
+}: {
+  label: string
+  current: string
+  base: string
+  deltaPct: number | null
+  lowerIsBetter?: boolean
+  neutralIfClose?: boolean
+}) {
+  const closeThreshold = 8 // %
+  let tone: 'up' | 'down' | 'flat' = 'flat'
+  let arrow = '→'
+  let toneColor = COLORS.textM
+  let toneBg = 'rgba(168,155,130,0.10)'
+  if (deltaPct !== null) {
+    const abs = Math.abs(deltaPct)
+    if (neutralIfClose && abs < closeThreshold) {
+      tone = 'flat'
+    } else if (deltaPct > 0) {
+      tone = lowerIsBetter ? 'down' : 'up'
+    } else if (deltaPct < 0) {
+      tone = lowerIsBetter ? 'up' : 'down'
+    }
+    if (tone === 'up') {
+      arrow = '▲'
+      toneColor = COLORS.green
+      toneBg = 'rgba(74,190,124,0.12)'
+    } else if (tone === 'down') {
+      arrow = '▼'
+      toneColor = '#E0726A'
+      toneBg = 'rgba(224,114,106,0.12)'
+    }
+  }
+  const sign = deltaPct === null ? '' : deltaPct > 0 ? '+' : ''
+  return (
+    <div style={{
+      background: COLORS.ink2,
+      border: `1px solid ${COLORS.line2}`,
+      borderRadius: 18,
+      padding: '22px 22px',
+    }}>
+      <p style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: COLORS.textM, margin: '0 0 14px' }}>
+        {label}
+      </p>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 10 }}>
+        <span style={{ fontSize: 28, fontWeight: 700, color: COLORS.text, letterSpacing: '-0.02em', lineHeight: 1, fontVariantNumeric: 'tabular-nums' as any }}>
+          {current}
+        </span>
+        {deltaPct !== null && (
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '4px 9px',
+            borderRadius: 999,
+            background: toneBg,
+            color: toneColor,
+            fontSize: 12,
+            fontWeight: 600,
+            fontVariantNumeric: 'tabular-nums' as any,
+          }}>
+            {arrow} {sign}{deltaPct.toFixed(0)}%
+          </span>
+        )}
+      </div>
+      <p style={{ fontSize: 12, color: COLORS.textM, margin: 0 }}>{base}</p>
+    </div>
+  )
+}
+
+function HistoryChart({
+  title, rows, getValue, fmt, currentPeriodEnd,
+}: {
+  title: string
+  rows: ReportRow[]
+  getValue: (h: ReportRow) => number
+  fmt: (v: number) => string
+  currentPeriodEnd: string
+}) {
+  const max = Math.max(...rows.map(getValue), 1)
+  const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+  function shortLabel(iso: string) {
+    const [, m, d] = iso.split('-').map(Number)
+    return `${d.toString().padStart(2, '0')}/${months[m - 1]}`
+  }
+  return (
+    <div style={{
+      background: COLORS.ink2,
+      border: `1px solid ${COLORS.line2}`,
+      borderRadius: 18,
+      padding: '24px 22px',
+    }}>
+      <p style={{ fontSize: 12, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: COLORS.goldBright, margin: '0 0 18px' }}>
+        {title}
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {rows.map((h) => {
+          const v = getValue(h)
+          const pct = (v / max) * 100
+          const isCurrent = h.period_end === currentPeriodEnd
+          return (
+            <div key={h.period_end} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{
+                fontSize: 11,
+                color: isCurrent ? COLORS.goldBright : COLORS.textM,
+                fontWeight: isCurrent ? 600 : 500,
+                width: 56,
+                flexShrink: 0,
+                fontVariantNumeric: 'tabular-nums' as any,
+              }}>
+                {shortLabel(h.period_end)}
+              </span>
+              <div style={{
+                flex: 1,
+                height: 22,
+                background: 'rgba(245,241,232,0.04)',
+                borderRadius: 6,
+                overflow: 'hidden',
+                position: 'relative',
+              }}>
+                <div style={{
+                  width: `${Math.max(pct, 2)}%`,
+                  height: '100%',
+                  background: isCurrent
+                    ? `linear-gradient(90deg, ${COLORS.goldBright}, ${COLORS.gold})`
+                    : 'rgba(240,199,68,0.30)',
+                  borderRadius: 6,
+                  transition: 'width 0.3s',
+                }} />
+              </div>
+              <span style={{
+                fontSize: 12,
+                color: isCurrent ? COLORS.text : COLORS.text2,
+                fontWeight: isCurrent ? 600 : 500,
+                width: 78,
+                flexShrink: 0,
+                textAlign: 'right' as const,
+                fontVariantNumeric: 'tabular-nums' as any,
+              }}>
+                {fmt(v)}
+              </span>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
