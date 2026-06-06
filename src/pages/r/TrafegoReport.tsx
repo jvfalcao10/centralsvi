@@ -77,19 +77,26 @@ export default function TrafegoReport() {
   })
 
   // Histórico das últimas 8 semanas do mesmo account_id (incluindo a atual)
+  // Dedup por period_end (pega a versão mais recente caso haja múltiplas execuções pra mesma semana)
   const { data: history } = useQuery({
     queryKey: ['weekly-traffic-history', data?.account_id],
     enabled: !!data?.account_id,
     queryFn: async () => {
       const { data: rows, error } = await supabase
         .from('weekly_traffic_reports' as never)
-        .select('slug,period_start,period_end,spend_cents,reach,conv_count,leads_count,purchase_count,cpmsg_cents,frequency')
+        .select('slug,period_start,period_end,spend_cents,reach,conv_count,leads_count,purchase_count,cpmsg_cents,frequency,generated_at')
         .eq('account_id', data!.account_id)
         .in('status', ['approved', 'sent', 'pending'])
         .order('period_end', { ascending: false })
-        .limit(8)
+        .order('generated_at', { ascending: false })
+        .limit(40)
       if (error) throw error
-      return (rows || []) as unknown as ReportRow[]
+      const list = (rows || []) as unknown as ReportRow[]
+      const byPeriod = new Map<string, ReportRow>()
+      for (const r of list) {
+        if (!byPeriod.has(r.period_end)) byPeriod.set(r.period_end, r)
+      }
+      return Array.from(byPeriod.values()).slice(0, 8)
     },
   })
 
