@@ -1,6 +1,7 @@
 {
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/r/trafego/:slug", "destination": "/index.html" },
     { "source": "/r/(.*)", "destination": "/api/r?slug=$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
