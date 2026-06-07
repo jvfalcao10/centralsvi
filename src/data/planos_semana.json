@@ -1,0 +1,754 @@
+[
+  {
+    "label": "felipe_branco",
+    "display": "Dr. Felipe Branco",
+    "vertical": "Cirurgia bariátrica",
+    "icone": "🏥",
+    "resp": "Aleilson + João",
+    "severidade": "medio",
+    "contexto": "Conta substituta (após banimento). CTR 2,17% e CPmsg R$ 5,30 saudáveis em 90d, mas mono-campanha + mono-adset com IG Reels a R$ 7,96 CPmsg ainda no mix. ADS 01 (colecistectomia) com R$ 71/3,88% CTR pediu escala.",
+    "meta": "CPmsg ≤ R$ 5,50 + 27,7% conversas sem 1ª resposta caem para ≤ 15%",
+    "acoes": [
+      {
+        "dia": "SEG 09/06",
+        "ação": "Subir spend cap (urgente, antes de quinta — conta substituta). Pedir cliente reabastecer cartão.",
+        "resp": "Aleilson + João (cobrar Felipe)",
+        "tempo": "15 min",
+        "impacto": "Não pausa conta"
+      },
+      {
+        "dia": "SEG 09/06",
+        "ação": "Pausar IG Reels prospecting + 18-24 + 65+ feminino",
+        "resp": "Aleilson",
+        "tempo": "10 min",
+        "impacto": "+R$ 50/sem liberados"
+      },
+      {
+        "dia": "TER 10/06",
+        "ação": "Configurar CAPI no Kommo Felipe Branco → evento Lead Qualificado (n8n existente)",
+        "resp": "João",
+        "tempo": "2h",
+        "impacto": "Algoritmo deixa de otimizar cego"
+      },
+      {
+        "dia": "QUA 11/06",
+        "ação": "Duplicar ADS 01 (colecistectomia) em 2 variações segmentadas: F 35-55 e M 30-55",
+        "resp": "Aleilson",
+        "tempo": "30 min",
+        "impacto": "Valida ângulo casamento de público"
+      },
+      {
+        "dia": "SEX 13/06",
+        "ação": "Reunião 30 min com clínica: discutir SLA atendimento WhatsApp (perdem 27,7%)",
+        "resp": "João",
+        "tempo": "30 min",
+        "impacto": "Funil 1ªResp sobe de 72% pra 85%"
+      }
+    ]
+  },
+  {
+    "label": "daniel_peralba",
+    "display": "Dr. Daniel Peralba",
+    "vertical": "Proctologia",
+    "icone": "🏥",
+    "resp": "Aleilson + Daniel",
+    "severidade": "alto",
+    "contexto": "194 conversas em 194 dias, R$ 4.887, zero paciente mensurado. Ângulo \"pomada não resolve\" validado mas Daniel rosto nunca foi pro ar.",
+    "meta": "Gravar 4 criativos com Daniel rosto + CAPI Kommo implementado",
+    "acoes": [
+      {
+        "dia": "SEG 09/06",
+        "ação": "Marcar gravação dos 4 vídeos com Daniel (consultório, direto câmera, carioca leve)",
+        "resp": "João (alinhar com Daniel)",
+        "tempo": "15 min",
+        "impacto": "Refresh criativo na semana 2"
+      },
+      {
+        "dia": "SEG 09/06",
+        "ação": "Pausar campanha TRÁFEGO que queimou R$ 536 com 1 mensagem (CPmsg R$ 536)",
+        "resp": "Aleilson",
+        "tempo": "5 min",
+        "impacto": "+R$ 18/dia liberados"
+      },
+      {
+        "dia": "TER 10/06",
+        "ação": "Configurar CAPI Kommo → Meta (workflow n8n) com evento Lead + Schedule",
+        "resp": "João",
+        "tempo": "3h",
+        "impacto": "Tracking de paciente real"
+      },
+      {
+        "dia": "QUI 12/06",
+        "ação": "Gravar os 4 vídeos no consultório (ângulos: tabu humanizado, diagnóstico precoce, cirurgia vs conservador, pós-parto)",
+        "resp": "João + Daniel",
+        "tempo": "2h",
+        "impacto": "Estoque criativo pra 60 dias"
+      },
+      {
+        "dia": "SEX 13/06",
+        "ação": "Subir 1ª variação Daniel rosto em adset teste F 28-55 R$ 15/dia",
+        "resp": "Aleilson",
+        "tempo": "20 min",
+        "impacto": "Validar tese semana 2"
+      }
+    ]
+  },
+  {
+    "label": "a_formula",
+    "display": "A Fórmula",
+    "vertical": "Farmácia de manipulação",
+    "icone": "💊",
+    "resp": "Aleilson",
+    "severidade": "alto",
+    "contexto": "R$ 374 (80% do spend 90d) queimados em Awareness sem CTA. Mulher 35-54 responde por 92% das conversões. 83% spend no Facebook com retorno zero.",
+    "meta": "Pivot completo: matar Awareness, ativar 3 campanhas por persona",
+    "acoes": [
+      {
+        "dia": "SEG 09/06",
+        "ação": "PAUSAR campanha Reconhecimento (queima R$ 4-5/dia) + cortar todos placements Facebook",
+        "resp": "Aleilson",
+        "tempo": "10 min",
+        "impacto": "Estanca sangria R$ 30/sem"
+      },
+      {
+        "dia": "SEG 09/06",
+        "ação": "Definir geofence raio 30km Redenção + dayparting 07h-22h",
+        "resp": "Aleilson",
+        "tempo": "15 min",
+        "impacto": "CPM cai 30%"
+      },
+      {
+        "dia": "TER 10/06",
+        "ação": "Briefing pro José: 3 criativos verticais com farmacêutico RT (emagrecedor manipulado / cápsula vs comprimido / fórmula personalizada). RT + CRF-PA visíveis (compliance Anvisa).",
+        "resp": "Aleilson + José",
+        "tempo": "30 min",
+        "impacto": "Mock 12/06, ar 16/06"
+      },
+      {
+        "dia": "QUA 11/06",
+        "ação": "Criar 3 campanhas MSG: Persona Estética (40% budget) / Persona Cuidadora (20%) / Persona Crônica (40%)",
+        "resp": "Aleilson",
+        "tempo": "1h",
+        "impacto": "Estrutura nova pronta pra ar"
+      },
+      {
+        "dia": "SEX 13/06",
+        "ação": "Reunião com farmacêutico RT: validar copies dos 3 ângulos compliance",
+        "resp": "João",
+        "tempo": "30 min",
+        "impacto": "Evita reprovação"
+      }
+    ]
+  },
+  {
+    "label": "espaco_soraia",
+    "display": "Espaço Soraia",
+    "vertical": "Varejo de moda",
+    "icone": "👗",
+    "resp": "Aleilson + Soraia",
+    "severidade": "alto",
+    "contexto": "R$ 748 (24% spend 90d) em LINK_CLICKS objetivo errado. SALES Look Gustavo Lima é janela quente. 65+ feminino CPmsg R$ 3,53 abandonado. Saldo zerado em pico sazonal.",
+    "meta": "Reabilitar saldo + triplicar budget SALES Gustavo Lima",
+    "acoes": [
+      {
+        "dia": "SEG 09/06",
+        "ação": "Cobrar Soraia: reabastecer cartão URGENTE (saldo zerou em pico)",
+        "resp": "João",
+        "tempo": "10 min",
+        "impacto": "Não perde janela Gustavo Lima"
+      },
+      {
+        "dia": "SEG 09/06",
+        "ação": "PAUSAR todas campanhas LINK_CLICKS (R$ 748 já queimados)",
+        "resp": "Aleilson",
+        "tempo": "10 min",
+        "impacto": "Verba pra SALES"
+      },
+      {
+        "dia": "TER 10/06",
+        "ação": "Triplicar budget SALES Look Gustavo Lima de R$ 30 → R$ 90/dia",
+        "resp": "Aleilson",
+        "tempo": "10 min",
+        "impacto": "Captura janela sazonal"
+      },
+      {
+        "dia": "QUA 11/06",
+        "ação": "Criar adset dedicado FEMALE 55+ no SALES (CPmsg R$ 3,53 escondido)",
+        "resp": "Aleilson",
+        "tempo": "20 min",
+        "impacto": "Ouro abandonado"
+      },
+      {
+        "dia": "SEX 13/06",
+        "ação": "Briefing pro José: novo carrossel Look Gustavo Lima pra entrar sábado 14/06",
+        "resp": "Aleilson + José",
+        "tempo": "30 min",
+        "impacto": "Refresh no pico do fds"
+      }
+    ]
+  },
+  {
+    "label": "christo_rei",
+    "display": "Colégio Christo Rei",
+    "vertical": "Educação",
+    "icone": "🎓",
+    "resp": "Aleilson + Andréia",
+    "severidade": "critical",
+    "contexto": "Saldo R$ 24,76, para em 24h. R$ 2.350 em 68d gerou 6 conversas. 85% verba em VW/Tráfego sem objetivo de conversa. Junho = mês quieto, ago-set é a janela real.",
+    "meta": "Estabilizar + reposicionar pra rematrícula (60% do budget anual)",
+    "acoes": [
+      {
+        "dia": "SEG 09/06",
+        "ação": "URGENTE: reabastecer cartão hoje (conta para em 24h)",
+        "resp": "João → Andréia",
+        "tempo": "15 min",
+        "impacto": "Não morre a conta"
+      },
+      {
+        "dia": "SEG 09/06",
+        "ação": "PAUSAR as 3 campanhas atuais (VW + Tráfego + Alcance) — todas com 0 conv",
+        "resp": "Aleilson",
+        "tempo": "15 min",
+        "impacto": "Para queima R$ 30/dia"
+      },
+      {
+        "dia": "TER 10/06",
+        "ação": "Subir 1 campanha enxuta MSG R$ 15/dia: criativo tour virtual + carrossel \"Ex-alunos aprovados UFPA/UEPA\"",
+        "resp": "Aleilson + José",
+        "tempo": "1h",
+        "impacto": "Aquece audiência custom pra ago-set"
+      },
+      {
+        "dia": "QUA 11/06",
+        "ação": "Definir geo apertado: Redenção 25km + sem cidades vizinhas (público qualificado)",
+        "resp": "Aleilson",
+        "tempo": "15 min",
+        "impacto": "CPM realista"
+      },
+      {
+        "dia": "QUI 12/06",
+        "ação": "Reunião com Andréia: alinhar narrativa \"cursinho ENEM embutido\" + dia de experiência grátis",
+        "resp": "João",
+        "tempo": "30 min",
+        "impacto": "Combate o Benthien (perdeu 38 alunos)"
+      }
+    ]
+  },
+  {
+    "label": "mjc_kitchen",
+    "display": "MJC Kitchen",
+    "vertical": "Móveis planejados FL",
+    "icone": "🍳",
+    "resp": "Aleilson",
+    "severidade": "medio",
+    "contexto": "CPmsg 30d R$ 8,23 ótimo mas 7d sobe pra R$ 12,14 = fadiga. FEMALE 55-64 D5/conv 44% (2,8x média) escondida. Campanha LEADS R$ 235 com 1 conv (PAUSAR).",
+    "meta": "Estancar fadiga + segmentar mulher decisora",
+    "acoes": [
+      {
+        "dia": "SEG 09/06",
+        "ação": "PAUSAR LEADS STORIE 02/04 (R$ 235/1 conv) + TRAFEGO SITE + MSG AUTO 24/03",
+        "resp": "Aleilson",
+        "tempo": "10 min",
+        "impacto": "+R$ 9/dia liberados"
+      },
+      {
+        "dia": "SEG 09/06",
+        "ação": "Excluir idade 18-34 + Audience Network em todos os adsets",
+        "resp": "Aleilson",
+        "tempo": "20 min",
+        "impacto": "D5/conv sobe 20%+"
+      },
+      {
+        "dia": "TER 10/06",
+        "ação": "Duplicar adset campeão ORLANDO 08/05 trocando pra FEMALE 45-64 R$ 20/dia",
+        "resp": "Aleilson",
+        "tempo": "15 min",
+        "impacto": "Captura segmento de maior D5"
+      },
+      {
+        "dia": "QUA 11/06",
+        "ação": "Ativar dayparting 07h-22h ET com bid +20% em 13h-16h e 20h-22h",
+        "resp": "Aleilson",
+        "tempo": "20 min",
+        "impacto": "Corta 8-12% gasto noturno"
+      },
+      {
+        "dia": "SEX 13/06",
+        "ação": "Briefing 5 criativos novos: replicar campeão 08/05 + price anchor US$ 8,5/14/22k + depoimento real + urgência Memorial Day + visita showroom",
+        "resp": "Aleilson + José",
+        "tempo": "1h",
+        "impacto": "Estoque pra próxima rotação"
+      }
+    ]
+  },
+  {
+    "label": "pro_life",
+    "display": "Pro Life",
+    "vertical": "Reabilitação física",
+    "icone": "💪",
+    "resp": "Aleilson",
+    "severidade": "medio",
+    "contexto": "Freq 7,76x saturada. Campanha SALES nova entregou CPmsg R$ 8,90 D2 88%. Trocar copy de fitness pra dor. Tracking purchase zerado.",
+    "meta": "Refresh criativo + escalar SALES + posicionar em dor (não fitness)",
+    "acoes": [
+      {
+        "dia": "SEG 09/06",
+        "ação": "PAUSAR campanha Engajamento principal (freq 7,76x = saturada) + Tráfego IG morta",
+        "resp": "Aleilson",
+        "tempo": "10 min",
+        "impacto": "Para queima"
+      },
+      {
+        "dia": "SEG 09/06",
+        "ação": "Subir spend cap + alocar R$ 25/dia na SALES (vencedora)",
+        "resp": "Aleilson",
+        "tempo": "15 min",
+        "impacto": "Escala o que funciona"
+      },
+      {
+        "dia": "TER 10/06",
+        "ação": "Briefing pro José: 3 criativos posicionados em DOR (não fitness): pós-cirurgia, lombar crônica, atleta amador",
+        "resp": "Aleilson + José",
+        "tempo": "30 min",
+        "impacto": "Tira posicionamento de academia"
+      },
+      {
+        "dia": "QUA 11/06",
+        "ação": "Configurar Pixel + CAPI Purchase via n8n (Kommo → Meta)",
+        "resp": "João",
+        "tempo": "2h",
+        "impacto": "Otimização sai do escuro"
+      },
+      {
+        "dia": "SEX 13/06",
+        "ação": "Análise semanal: comparar CPmsg SALES vs Engajamento e decidir matar Engajamento de vez",
+        "resp": "João + Aleilson",
+        "tempo": "20 min",
+        "impacto": "Decisão estrutural"
+      }
+    ]
+  },
+  {
+    "label": "exatta_solar",
+    "display": "Exatta Solar",
+    "vertical": "Energia solar",
+    "icone": "☀️",
+    "resp": "Aleilson + Lara",
+    "severidade": "medio",
+    "contexto": "Aceleração genuína (CPmsg caiu R$ 8 → R$ 4 com brinde Copa) mas qualificação caiu junto (D2/conv 23% → 15%). R$ 2.293 sangrando em campanhas Norte. 8 dos 18 ads com data \"31 de maio\" expirada.",
+    "meta": "Refresh dos 8 ads expirados + escalar Sul + matar Norte",
+    "acoes": [
+      {
+        "dia": "SEG 09/06",
+        "ação": "PAUSAR 4 campanhas Norte fora do território operacional (R$ 2.293 sangrando)",
+        "resp": "Aleilson",
+        "tempo": "15 min",
+        "impacto": "+R$ 25/dia pra Sul"
+      },
+      {
+        "dia": "SEG 09/06",
+        "ação": "Excluir 18-24 + AudienceNetwork em todos adsets",
+        "resp": "Aleilson",
+        "tempo": "20 min",
+        "impacto": "Sobe qualidade"
+      },
+      {
+        "dia": "TER 10/06",
+        "ação": "Subir 8 criativos novos pra substituir os com data \"31 de maio\" (vencida)",
+        "resp": "Aleilson + José",
+        "tempo": "1h30",
+        "impacto": "Para \"anúncio mentiroso\" no ar"
+      },
+      {
+        "dia": "QUA 11/06",
+        "ação": "Escalar campanha vencedora [Engajamento][Sul][18.05] de R$ 120 → R$ 250/dia em escada (subir 30%/3d)",
+        "resp": "Aleilson",
+        "tempo": "15 min",
+        "impacto": "Aproveita momento sem queimar aprendizado"
+      },
+      {
+        "dia": "QUI 12/06",
+        "ação": "Abrir 3 adsets dedicados no Sul: M 35-54 ROI / F 25-44 sustentabilidade / LAL 1% base D5+ Kommo",
+        "resp": "Aleilson",
+        "tempo": "45 min",
+        "impacto": "Diversifica entrega"
+      }
+    ]
+  },
+  {
+    "label": "spa_nature",
+    "display": "Spa Nature",
+    "vertical": "Spa/estética",
+    "icone": "🌿",
+    "resp": "Aleilson",
+    "severidade": "medio",
+    "contexto": "CPmsg R$ 6,69 saudável. R$ 459 queimando em SEMANA DA MULHER (vencida) + Tráfego IG sem retarget. Freq 6,56x = fadiga severa. Zero criativo casal a 6 dias do Dia dos Namorados.",
+    "meta": "Capturar Dia dos Namorados 12/06 + estancar zumbis + refresh",
+    "acoes": [
+      {
+        "dia": "SEG 09/06",
+        "ação": "URGENTE: subir hoje 2 criativos pacote casal pro Dia dos Namorados (quinta 12/06)",
+        "resp": "Aleilson + José",
+        "tempo": "2h",
+        "impacto": "Pega pico sazonal"
+      },
+      {
+        "dia": "SEG 09/06",
+        "ação": "PAUSAR Semana da Mulher (vencida há 3 meses) + Tráfego IG sem retarget",
+        "resp": "Aleilson",
+        "tempo": "10 min",
+        "impacto": "+R$ 459 retomados"
+      },
+      {
+        "dia": "TER 10/06",
+        "ação": "Criar adset dedicado FEMALE 45-64 (CPmsg R$ 4,20-5,47, 25-43% melhor que 25-34)",
+        "resp": "Aleilson",
+        "tempo": "20 min",
+        "impacto": "Segmento subexplorado"
+      },
+      {
+        "dia": "QUA 11/06",
+        "ação": "Briefing 4 criativos pro José: casal Namorados / casal aniversário / mãe pós-parto / executiva burnout",
+        "resp": "Aleilson + José",
+        "tempo": "40 min",
+        "impacto": "Estoque rotação"
+      },
+      {
+        "dia": "SEX 13/06",
+        "ação": "Análise pré-Dia dos Namorados: ajustar bid horários 18h-22h sex-sáb",
+        "resp": "Aleilson",
+        "tempo": "15 min",
+        "impacto": "Captura intent de última hora"
+      }
+    ]
+  },
+  {
+    "label": "supermercado_america",
+    "display": "Supermercado América",
+    "vertical": "Varejo alimentar",
+    "icone": "🛒",
+    "resp": "Aleilson",
+    "severidade": "alto",
+    "contexto": "R$ 7.830 lifetime, 9 conversas em 90d. 80% budget em ALCANCE puro, freq 5,89x, CPmsg R$ 220. 25 campanhas + 17 dos 19 criativos sem CTA. Tese escondida: pin 1km + 65+ feminino + Reels + 19h-20h.",
+    "meta": "Refundação: cortar pra 3 campanhas + pin 5km + dayparting",
+    "acoes": [
+      {
+        "dia": "SEG 09/06",
+        "ação": "PAUSAR 22 das 25 campanhas atuais. Manter só as 3 com algum sinal positivo.",
+        "resp": "Aleilson",
+        "tempo": "40 min",
+        "impacto": "Cala 80% do desperdício"
+      },
+      {
+        "dia": "SEG 09/06",
+        "ação": "Definir pin geo apertado: raio 5km da loja (centroide manual no Maps)",
+        "resp": "Aleilson",
+        "tempo": "15 min",
+        "impacto": "Para spillover"
+      },
+      {
+        "dia": "TER 10/06",
+        "ação": "Subir 3 campanhas novas estruturadas R$ 20/dia cada: MSG Encarte / MSG Açougue / SALES Grupo VIP",
+        "resp": "Aleilson + José",
+        "tempo": "1h",
+        "impacto": "Estrutura limpa"
+      },
+      {
+        "dia": "QUA 11/06",
+        "ação": "Configurar bid schedule: reforço 28-30 do mês (salário/INSS) + dayparting qui-sex 17h-20h",
+        "resp": "Aleilson",
+        "tempo": "20 min",
+        "impacto": "Captura pico real"
+      },
+      {
+        "dia": "QUI 12/06",
+        "ação": "Reunião com dono mercado: pegar encarte digital PDF + ativar grupo VIP WhatsApp",
+        "resp": "João",
+        "tempo": "45 min",
+        "impacto": "Material certo pros criativos"
+      }
+    ]
+  },
+  {
+    "label": "norte_capital",
+    "display": "Norte Capital",
+    "vertical": "Assessoria agro",
+    "icone": "🌾",
+    "resp": "Aleilson + Elpídio",
+    "severidade": "critical",
+    "contexto": "R$ 977 em 90d com objetivo LINK_CLICKS errado, 3.292 cliques mas ZERO conversa/lead/cliente. 12% spend em Tocantins/Maranhão. 0 criativos ativos. Cap restante R$ 76 = congela em 5-7d.",
+    "meta": "Refundação completa: pivot pra MSG + 5 ângulos Elpídio gravados",
+    "acoes": [
+      {
+        "dia": "SEG 09/06",
+        "ação": "Cobrar Elpídio: reabastecer cartão urgente (5 dias pra parar) + alinhar gravação 5 vídeos",
+        "resp": "João",
+        "tempo": "20 min",
+        "impacto": "Não morre a conta"
+      },
+      {
+        "dia": "SEG 09/06",
+        "ação": "PAUSAR todas campanhas LINK_CLICKS (R$ 977 desperdiçados)",
+        "resp": "Aleilson",
+        "tempo": "10 min",
+        "impacto": "Para queima"
+      },
+      {
+        "dia": "TER 10/06",
+        "ação": "Definir geo: SÓ Sul do Pará (Redenção, Xinguara, Rio Maria, Conceição, Pau D'Arco). Sem Tocantins/Maranhão.",
+        "resp": "Aleilson",
+        "tempo": "15 min",
+        "impacto": "Foca no ICP real"
+      },
+      {
+        "dia": "QUA 11/06",
+        "ação": "Definir com Elpídio qual ângulo gravar primeiro (3 opções): travar dólar pós-soja / proteção queda boi / sucessão familiar holding rural",
+        "resp": "João + Elpídio",
+        "tempo": "30 min",
+        "impacto": "Decisão dele baseado no campo"
+      },
+      {
+        "dia": "QUI/SEX",
+        "ação": "Gravar 3 Reels com Elpídio no escritório/fazenda. Compliance CVM disclaimer no rodapé.",
+        "resp": "João + Elpídio",
+        "tempo": "2h",
+        "impacto": "Estoque criativo pra subir semana 2"
+      }
+    ]
+  },
+  {
+    "label": "brenno_cangussu",
+    "display": "Dr. Brenno Cangussu",
+    "vertical": "Ortopedia / dor",
+    "icone": "🦴",
+    "resp": "Aleilson + Chris",
+    "severidade": "medio",
+    "contexto": "Ortopedia/dor (NÃO proctologia). 31,6% budget (R$ 906) em 3 campanhas tráfego com CPmsg R$ 101-209. Eixo Engajamento G-Aleilson CPmsg R$ 7,24 saudável e subexposto. Sem CAPI Kommo.",
+    "meta": "Cortar tráfego inútil + escalar Engajamento + CAPI",
+    "acoes": [
+      {
+        "dia": "SEG 09/06",
+        "ação": "PAUSAR as 3 campanhas Tráfego (R$ 906 com CPmsg R$ 100+)",
+        "resp": "Aleilson",
+        "tempo": "10 min",
+        "impacto": "+R$ 30/dia liberados"
+      },
+      {
+        "dia": "SEG 09/06",
+        "ação": "Realocar R$ 30/dia liberados pra Engajamento G-Aleilson (vencedora)",
+        "resp": "Aleilson",
+        "tempo": "5 min",
+        "impacto": "Dobra entrega do que funciona"
+      },
+      {
+        "dia": "TER 10/06",
+        "ação": "Configurar CAPI via n8n: Kommo Brenno → Meta evento Lead (quando Chris move pra Agendado)",
+        "resp": "João",
+        "tempo": "2h",
+        "impacto": "Tracking de paciente real"
+      },
+      {
+        "dia": "QUI 12/06",
+        "ação": "Refresh criativo: gravar 2 vídeos com Brenno sobre PRP / Ozonioterapia (mais buscado em junho)",
+        "resp": "João + Brenno",
+        "tempo": "1h",
+        "impacto": "Renova entrega"
+      },
+      {
+        "dia": "SEX 13/06",
+        "ação": "Validar com Chris: criar template WhatsApp pós-1ªResp pra reduzir queda 245→8 D5",
+        "resp": "João + Chris",
+        "tempo": "30 min",
+        "impacto": "Funil sobe"
+      }
+    ]
+  },
+  {
+    "label": "dra_esia",
+    "display": "Dra. Esia Lopes",
+    "vertical": "Pediatria",
+    "icone": "👶",
+    "resp": "Aleilson + Esia",
+    "severidade": "medio",
+    "contexto": "Acabou de virar a chave (7d CPmsg R$ 8,25, freq caiu 6,15x → 3,64x). IG Reels queima R$ 148/conv. FB Feed CPmsg R$ 5,46 com só 3% budget. Pai 35-44 R$ 5,26 ignorado. Cap restante R$ 125 = 5-9 dias.",
+    "meta": "Subir cap + realocar pra FB Feed + reativar VW 25%",
+    "acoes": [
+      {
+        "dia": "SEG 09/06",
+        "ação": "URGENTE: subir spend cap de R$ 1.230 → R$ 3.000 (cap restante R$ 125 vira 7d)",
+        "resp": "Aleilson",
+        "tempo": "5 min",
+        "impacto": "Não pausa conta na quinta"
+      },
+      {
+        "dia": "SEG 09/06",
+        "ação": "PAUSAR IG Reels prospecting (R$ 148/conv) + FB Reels (R$ 72/conv) + 65+ F (zero conv R$ 70)",
+        "resp": "Aleilson",
+        "tempo": "15 min",
+        "impacto": "+R$ 100/sem liberados"
+      },
+      {
+        "dia": "SEG 09/06",
+        "ação": "Reativar adset \"VW 25%\" (pausado, era 2º melhor CPmsg)",
+        "resp": "Aleilson",
+        "tempo": "5 min",
+        "impacto": "+8-12 conv/mês"
+      },
+      {
+        "dia": "TER 10/06",
+        "ação": "Criar adset placement manual FB Feed prospecting R$ 8/dia (era 3% gasto, CPmsg R$ 5,46)",
+        "resp": "Aleilson",
+        "tempo": "20 min",
+        "impacto": "+30-50 conv/mês"
+      },
+      {
+        "dia": "QUI 12/06",
+        "ação": "Agendar visita ao consultório pra gravar 3 Reels com Esia direto câmera (febre / rotina / fases)",
+        "resp": "João",
+        "tempo": "30 min agendar",
+        "impacto": "Refresh permanente na semana 3"
+      }
+    ]
+  },
+  {
+    "label": "alpha_fitness",
+    "display": "Alpha Fitness",
+    "vertical": "Academia",
+    "icone": "💪",
+    "resp": "Aleilson + Sydney",
+    "severidade": "critical",
+    "contexto": "Spend cap a R$ 190 do teto (para em 1,3 dias). 0 criativos ativos de 62 totais. CPmsg subiu 29% em 60d (R$ 9 → R$ 11,79). Freq 9,35x. AD 05 MARÇO com CPmsg R$ 3,20 escondido.",
+    "meta": "Reativar saldo + auditar 62 ads + escalar vencedor escondido",
+    "acoes": [
+      {
+        "dia": "SEG 09/06",
+        "ação": "URGENTE: cobrar Sydney reabastecer cartão hoje (para em 24h)",
+        "resp": "João",
+        "tempo": "15 min",
+        "impacto": "Não morre"
+      },
+      {
+        "dia": "SEG 09/06",
+        "ação": "Auditar 62 ads pausados: identificar status real e marcar 10 candidatos a reativar",
+        "resp": "Aleilson",
+        "tempo": "1h",
+        "impacto": "Mapeia ativo real"
+      },
+      {
+        "dia": "TER 10/06",
+        "ação": "Reativar AD 05 MARÇO (CPmsg R$ 3,20) em adset M 25-34 (CPmsg R$ 5,24 também escondido)",
+        "resp": "Aleilson",
+        "tempo": "20 min",
+        "impacto": "Vencedor reativado"
+      },
+      {
+        "dia": "QUA 11/06",
+        "ação": "Validar geolocalização (Redenção raio 15km) + idade 25-55 (cortar 18-24 e 55+)",
+        "resp": "Aleilson",
+        "tempo": "15 min",
+        "impacto": "Freq cai sozinha"
+      },
+      {
+        "dia": "QUI 12/06",
+        "ação": "Briefing José: 4 criativos novos (transformação aluno real / desafio 30 dias / pacote anual / amigo trazer amigo)",
+        "resp": "Aleilson + José",
+        "tempo": "40 min",
+        "impacto": "Estoque pra semana 3"
+      }
+    ]
+  },
+  {
+    "label": "vanessa_back",
+    "display": "Vanessa Back",
+    "vertical": "Estética avançada",
+    "icone": "💄",
+    "resp": "Aleilson + Vanessa",
+    "severidade": "medio",
+    "contexto": "Recorde 7d (CPmsg R$ 3,56) mas spend cap restante R$ 335. 1ª resposta secretária caiu de 73,8% → 55,6%. Estética avançada (lábios, botox, lipo HD, Ultraformer, combo Namorados).",
+    "meta": "Destravar cap + escalar com cuidado + corrigir atendimento",
+    "acoes": [
+      {
+        "dia": "SEG 09/06",
+        "ação": "Subir spend cap de R$ XX → R$ 2.500 (cap restante R$ 335 não comporta escala)",
+        "resp": "Aleilson",
+        "tempo": "10 min",
+        "impacto": "Permite escalar"
+      },
+      {
+        "dia": "SEG 09/06",
+        "ação": "Subir budget SALES de R$ 15 → R$ 25/dia em escada (subir 30%/2d, freq atual 2,71x permite)",
+        "resp": "Aleilson",
+        "tempo": "5 min",
+        "impacto": "+15-20 conv/mês"
+      },
+      {
+        "dia": "TER 10/06",
+        "ação": "Reunião com Vanessa + secretária: SLA <5min essa semana (perdeu 17% de conversas)",
+        "resp": "João + Vanessa",
+        "tempo": "30 min",
+        "impacto": "Recupera ~R$ 171/mês em conversas perdidas"
+      },
+      {
+        "dia": "QUA 11/06",
+        "ação": "Subir criativo pacote casal Dia dos Namorados (12/06) — semana decisiva",
+        "resp": "Aleilson + José",
+        "tempo": "1h",
+        "impacto": "Pico sazonal"
+      },
+      {
+        "dia": "SEX 13/06",
+        "ação": "Análise: cruzar conv WhatsApp × agendamentos reais. Quantas viraram atendimento?",
+        "resp": "João + Vanessa",
+        "tempo": "20 min",
+        "impacto": "Calibrar próxima semana"
+      }
+    ]
+  },
+  {
+    "label": "numeros_contabilidade",
+    "display": "Números Contabilidade",
+    "vertical": "Contabilidade",
+    "icone": "📊",
+    "resp": "João (acionar dono)",
+    "severidade": "critical",
+    "contexto": "CONTA PARADA HÁ 22 DIAS. Spend cap atingido exato (R$ 2.768). 100% das 37 conversas vieram de 1 ad (Imposto de Renda, vencido em 30/05). Saldo R$ 0,00.",
+    "meta": "Reativar pagamento + reposicionar criativo (IR já passou)",
+    "acoes": [
+      {
+        "dia": "SEG 09/06",
+        "ação": "CRÍTICO: ligar pro dono cobrar reabastecimento + subir spend cap pra R$ 5k",
+        "resp": "João (direto com dono)",
+        "tempo": "30 min",
+        "impacto": "Reativa conta após 22 dias parada"
+      },
+      {
+        "dia": "SEG 09/06",
+        "ação": "Pausar ad de IR (sazonalidade venceu 30/05, vai sair com cara de defasado)",
+        "resp": "Aleilson",
+        "tempo": "5 min",
+        "impacto": "Evita anúncio \"fora do prazo\""
+      },
+      {
+        "dia": "TER 10/06",
+        "ação": "Briefing José: 2 criativos novos pros ângulos quentes de junho — Fechamento balanço semestral + MEI excedeu limite e virou ME",
+        "resp": "Aleilson + José",
+        "tempo": "30 min",
+        "impacto": "Sazonalidade nova"
+      },
+      {
+        "dia": "QUA 11/06",
+        "ação": "Subir 1 campanha MSG R$ 15/dia testando criativo novo + adset Empresário 30-55",
+        "resp": "Aleilson",
+        "tempo": "30 min",
+        "impacto": "Volta a rodar"
+      },
+      {
+        "dia": "SEX 13/06",
+        "ação": "Configurar funil 5 eventos no Kommo (L0 contato, L1 orçamento, L2 reunião, L3 proposta, L4 contrato)",
+        "resp": "João",
+        "tempo": "1h",
+        "impacto": "Tracking pra próxima onda"
+      }
+    ]
+  }
+]

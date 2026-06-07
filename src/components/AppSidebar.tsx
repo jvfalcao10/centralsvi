@@ -94,6 +94,7 @@ const NAV: NavEntry[] = [
       { title: 'Entregas', url: '/deliveries', minRole: 'executor', badgeKey: 'deliveries' },
       { title: 'Tráfego', url: '/operacional/trafego', minRole: 'manager' },
       { title: 'Análises de Tráfego', url: '/operacional/trafego/analises', minRole: 'manager' },
+      { title: 'Plano da Semana', url: '/operacional/trafego/plano-semana', minRole: 'manager' },
     ],
   },
 
