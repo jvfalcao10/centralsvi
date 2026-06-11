@@ -3,7 +3,7 @@ import { useLocation, Link } from 'react-router-dom'
 import {
   LayoutDashboard, GitBranch, Users, CheckSquare, DollarSign, Crosshair, FileText,
   ClipboardCheck, Clock, UserCog, UserCheck, Kanban, BarChart3, Sun, Moon, LogOut,
-  ChevronRight, ChevronDown, Briefcase, Sparkles, ShieldCheck, Settings, Megaphone, PieChart,
+  ChevronRight, ChevronDown, Briefcase, Sparkles, ShieldCheck, Settings, PieChart,
   Activity,
 } from 'lucide-react'
 import {
@@ -70,20 +70,6 @@ const NAV: NavEntry[] = [
 
   {
     type: 'group',
-    title: 'Marketing',
-    icon: Megaphone,
-    minRole: 'executor',
-    items: [
-      { title: 'Posts', url: '/content/posts', minRole: 'executor' },
-      { title: 'Pautas', url: '/content/pautas', minRole: 'executor' },
-      { title: 'Calendário', url: '/content/calendar', minRole: 'executor' },
-      { title: 'Radar', url: '/content/radar', minRole: 'executor' },
-      { title: 'Monitor', url: '/content/monitor', minRole: 'executor' },
-    ],
-  },
-
-  {
-    type: 'group',
     title: 'Operacional',
     icon: ClipboardCheck,
     minRole: 'executor',
@@ -92,9 +78,6 @@ const NAV: NavEntry[] = [
       { title: 'Clientes', url: '/clients', minRole: 'executor', badgeKey: 'clients' },
       { title: 'Onboarding', url: '/onboarding', minRole: 'manager' },
       { title: 'Entregas', url: '/deliveries', minRole: 'executor', badgeKey: 'deliveries' },
-      { title: 'Tráfego', url: '/operacional/trafego', minRole: 'manager' },
-      { title: 'Análises de Tráfego', url: '/operacional/trafego/analises', minRole: 'manager' },
-      { title: 'Plano da Semana', url: '/operacional/trafego/plano-semana', minRole: 'manager' },
     ],
   },
 
@@ -121,7 +104,6 @@ const NAV: NavEntry[] = [
     items: [
       { title: 'Aprovações', url: '/admin/approvals', minRole: 'manager', badgeKey: 'approvals' },
       { title: 'Equipe', url: '/team', minRole: 'admin', badgeKey: 'team' },
-      { title: 'Painéis Cliente', url: '/admin/paineis', minRole: 'manager' },
     ],
   },
 ]
