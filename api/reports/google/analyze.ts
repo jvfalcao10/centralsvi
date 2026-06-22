@@ -110,10 +110,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { data: client, error: clientErr } = await sb
     .from('clients')
-    .select('id, name, slug, company')
+    .select('id, name, slug')
     .eq('id', clientId)
     .maybeSingle();
-  const displayName = client?.company || client?.name || '';
+  const displayName = client?.name || '';
   if (clientErr || !client) return res.status(404).json({ error: 'client_not_found' });
 
   // 1. Slug publico unico (definido antes pra nomear os arquivos no Storage)
