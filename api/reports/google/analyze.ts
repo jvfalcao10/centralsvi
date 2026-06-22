@@ -110,16 +110,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { data: client, error: clientErr } = await sb
     .from('clients')
-    .select('id, name, slug')
+    .select('id, name, slug, company')
     .eq('id', clientId)
     .maybeSingle();
+  const displayName = client?.company || client?.name || '';
   if (clientErr || !client) return res.status(404).json({ error: 'client_not_found' });
 
   // 1. Slug publico unico (definido antes pra nomear os arquivos no Storage)
   const slugify = (s: string) =>
     s.toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   const rand = Math.random().toString(36).slice(2, 6);
-  const slug = `${slugify(client.slug || client.name || 'cliente') || 'cliente'}-${slugify(periodLabel) || 'rel'}-${rand}`;
+  const slug = `${slugify(client.slug || displayName || 'cliente') || 'cliente'}-${slugify(periodLabel) || 'rel'}-${rand}`;
 
   // 2. Sobe os prints pro Storage (service role) e guarda as URLs publicas
   const admin = createAdminClient();
@@ -205,7 +206,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .from('google_reports')
     .insert({
       client_id: clientId,
-      client_name: client.name || '',
+      client_name: displayName,
       slug,
       period_label: period,
       metrics,
