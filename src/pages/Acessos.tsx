@@ -22,7 +22,6 @@ const GROUPS: Group[] = [
     ['Vercel', 'vercel.com/svicompanyy-2539s-projects'],
   ]},
   { title: 'Centrais & Dashboards', items: [
-    ['SVI Dashboards', 'svi-dashboards.vercel.app'],
     ['Diretoria SVI (command center)', 'diretoria-svi.vercel.app'],
     ['Alpha — Dashboard', 'alpha.svicompany.com.br'],
     ['Pro Life — Dashboard', 'prolife.svicompany.com.br'],
