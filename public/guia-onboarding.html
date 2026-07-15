@@ -1,0 +1,174 @@
+<title>Sistema de Onboarding SVI — como funciona</title>
+<style>
+  :root{
+    --paper:#f4f1ea; --card:#fffdf8; --ink:#1c1a17; --ink-soft:#54504a;
+    --line:#e2dccf; --gold:#b0872f; --gold-soft:#c8a04f;
+    --auto:#2e7d55; --auto-bg:#e3f0e8; --human:#b06a12; --human-bg:#f6ead6;
+    --shadow:0 1px 2px rgba(28,26,23,.05),0 8px 24px rgba(28,26,23,.06);
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --paper:#141311; --card:#1e1c19; --ink:#f2eee6; --ink-soft:#a8a298;
+      --line:#312d28; --gold:#d8b25e; --gold-soft:#c8a04f;
+      --auto:#6fce9b; --auto-bg:#16281f; --human:#e0a250; --human-bg:#2a2012;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"]{
+    --paper:#f4f1ea; --card:#fffdf8; --ink:#1c1a17; --ink-soft:#54504a;
+    --line:#e2dccf; --gold:#b0872f; --gold-soft:#c8a04f;
+    --auto:#2e7d55; --auto-bg:#e3f0e8; --human:#b06a12; --human-bg:#f6ead6;
+    --shadow:0 1px 2px rgba(28,26,23,.05),0 8px 24px rgba(28,26,23,.06);
+  }
+  :root[data-theme="dark"]{
+    --paper:#141311; --card:#1e1c19; --ink:#f2eee6; --ink-soft:#a8a298;
+    --line:#312d28; --gold:#d8b25e; --gold-soft:#c8a04f;
+    --auto:#6fce9b; --auto-bg:#16281f; --human:#e0a250; --human-bg:#2a2012;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:940px;margin:0 auto;padding:48px 24px 80px}
+  .tnum{font-variant-numeric:tabular-nums}
+
+  header{border-bottom:1px solid var(--line);padding-bottom:26px;margin-bottom:34px}
+  .kicker{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:700}
+  h1{font-size:clamp(28px,4.5vw,42px);line-height:1.08;margin:.35em 0 .25em;letter-spacing:-.02em;text-wrap:balance;font-weight:800}
+  .lede{color:var(--ink-soft);font-size:17px;max-width:60ch;margin:0}
+
+  .legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+  .tag{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;
+    padding:5px 11px;border-radius:999px;border:1px solid var(--line)}
+  .dot{width:9px;height:9px;border-radius:50%}
+  .tag.auto{background:var(--auto-bg);color:var(--auto)} .tag.auto .dot{background:var(--auto)}
+  .tag.human{background:var(--human-bg);color:var(--human)} .tag.human .dot{background:var(--human)}
+
+  section{margin-top:30px}
+  .flow{background:var(--card);border:1px solid var(--line);border-radius:16px;
+    box-shadow:var(--shadow);padding:22px 24px;overflow:hidden}
+  .flow-head{display:flex;align-items:baseline;gap:12px;margin-bottom:4px}
+  .flow-num{font-size:12px;font-weight:800;color:var(--gold);letter-spacing:.05em;
+    border:1.5px solid var(--gold-soft);border-radius:7px;padding:2px 8px;flex:none}
+  .flow h2{font-size:20px;margin:0;letter-spacing:-.01em;font-weight:750}
+  .flow .sub{color:var(--ink-soft);font-size:14px;margin:6px 0 18px}
+  .flow .sub b{color:var(--ink);font-weight:650}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em;
+    background:color-mix(in srgb,var(--gold-soft) 16%,transparent);
+    padding:1px 6px;border-radius:5px;color:var(--ink);white-space:nowrap}
+
+  .steps{display:flex;align-items:stretch;gap:0;overflow-x:auto;padding-bottom:6px}
+  .step{flex:1 0 155px;min-width:155px;padding:0 16px;position:relative}
+  .step:not(:last-child)::after{content:"→";position:absolute;right:-8px;top:14px;
+    color:var(--gold-soft);font-size:18px;font-weight:700}
+  .step .who{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px}
+  .step .who .dot{width:8px;height:8px;border-radius:50%}
+  .step.a .who{color:var(--auto)} .step.a .who .dot{background:var(--auto)}
+  .step.h .who{color:var(--human)} .step.h .who .dot{background:var(--human)}
+  .step .t{font-weight:700;font-size:14.5px;margin-bottom:3px;line-height:1.25}
+  .step .d{font-size:12.5px;color:var(--ink-soft);line-height:1.4}
+
+  .note{margin-top:16px;font-size:13.5px;color:var(--ink-soft);
+    border-left:3px solid var(--gold-soft);padding:2px 0 2px 14px}
+  .note b{color:var(--ink)}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+  @media (max-width:640px){.grid2{grid-template-columns:1fr}}
+  .mini{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:16px 18px;box-shadow:var(--shadow)}
+  .mini h3{margin:0 0 8px;font-size:15px;font-weight:700}
+  .mini p{margin:0;font-size:13.5px;color:var(--ink-soft)}
+  .mini .lnk{color:var(--gold);font-weight:600;font-size:13px}
+
+  .status{list-style:none;padding:0;margin:12px 0 0}
+  .status li{display:flex;gap:10px;padding:7px 0;font-size:14px;border-top:1px solid var(--line)}
+  .status li:first-child{border-top:0}
+  .status .mk{flex:none;font-weight:800}
+  .ok{color:var(--auto)} .wait{color:var(--human)}
+
+  footer{margin-top:40px;padding-top:22px;border-top:1px solid var(--line);
+    color:var(--ink-soft);font-size:13px}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="kicker">SVI Company · Operação</div>
+    <h1>Como funciona o sistema de entrada de cliente</h1>
+    <p class="lede">Tudo que montamos, conectado. Da hora que o cliente fecha até ele estar rodando — o que a Sofia e o n8n fazem sozinhos, e o que fica pra cada pessoa do time.</p>
+    <div class="legend">
+      <span class="tag auto"><span class="dot"></span>Automático — Sofia / n8n</span>
+      <span class="tag human"><span class="dot"></span>Pessoa — com dono</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="flow">
+      <div class="flow-head"><span class="flow-num">FLUXO 1</span><h2>Entrada do cliente</h2></div>
+      <p class="sub">Você preenche <b>svicompany.com.br/onboarding</b> uma vez. Num envio, dispara tudo abaixo.</p>
+      <div class="steps">
+        <div class="step h"><span class="who"><span class="dot"></span>João</span><div class="t">Preenche o form</div><div class="d">Dados do cliente + valor. Preço escalonado é opcional.</div></div>
+        <div class="step a"><span class="who"><span class="dot"></span>n8n</span><div class="t">Gera o contrato</div><div class="d">PDF pronto, com a cláusula de escalonamento se você preencheu.</div></div>
+        <div class="step a"><span class="who"><span class="dot"></span>Autentique</span><div class="t">Sobe pra assinatura</div><div class="d">Sofia te manda o link no seu WhatsApp pra encaminhar ao cliente.</div></div>
+        <div class="step a"><span class="who"><span class="dot"></span>n8n</span><div class="t">Cria os registros</div><div class="d">Lista no ClickUp + cliente no Central SVI + cobrança, sozinho.</div></div>
+        <div class="step a"><span class="who"><span class="dot"></span>Sofia</span><div class="t">Boas-vindas</div><div class="d">Se você informou o grupo, ela já posta o texto + link do kickoff.</div></div>
+      </div>
+      <p class="note">O trabalho que antes era todo na mão (criar lista, cadastrar no painel, montar cobrança, gerar contrato) agora sai de <b>um formulário só</b>.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="flow">
+      <div class="flow-head"><span class="flow-num">FLUXO 2</span><h2>Kickoff — o cliente conta o negócio</h2></div>
+      <p class="sub">O cliente preenche <b>svicompany.com.br/kickoff</b> (marketing) ou <b>/kickoff-crm</b>. É onde ele te dá a matéria-prima da estratégia.</p>
+      <div class="steps">
+        <div class="step h"><span class="who"><span class="dot"></span>Cliente</span><div class="t">Preenche o kickoff</div><div class="d">Negócio, avatar, oferta, acessos. Salvo com segurança no banco.</div></div>
+        <div class="step a"><span class="who"><span class="dot"></span>n8n</span><div class="t">Cria task de estratégia</div><div class="d">Vai pra "Tarefas Gerais" no ClickUp com o resumo.</div></div>
+        <div class="step a"><span class="who"><span class="dot"></span>Sofia</span><div class="t">Te avisa</div><div class="d">Manda no seu WhatsApp com o link direto da task.</div></div>
+        <div class="step h"><span class="who"><span class="dot"></span>João</span><div class="t">Lê as respostas</div><div class="d">No painel <code>/admin-kickoff</code> (com login). Senhas do cliente não trafegam por fora.</div></div>
+      </div>
+      <p class="note">O bloco de <b>Atendente de IA</b> foi adicionado no kickoff de CRM — pra escopar agente de IA sem retrabalho depois.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="flow">
+      <div class="flow-head"><span class="flow-num">FLUXO 3</span><h2>Leads do site do cliente</h2></div>
+      <p class="sub">Para clientes com site que capta lead (ex: <b>Dr. Daniel</b>). Nada manual — cai no grupo na hora.</p>
+      <div class="steps">
+        <div class="step h"><span class="who"><span class="dot"></span>Visitante</span><div class="t">Preenche o form no site</div><div class="d">Nome + telefone + origem da campanha.</div></div>
+        <div class="step a"><span class="who"><span class="dot"></span>n8n</span><div class="t">Recebe e formata</div><div class="d">Monta a mensagem com nome, telefone e link de WhatsApp.</div></div>
+        <div class="step a"><span class="who"><span class="dot"></span>Sofia</span><div class="t">Posta no grupo do cliente</div><div class="d">O time do cliente vê o lead novo em segundos.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="flow">
+      <div class="flow-head"><span class="flow-num">PAINEL</span><h2>Central SVI — onde você acompanha tudo</h2></div>
+      <p class="sub"><b>centralsvi.vercel.app</b> — clientes, MRR, cobranças, faturas, despesas e DRE num lugar só.</p>
+      <div class="grid2">
+        <div class="mini"><h3>Cobranças Manuais</h3><p>Pix e boletos que não são automáticos. Cada cliente novo entra aqui sozinho pelo Fluxo 1. Agora com <b>botão de apagar</b> por linha.</p></div>
+        <div class="mini"><h3>Receita corrigida</h3><p>A "Receita Mês" estava inflada (contava a mensalidade em dobro). Agora mostra o <b>MRR real</b> — lucro e margem passaram a bater com a realidade.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="flow">
+      <div class="flow-head"><span class="flow-num">HOJE</span><h2>GM Gas — o primeiro rodando no sistema</h2></div>
+      <p class="sub">O cliente novo que entrou. Tudo já criado; falta a parte humana, com dono e prazo no ClickUp.</p>
+      <ul class="status">
+        <li><span class="mk ok">✓</span><div>Contrato no Autentique — <b>aguardando assinatura</b> (link pronto pra enviar)</div></li>
+        <li><span class="mk ok">✓</span><div>Cliente no Central SVI + cobrança escalonada (1.500 → 1.800 → 2.000)</div></li>
+        <li><span class="mk ok">✓</span><div>Listas no ClickUp + checklist de onboarding com 6 tarefas por dono</div></li>
+        <li><span class="mk wait">•</span><div><b>Arthur:</b> criar grupo, postar boas-vindas + kickoff, configurar Google Meu Negócio</div></li>
+        <li><span class="mk wait">•</span><div><b>Sarah:</b> Instagram + primeiras pautas · <b>Aleilson:</b> tráfego + pixel (verba R$600)</div></li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    <b>Falta ligar:</b> a Sofia detectar o grupo novo sozinha e te cutucar (hoje o gatilho é você preencher o form). É a única peça que ainda depende de você iniciar. Resto: rodando.
+  </footer>
+</div>

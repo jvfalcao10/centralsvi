@@ -4,7 +4,7 @@ import {
   LayoutDashboard, GitBranch, Users, CheckSquare, DollarSign, Crosshair, FileText,
   ClipboardCheck, Clock, UserCog, UserCheck, Kanban, BarChart3, Sun, Moon, LogOut,
   ChevronRight, ChevronDown, Briefcase, Sparkles, ShieldCheck, Settings, PieChart,
-  Activity,
+  Activity, Compass,
 } from 'lucide-react'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
@@ -54,6 +54,7 @@ const NAV_TRAFFIC: NavEntry[] = [
 
 const NAV: NavEntry[] = [
   { type: 'item', title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard, minRole: 'manager' },
+  { type: 'item', title: 'Acessos', url: '/acessos', icon: Compass, minRole: 'executor' },
 
   {
     type: 'group',
