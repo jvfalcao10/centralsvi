@@ -373,8 +373,8 @@ export default function Financial() {
   const overdueInvoices = invoices.filter(i => i.status === 'atrasado' || (i.status === 'pendente' && i.vencimento < todayStr))
   const dueSoonInvoices = invoices.filter(i => i.status === 'pendente' && i.vencimento >= todayStr && i.vencimento <= in7DaysStr)
 
-  const paidInvoicesTotal = invoices.filter(i => i.status === 'pago').reduce((s, i) => s + i.valor, 0)
-  const totalRevenue = paidInvoicesTotal + mrr
+  // Receita Mês = MRR recorrente do mês (base do P&L). NÃO somar faturas pagas: cada fatura JÁ é a mensalidade realizada do cliente — somar MRR + faturas conta a recorrência 2x, e as faturas incluem meses anteriores.
+  const totalRevenue = mrr
   const totalExpensesVal = expenses.reduce((s, e) => s + e.valor, 0)
   const netProfit = totalRevenue - totalExpensesVal
   const margin = totalRevenue > 0 ? (netProfit / totalRevenue * 100).toFixed(1) : '0.0'
