@@ -270,6 +270,13 @@ export default function Financial() {
     fetchData()
   }
 
+  const deleteCobranca = async (c: CobrancaManual) => {
+    if (!window.confirm(`Apagar a cobrança de ${c.cliente_nome}? Esta ação não pode ser desfeita.`)) return
+    await supabase.from('cobrancas_manuais').delete().eq('id', c.id)
+    toast({ title: `${c.cliente_nome} removida das cobranças` })
+    fetchData()
+  }
+
   useEffect(() => { fetchData() }, [fetchData])
 
   const markInvoicePaid = async (id: string) => {
@@ -630,6 +637,15 @@ export default function Financial() {
                               title={c.recorrencia === 'avulso' ? 'Marcar como resolvido' : 'Recebido — avança próximo vencimento'}
                             >
                               <CheckCircle className="h-3.5 w-3.5" /> {c.recorrencia === 'avulso' ? 'Resolvido' : 'Recebido'}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-danger hover:text-danger"
+                              onClick={() => deleteCobranca(c)}
+                              title="Apagar cobrança"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         </TableCell>
