@@ -43,6 +43,7 @@ import MinhaArea from "@/pages/MinhaArea";
 // Shared content modules (staff + client)
 import Posts from "@/pages/content/Posts";
 import Pautas from "@/pages/content/Pautas";
+import Aprovacoes from "@/pages/content/Aprovacoes";
 import Calendar from "@/pages/content/Calendar";
 import Radar from "@/pages/content/Radar";
 import Monitor from "@/pages/content/Monitor";
@@ -174,6 +175,9 @@ const App = () => (
                 <ProtectedRoute requiredRole="executor" allowClient>
                   <AutoLayout><Pautas /></AutoLayout>
                 </ProtectedRoute>
+              } />
+              <Route path="/content/aprovacoes" element={
+                <ProtectedRoute requiredRole="executor"><AppLayout><Aprovacoes /></AppLayout></ProtectedRoute>
               } />
               <Route path="/content/calendar" element={
                 <ProtectedRoute requiredRole="executor" allowClient>
