@@ -43,7 +43,7 @@ export default function Dashboard() {
   const { rate: usdRate, updatedAt: usdUpdatedAt, isEstimate: usdIsEstimate } = useUsdRateInfo()
   const [clients, setClients] = useState<{ status: string; mrr: number; currency: string }[]>([])
   const [leads, setLeads] = useState<{ stage: string }[]>([])
-  const [expenses, setExpenses] = useState<{ valor: number }[]>([])
+  const [expenses, setExpenses] = useState<{ valor: number; vencimento: string | null; recorrente: boolean }[]>([])
   const [loading, setLoading] = useState(true)
   const [alerts, setAlerts] = useState<{ msg: string; level: 'green' | 'yellow' | 'red' }[]>([])
 
@@ -60,7 +60,7 @@ export default function Dashboard() {
         supabase.from('leads').select('stage'),
         supabase.from('deliveries').select('status, prazo'),
         supabase.from('invoices').select('status, vencimento'),
-        supabase.from('expenses').select('valor'),
+        supabase.from('expenses').select('valor, vencimento, recorrente'),
       ])
 
       if (clientsData) setClients(clientsData)
@@ -93,7 +93,11 @@ export default function Dashboard() {
 
   const activeClients = clients.filter(c => c.status === 'ativo').length
   const totalMRR = clients.reduce((sum, c) => sum + mrrBRL(c.mrr, c.currency, usdRate), 0)
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.valor, 0)
+  // Despesa mensal = recorrentes (custo fixo do mês) + avulsas que vencem no mês corrente.
+  // Antes somava despesas de TODOS os meses juntos (inflava o número).
+  const _mesAtual = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}` })()
+  const totalExpenses = expenses.reduce((sum, e) =>
+    (e.recorrente || (e.vencimento && e.vencimento.startsWith(_mesAtual))) ? sum + e.valor : sum, 0)
   const riskClients = clients.filter(c => c.status === 'risco' || c.status === 'inadimplente').length
   const churnRate = clients.length > 0 ? ((riskClients / clients.length) * 100).toFixed(1) : '0.0'
 
