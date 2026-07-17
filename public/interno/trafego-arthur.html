@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Relatório Semanal de Tráfego · SVI</title>
+  <meta name="description" content="Guia interno SVI · como o relatório semanal de tráfego funciona.">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E📊%3C/text%3E%3C/svg%3E">
+  <style>
+  *,*::before,*::after { box-sizing: border-box; }
+  html,body { margin: 0; padding: 0; }
+  img,svg,video { max-width: 100%; height: auto; display: block; }
+  html { color-scheme: light dark; }
+
+  :root {
+    /* palette · light */
+    --paper: #F2EFE8;
+    --ink: #1A1D22;
+    --ink-soft: #4A4E56;
+    --ink-mute: #7A7E86;
+    --rule: #D8D3C7;
+    --tint: #EBE6D9;
+    --gold: #B29752;
+    --gold-soft: #D0B870;
+
+    /* semantic */
+    --sev-crit: #A73030;
+    --sev-crit-bg: rgba(167, 48, 48, 0.08);
+    --sev-warn: #A67609;
+    --sev-warn-bg: rgba(215, 158, 12, 0.10);
+    --sev-good: #4C7F5C;
+    --sev-good-bg: rgba(76, 127, 92, 0.08);
+
+    /* type */
+    --serif: Georgia, "Times New Roman", "Iowan Old Style", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0B0D10;
+      --ink: #E8E6E1;
+      --ink-soft: #B6B4AE;
+      --ink-mute: #7C7A75;
+      --rule: #23262B;
+      --tint: #17191D;
+      --gold: #D0B870;
+      --gold-soft: #B29752;
+
+      --sev-crit: #E15656;
+      --sev-crit-bg: rgba(225, 86, 86, 0.10);
+      --sev-warn: #E4B242;
+      --sev-warn-bg: rgba(228, 178, 66, 0.10);
+      --sev-good: #7BB490;
+      --sev-good-bg: rgba(123, 180, 144, 0.10);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #0B0D10; --ink: #E8E6E1; --ink-soft: #B6B4AE; --ink-mute: #7C7A75;
+    --rule: #23262B; --tint: #17191D; --gold: #D0B870; --gold-soft: #B29752;
+    --sev-crit: #E15656; --sev-crit-bg: rgba(225, 86, 86, 0.10);
+    --sev-warn: #E4B242; --sev-warn-bg: rgba(228, 178, 66, 0.10);
+    --sev-good: #7BB490; --sev-good-bg: rgba(123, 180, 144, 0.10);
+  }
+
+  :root[data-theme="light"] {
+    --paper: #F2EFE8; --ink: #1A1D22; --ink-soft: #4A4E56; --ink-mute: #7A7E86;
+    --rule: #D8D3C7; --tint: #EBE6D9; --gold: #B29752; --gold-soft: #D0B870;
+    --sev-crit: #A73030; --sev-crit-bg: rgba(167, 48, 48, 0.08);
+    --sev-warn: #A67609; --sev-warn-bg: rgba(215, 158, 12, 0.10);
+    --sev-good: #4C7F5C; --sev-good-bg: rgba(76, 127, 92, 0.08);
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 56px 32px 96px;
+  }
+
+  /* eyebrow */
+  .brand {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--ink-mute);
+    text-transform: uppercase;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .brand .mark { color: var(--gold); font-weight: 600; }
+  .brand .stamp { font-variant-numeric: tabular-nums; }
+
+  /* hero */
+  h1 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 34px;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin: 40px 0 12px;
+    text-wrap: balance;
+    max-width: 20ch;
+  }
+  h1 em {
+    font-style: italic;
+    color: var(--gold);
+  }
+  .lede {
+    font-family: var(--serif);
+    font-size: 18px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    max-width: 58ch;
+    margin: 0 0 8px;
+    text-wrap: pretty;
+  }
+  .who {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-top: 20px;
+  }
+  .who b { color: var(--ink); font-weight: 600; letter-spacing: 0.14em; }
+
+  /* section */
+  section { margin-top: 64px; }
+  h2 {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 400;
+    letter-spacing: -0.005em;
+    margin: 0 0 4px;
+    text-wrap: balance;
+  }
+  .subhead {
+    color: var(--ink-mute);
+    font-size: 14px;
+    margin-bottom: 28px;
+    max-width: 60ch;
+  }
+
+  /* step list */
+  .steps {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .step {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    gap: 20px;
+    align-items: baseline;
+    padding: 20px 0;
+    border-top: 1px solid var(--rule);
+  }
+  .step:first-child { border-top: 1px solid var(--ink); }
+  .step .n {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--gold);
+    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
+  }
+  .step .body h3 {
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 6px;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .step .body p {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 14px;
+    line-height: 1.55;
+    max-width: 58ch;
+  }
+  .step .body .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    padding: 2px 8px;
+    border: 1px solid var(--rule);
+    color: var(--ink-mute);
+    margin-top: 6px;
+    text-transform: uppercase;
+    border-radius: 2px;
+  }
+  .step .body .tag.gold { color: var(--gold); border-color: var(--gold); }
+
+  /* signal grid */
+  .sig-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 620px) { .sig-grid { grid-template-columns: 1fr; } }
+
+  .sig {
+    display: grid;
+    grid-template-columns: 24px 1fr;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--tint);
+  }
+  .sig .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-top: 6px;
+    align-self: start;
+  }
+  .sig[data-sev="crit"] { border-left: 3px solid var(--sev-crit); background: var(--sev-crit-bg); }
+  .sig[data-sev="crit"] .dot { background: var(--sev-crit); }
+  .sig[data-sev="warn"] { border-left: 3px solid var(--sev-warn); background: var(--sev-warn-bg); }
+  .sig[data-sev="warn"] .dot { background: var(--sev-warn); }
+  .sig[data-sev="good"] { border-left: 3px solid var(--sev-good); background: var(--sev-good-bg); }
+  .sig[data-sev="good"] .dot { background: var(--sev-good); }
+
+  .sig h4 {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 4px;
+    letter-spacing: -0.005em;
+  }
+  .sig p {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+  .sig .rule-name {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-mute);
+    margin-top: 6px;
+    letter-spacing: 0.02em;
+  }
+
+  /* task exemplos */
+  .tasks {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .task {
+    display: grid;
+    grid-template-columns: 34px 1fr auto;
+    gap: 20px;
+    padding: 20px 0;
+    border-top: 1px solid var(--rule);
+    align-items: center;
+  }
+  .task:first-child { border-top: 1px solid var(--ink); }
+  .task .badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: var(--paper);
+  }
+  .task[data-sev="crit"] .badge { background: var(--sev-crit); }
+  .task[data-sev="warn"] .badge { background: var(--sev-warn); color: #17191D; }
+  .task[data-sev="good"] .badge { background: var(--sev-good); }
+
+  .task .meta h3 {
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 4px;
+    letter-spacing: -0.005em;
+  }
+  .task .meta p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+  .task .meta .verdict {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+  .task[data-sev="crit"] .verdict { color: var(--sev-crit); }
+  .task[data-sev="warn"] .verdict { color: var(--sev-warn); }
+  .task[data-sev="good"] .verdict { color: var(--sev-good); }
+
+  .task a.open {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold);
+    text-decoration: none;
+    border: 1px solid var(--gold);
+    padding: 8px 14px;
+    border-radius: 2px;
+    align-self: center;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+  .task a.open:hover { background: var(--gold); color: var(--paper); }
+  .task a.open:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+  /* your role checklist */
+  .role {
+    background: var(--tint);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--gold);
+    padding: 24px 28px;
+    border-radius: 3px;
+  }
+  .role h3 {
+    font-family: var(--serif);
+    font-size: 18px;
+    font-weight: 400;
+    margin: 0 0 16px;
+    letter-spacing: -0.005em;
+  }
+  .role ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    counter-reset: rolestep;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .role li {
+    counter-increment: rolestep;
+    display: grid;
+    grid-template-columns: 24px 1fr;
+    gap: 12px;
+    font-size: 14px;
+    color: var(--ink-soft);
+    line-height: 1.55;
+  }
+  .role li::before {
+    content: counter(rolestep);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--gold);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.1em;
+    padding-top: 2px;
+  }
+  .role li b { color: var(--ink); font-weight: 600; }
+
+  /* footer stamp */
+  .stamp-foot {
+    margin-top: 72px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-mute);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    flex-wrap: wrap;
+  }
+  .stamp-foot b { color: var(--gold); font-weight: 600; }
+
+  /* highlight quote */
+  .callout {
+    padding: 24px 28px 24px 26px;
+    border-left: 2px solid var(--gold);
+    background: var(--tint);
+    margin: 28px 0 0;
+    border-radius: 0 3px 3px 0;
+  }
+  .callout p {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.5;
+    color: var(--ink);
+    max-width: 58ch;
+    text-wrap: pretty;
+  }
+  .callout small {
+    display: block;
+    margin-top: 8px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+
+  /* utilities */
+  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  .theme-toggle {
+    position: fixed; top: 20px; right: 20px;
+    background: var(--tint); border: 1px solid var(--rule);
+    color: var(--ink); font-family: var(--mono);
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 8px 12px; border-radius: 2px; cursor: pointer;
+    z-index: 100;
+  }
+  .theme-toggle:hover { border-color: var(--gold); color: var(--gold); }
+  @media (max-width: 620px) { .theme-toggle { top: 12px; right: 12px; padding: 6px 10px; font-size: 10px; } }
+</style>
+</head>
+<body>
+
+  <button class="theme-toggle" onclick="toggleTheme()" aria-label="Alternar tema">Tema</button>
+
+<div class="wrap">
+
+  <div class="brand">
+    <span><span class="mark">SVI</span> · Rotina Operacional Tráfego</span>
+    <span class="stamp">v1 · 17 jul 2026</span>
+  </div>
+
+  <h1>Toda semana, <em>17 tasks</em> nascem no ClickUp esperando você.</h1>
+
+  <p class="lede">
+    O n8n puxa Meta, compara com o histórico de 90 dias, aponta o que está bom e
+    o que está feio, e monta um relatório por cliente. Você e o João revisam. Só
+    depois de aprovado a Sofia manda a mensagem no grupo do cliente.
+  </p>
+
+  <p class="who">
+    Guia interno · <b>Arthur</b> assume a rotina em agosto · João revisa junto o mês inteiro.
+  </p>
+
+  <div class="callout">
+    <p>
+      &ldquo;A gente aprova. O cliente só recebe depois que a gente disse sim.
+      Se algo tá horrível, a task já diz o que fazer.&rdquo;
+    </p>
+    <small>— princípio da rotina</small>
+  </div>
+
+  <!-- ═══ FLUXO ═══ -->
+  <section>
+    <h2>O fluxo, do gatilho até o cliente</h2>
+    <p class="subhead">
+      Seis passos. Os quatro primeiros o n8n faz sozinho. Os dois últimos são
+      humanos (você e João).
+    </p>
+
+    <ol class="steps">
+      <li class="step">
+        <span class="n">01 · Auto</span>
+        <div class="body">
+          <h3>Segunda 09:00 (Brasília) o schedule dispara</h3>
+          <p>
+            Em julho segue segunda. Agosto em diante muda pra sexta 15:00 (fim
+            de semana comercial). Timezone corrigido para não rodar 6h da manhã.
+          </p>
+          <span class="tag gold">n8n · schedule</span>
+        </div>
+      </li>
+
+      <li class="step">
+        <span class="n">02 · Auto</span>
+        <div class="body">
+          <h3>Puxa dados Meta dos 17 clientes</h3>
+          <p>
+            Insights semana (7 dias), campanhas, adsets, informações da conta
+            (saldo, aviso de conta), gasto de ontem e baseline dos últimos 90
+            dias — tudo por cliente.
+          </p>
+          <span class="tag">Meta Graph API</span>
+        </div>
+      </li>
+
+      <li class="step">
+        <span class="n">03 · Auto</span>
+        <div class="body">
+          <h3>Aplica cinco sinais e escreve o veredicto</h3>
+          <p>
+            Compara CPmsg semana com baseline 90d, olha frequência dos adsets,
+            saldo da conta, se rodou nas últimas 24h e se algum adset queimou
+            R$50+ sem converter. O relatório abre com uma linha de resumo e
+            uma ação recomendada.
+          </p>
+        </div>
+      </li>
+
+      <li class="step">
+        <span class="n">04 · Auto</span>
+        <div class="body">
+          <h3>Cria a task no ClickUp (Semanal · você + João)</h3>
+          <p>
+            Uma task por cliente na lista <b>🗓️ Semanal</b> do folder Tráfego,
+            atribuída aos dois. O título vem com o veredicto: <span class="mono">🔴 Horrível · Aprovar…</span>
+            já orienta o que abrir primeiro.
+          </p>
+          <span class="tag">ClickUp · list 901524364494</span>
+        </div>
+      </li>
+
+      <li class="step">
+        <span class="n">05 · Humano</span>
+        <div class="body">
+          <h3>Você abre, lê e decide: aprovar ou reprovar</h3>
+          <p>
+            No topo da task tem a mensagem que vai pro cliente, a ação
+            recomendada, os sinais detectados, tabela de métricas e Top 5
+            campanhas. Se estiver bom, aprova pelo link. Se algo não fecha,
+            reprova — o João é avisado no PV.
+          </p>
+        </div>
+      </li>
+
+      <li class="step">
+        <span class="n">06 · Auto</span>
+        <div class="body">
+          <h3>Aprovado → Sofia manda no grupo do cliente</h3>
+          <p>
+            Só nesse ponto o cliente recebe algo. Cada cliente tem seu chatid
+            mapeado (17 grupos). Você nunca precisa copiar/colar mensagem
+            manual — a Sofia dispara sozinha depois do sim.
+          </p>
+          <span class="tag">Sofia · UazAPI</span>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ═══ SINAIS ═══ -->
+  <section>
+    <h2>Os cinco sinais que a task destaca</h2>
+    <p class="subhead">
+      A cor no topo da task e no título já diz por onde começar. Se algum for
+      vermelho, o relatório vira 🔴 Horrível. Se só amarelo, 🟡 Alerta. Sem
+      nenhum, ✅.
+    </p>
+
+    <div class="sig-grid">
+
+      <div class="sig" data-sev="crit">
+        <span class="dot"></span>
+        <div>
+          <h4>CPmsg semana &gt; 2× baseline 90d</h4>
+          <p>Comparado só com campanhas de mensagem — não polui com tráfego.</p>
+          <div class="rule-name">CPMSG_RATIO_HIGH</div>
+        </div>
+      </div>
+
+      <div class="sig" data-sev="warn">
+        <span class="dot"></span>
+        <div>
+          <h4>CPmsg semana &gt; 1,5× baseline 90d</h4>
+          <p>Não é crítico, mas indica desgaste. Vale olhar criativo/oferta.</p>
+          <div class="rule-name">CPMSG_RATIO_MID</div>
+        </div>
+      </div>
+
+      <div class="sig" data-sev="warn">
+        <span class="dot"></span>
+        <div>
+          <h4>Freq &gt; 4× em algum adset ativo</h4>
+          <p>Público esgotado. Ação sugerida: duplicar adset com público ampliado.</p>
+          <div class="rule-name">FREQ_SATURADA</div>
+        </div>
+      </div>
+
+      <div class="sig" data-sev="warn">
+        <span class="dot"></span>
+        <div>
+          <h4>Saldo da conta abaixo de R$50</h4>
+          <p>Provável parada em 24-48h. Chamar Aleilson pra recarga.</p>
+          <div class="rule-name">SALDO_BAIXO</div>
+        </div>
+      </div>
+
+      <div class="sig" data-sev="crit">
+        <span class="dot"></span>
+        <div>
+          <h4>Sem gasto nas últimas 24h</h4>
+          <p>Conta ativa mas zerou — típico WhatsApp desconectado ou creative rejeitado.</p>
+          <div class="rule-name">GASTO_ZERADO_24H</div>
+        </div>
+      </div>
+
+      <div class="sig" data-sev="crit">
+        <span class="dot"></span>
+        <div>
+          <h4>R$50+ em adset sem 1 conversão</h4>
+          <p>Está queimando dinheiro. Ação: pausar o adset e realocar.</p>
+          <div class="rule-name">ADSET_DRY</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══ EXEMPLOS ═══ -->
+  <section>
+    <h2>Quatro tasks que o WF criou hoje pra teste</h2>
+    <p class="subhead">
+      Antes da apresentação eu rodei o fluxo em quatro contas reais.
+      Você pode abrir cada uma pra sentir o formato antes de segunda.
+    </p>
+
+    <div class="tasks">
+
+      <div class="task" data-sev="warn">
+        <span class="badge">🟡</span>
+        <div class="meta">
+          <h3>Uzi Makeup</h3>
+          <p>
+            2 sinais amarelos: freq 4,2 no adset FB+IG e saldo em R$10,55.
+            Ação recomendada: duplicar adset com público ampliado.
+          </p>
+          <div class="verdict">🟡 Alerta · 2 sinais</div>
+        </div>
+        <a class="open" href="https://app.clickup.com/t/86catjcj4" target="_blank" rel="noopener">Abrir task</a>
+      </div>
+
+      <div class="task" data-sev="crit">
+        <span class="badge">🔴</span>
+        <div class="meta">
+          <h3>Dr. Daniel Peralba</h3>
+          <p>
+            R$58,97 gastos no adset <span class="mono">[00] [Aberto]</span> sem
+            nenhuma conversão em 7 dias. Ação: pausar e realocar.
+          </p>
+          <div class="verdict">🔴 Horrível · 1 sinal crítico</div>
+        </div>
+        <a class="open" href="https://app.clickup.com/t/86catjcy1" target="_blank" rel="noopener">Abrir task</a>
+      </div>
+
+      <div class="task" data-sev="good">
+        <span class="badge">✅</span>
+        <div class="meta">
+          <h3>Dr. Felipe Branco</h3>
+          <p>
+            CPmsg R$6,42 · saudável dentro do baseline. Nenhum sinal disparou.
+            Manter o que está rodando.
+          </p>
+          <div class="verdict">✅ Saudável · sem sinais</div>
+        </div>
+        <a class="open" href="https://app.clickup.com/t/86catjd27" target="_blank" rel="noopener">Abrir task</a>
+      </div>
+
+      <div class="task" data-sev="crit">
+        <span class="badge">🔴</span>
+        <div class="meta">
+          <h3>Colégio Cristo Rei</h3>
+          <p>
+            R$79,84 no adset <span class="mono">RDC</span> sem conversão.
+            Ação: pausar e revisar oferta (cursinho em julho é sazonal fraco).
+          </p>
+          <div class="verdict">🔴 Horrível · 1 sinal crítico</div>
+        </div>
+        <a class="open" href="https://app.clickup.com/t/86catjd7p" target="_blank" rel="noopener">Abrir task</a>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══ SEU PAPEL ═══ -->
+  <section>
+    <h2>O que você faz toda semana (agosto em diante)</h2>
+    <p class="subhead">
+      Rotina de 30-40 minutos, sexta 15:00. Foco no que a task já destacou.
+    </p>
+
+    <div class="role">
+      <h3>Sua rotina de sexta</h3>
+      <ol>
+        <li>
+          Abrir o ClickUp na lista <b>🗓️ Semanal</b> — as 17 tasks vão estar
+          esperando, ordenadas por severidade (🔴 no topo).
+        </li>
+        <li>
+          Começar pelas <b>🔴 Horrível</b>. Ler os sinais detectados e a ação
+          recomendada. Se concordar, executar a ação (pausar adset, ampliar
+          público etc.) antes de aprovar o relatório.
+        </li>
+        <li>
+          Ver as <b>🟡 Alerta</b>. Aqui geralmente é seguir o script:
+          recarregar saldo, marcar duplicação de adset pra próxima semana.
+        </li>
+        <li>
+          <b>✅ Saudáveis</b> passam batido. Só aprovar — a Sofia manda a mensagem
+          padrão da semana.
+        </li>
+        <li>
+          Se algum relatório tiver algo estranho que a máquina não pegou,
+          <b>Reprovar</b>. O João recebe aviso no PV e a gente conversa antes
+          de mandar pro cliente.
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <div class="stamp-foot">
+    <span>Próximo disparo automático · <b>Seg 20/07 · 09:00 BRT</b></span>
+    <span>WF K62 · 22 nodes · 17 clientes</span>
+  </div>
+
+</div>
+<script>
+  (function(){
+    const saved = localStorage.getItem('theme');
+    if (saved) document.documentElement.setAttribute('data-theme', saved);
+  })();
+  function toggleTheme(){
+    const cur = document.documentElement.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    const next = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+  }
+</script>
+</body>
+</html>

@@ -13,11 +13,107 @@ interface CampaignRow {
   spend: number
   freq: number
   ctr: number
-  conv: number
+  // legado (v1 do WF)
+  conv?: number
+  leads?: number
+  purchases?: number
+  cpmsg?: number | null
+  cpl?: number | null
+  // v2 do WF (por objetivo)
+  group?: 'traffic' | 'message' | 'sales' | 'leads' | 'awareness' | 'video' | 'app' | 'other'
+  reach?: number
+  cpc?: number
+  cpm?: number
+  linkClicks?: number
+  videoViews?: number
+  postEngagement?: number
+  postSave?: number
+  postNetLike?: number
+  msgs?: number
+  firstReply?: number
+  d2?: number
+  d3?: number
+  d5?: number
+  cpa?: number | null
+  cpLinkClick?: number | null
+}
+
+type Group = 'traffic' | 'message' | 'sales' | 'leads' | 'awareness' | 'video' | 'app' | 'other'
+
+const OBJ_GROUP: Record<string, Group> = {
+  OUTCOME_TRAFFIC: 'traffic', LINK_CLICKS: 'traffic',
+  OUTCOME_ENGAGEMENT: 'message', MESSAGES: 'message', CONVERSATIONS: 'message',
+  OUTCOME_SALES: 'sales',
+  OUTCOME_LEADS: 'leads', LEAD_GENERATION: 'leads',
+  OUTCOME_AWARENESS: 'awareness', REACH: 'awareness', BRAND_AWARENESS: 'awareness',
+  VIDEO_VIEWS: 'video', OUTCOME_APP_PROMOTION: 'app',
+}
+
+function classifyGroup(objective: string): Group {
+  return OBJ_GROUP[objective] || 'other'
+}
+
+const GROUP_INFO: Record<Group, { label: string; emoji: string; color: string }> = {
+  traffic:   { label: 'Tráfego · visitas',        emoji: '📢', color: 'text-amber-500 border-amber-500/30 bg-amber-500/5' },
+  message:   { label: 'Mensagem · WhatsApp',       emoji: '💬', color: 'text-emerald-500 border-emerald-500/30 bg-emerald-500/5' },
+  sales:     { label: 'Vendas',                    emoji: '🛒', color: 'text-violet-500 border-violet-500/30 bg-violet-500/5' },
+  leads:     { label: 'Leads · form',              emoji: '📋', color: 'text-blue-500 border-blue-500/30 bg-blue-500/5' },
+  awareness: { label: 'Alcance · awareness',       emoji: '📡', color: 'text-rose-500 border-rose-500/30 bg-rose-500/5' },
+  video:     { label: 'Vídeo',                     emoji: '🎬', color: 'text-rose-500 border-rose-500/30 bg-rose-500/5' },
+  app:       { label: 'App',                       emoji: '📱', color: 'text-cyan-500 border-cyan-500/30 bg-cyan-500/5' },
+  other:     { label: 'Outros',                    emoji: '📦', color: 'text-muted-foreground border-border bg-muted/20' },
+}
+
+interface GroupAgg {
+  group: Group
+  spend: number
+  campaigns: CampaignRow[]
+  reach: number
+  linkClicks: number
+  videoViews: number
+  msgs: number
+  firstReply: number
+  d2: number
+  d3: number
+  d5: number
   leads: number
   purchases: number
   cpmsg: number | null
+  cpc: number | null
+  cpa: number | null
   cpl: number | null
+  cpVideoView: number | null
+}
+
+function aggregateByGroup(campaigns: CampaignRow[]): GroupAgg[] {
+  const map = new Map<Group, GroupAgg>()
+  for (const c of campaigns) {
+    const g = c.group || classifyGroup(c.objective)
+    if (!map.has(g)) {
+      map.set(g, { group: g, spend: 0, campaigns: [], reach: 0, linkClicks: 0, videoViews: 0, msgs: 0, firstReply: 0, d2: 0, d3: 0, d5: 0, leads: 0, purchases: 0, cpmsg: null, cpc: null, cpa: null, cpl: null, cpVideoView: null })
+    }
+    const agg = map.get(g)!
+    agg.spend += c.spend
+    agg.reach += c.reach || 0
+    agg.linkClicks += c.linkClicks || 0
+    agg.videoViews += c.videoViews || 0
+    agg.msgs += (c.msgs ?? c.conv) || 0
+    agg.firstReply += c.firstReply || 0
+    agg.d2 += c.d2 || 0
+    agg.d3 += c.d3 || 0
+    agg.d5 += c.d5 || 0
+    agg.leads += c.leads || 0
+    agg.purchases += c.purchases || 0
+    agg.campaigns.push(c)
+  }
+  for (const agg of map.values()) {
+    if (agg.msgs > 0) agg.cpmsg = agg.spend / agg.msgs
+    if (agg.linkClicks > 0) agg.cpc = agg.spend / agg.linkClicks
+    if (agg.videoViews > 0) agg.cpVideoView = agg.spend / agg.videoViews
+    if (agg.purchases > 0) agg.cpa = agg.spend / agg.purchases
+    if (agg.leads > 0) agg.cpl = agg.spend / agg.leads
+  }
+  return Array.from(map.values()).sort((a, b) => b.spend - a.spend)
 }
 
 interface ReportRow {
@@ -161,19 +257,13 @@ export default function TrafegoApprove() {
   const alreadyDecided = data.status !== 'pending'
 
   const campaigns = parseCampaigns(data.campaigns_json)
-  const topCampaigns = campaigns.slice(0, 5)
+  const groups = aggregateByGroup(campaigns)
+  const totalSpend = data.spend_cents / 100
   const dryCampaigns = campaigns.filter(
-    (c) => c.conv === 0 && c.leads === 0 && c.purchases === 0 && c.spend > 30
+    (c) => ((c.msgs ?? c.conv) || 0) === 0 && (c.leads || 0) === 0 && (c.purchases || 0) === 0 && c.spend > 30
   )
 
-  const convCount = data.conv_count ?? 0
-  const firstReply = data.first_reply_count ?? 0
-  const d2 = data.d2_count ?? 0
-  const leadsCount = data.leads_count ?? 0
-  const purchaseCount = data.purchase_count ?? 0
   const freq = data.frequency ?? 0
-  const cpmsg = data.cpmsg_cents !== null && data.cpmsg_cents !== undefined ? data.cpmsg_cents / 100 : null
-  const cpl = data.cpl_cents !== null && data.cpl_cents !== undefined ? data.cpl_cents / 100 : null
 
   return (
     <div className="min-h-screen bg-background">
@@ -199,84 +289,21 @@ export default function TrafegoApprove() {
           <StatusBanner data={data} />
         )}
 
-        {/* Métricas — Distribuição */}
+        {/* Resumo da semana */}
         <div>
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Distribuição</p>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <Stat label="Investimento" value={brl(data.spend_cents)} highlight />
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Resumo da semana</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Stat label="Investimento total" value={brl(data.spend_cents)} highlight />
             <Stat label="Alcance" value={nf(data.reach)} />
-            <Stat label="Frequência" value={`${freq.toFixed(2)}x`} />
-            <Stat label="Cliques" value={nf(data.clicks)} />
-            <Stat label="CTR" value={`${ctrPct}%`} />
+            <Stat label="Frequência média" value={`${freq.toFixed(2)}x`} />
+            <Stat label="CTR médio" value={`${ctrPct}%`} />
           </div>
         </div>
 
-        {/* Métricas — Resultados */}
-        <div>
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Resultados</p>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <Stat label="Conversas WhatsApp" value={nf(convCount)} highlight />
-            <Stat label="1ª resposta (secretária)" value={nf(firstReply)} />
-            <Stat label="Cliente voltou (D2)" value={nf(d2)} />
-            <Stat label="Leads (form)" value={nf(leadsCount)} />
-            <Stat label="Compras (CAPI)" value={nf(purchaseCount)} />
-          </div>
-        </div>
-
-        {/* Métricas — Custos */}
-        {(cpmsg !== null || cpl !== null) && (
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Custos por resultado</p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {cpmsg !== null && <Stat label="CPmsg (custo por conversa)" value={brlF(cpmsg)} />}
-              {cpl !== null && <Stat label="CPL (custo por lead)" value={brlF(cpl)} />}
-              {data.impressions > 0 && <Stat label="Impressões" value={nf(data.impressions)} />}
-            </div>
-          </div>
-        )}
-
-        {/* Top 5 campanhas */}
-        {topCampaigns.length > 0 && (
-          <div className="border border-border rounded-xl overflow-hidden">
-            <div className="px-4 py-3 bg-muted/30 border-b border-border">
-              <p className="text-xs font-semibold uppercase tracking-wider">Top 5 campanhas (por gasto)</p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-muted/20 text-muted-foreground">
-                  <tr className="text-left">
-                    <th className="px-3 py-2 font-medium">#</th>
-                    <th className="px-3 py-2 font-medium">Tipo</th>
-                    <th className="px-3 py-2 font-medium">Campanha</th>
-                    <th className="px-3 py-2 font-medium text-right">Gasto</th>
-                    <th className="px-3 py-2 font-medium text-right">Freq</th>
-                    <th className="px-3 py-2 font-medium text-right">Msgs</th>
-                    <th className="px-3 py-2 font-medium text-right">Leads</th>
-                    <th className="px-3 py-2 font-medium text-right">Comp</th>
-                    <th className="px-3 py-2 font-medium text-right">CPmsg</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topCampaigns.map((c, i) => (
-                    <tr key={i} className="border-t border-border">
-                      <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
-                      <td className="px-3 py-2"><ObjBadge obj={c.objective} /></td>
-                      <td className="px-3 py-2 max-w-[280px] truncate" title={c.name}>{c.name}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{brlF(c.spend)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{c.freq.toFixed(1)}x</td>
-                      <td className="px-3 py-2 text-right tabular-nums font-medium">{c.conv}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{c.leads}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{c.purchases}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
-                        {c.cpmsg !== null ? brlF(c.cpmsg) : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+        {/* Blocos por objetivo */}
+        {groups.map((g) => (
+          <ObjectiveBlock key={g.group} agg={g} totalSpend={totalSpend} />
+        ))}
 
         {/* Campanhas zero conversão */}
         {dryCampaigns.length > 0 && (
@@ -390,11 +417,118 @@ function Wrapper({ children }: { children: React.ReactNode }) {
   )
 }
 
-function Stat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function Stat({ label, value, highlight, sublabel }: { label: string; value: string; highlight?: boolean; sublabel?: string }) {
   return (
     <div className={`rounded-xl border border-border p-4 ${highlight ? 'bg-primary/10 border-primary/30' : 'bg-card'}`}>
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{label}</p>
       <p className="text-lg font-bold tabular-nums">{value}</p>
+      {sublabel && <p className="text-[10px] text-muted-foreground mt-0.5">{sublabel}</p>}
+    </div>
+  )
+}
+
+function ObjectiveBlock({ agg, totalSpend }: { agg: GroupAgg; totalSpend: number }) {
+  const info = GROUP_INFO[agg.group]
+  const pct = totalSpend > 0 ? (agg.spend / totalSpend) * 100 : 0
+
+  return (
+    <div className={`border rounded-xl overflow-hidden ${info.color}`}>
+      <div className="px-4 py-3 border-b border-current/20 flex items-center justify-between flex-wrap gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wider flex items-center gap-2">
+          <span className="text-base leading-none">{info.emoji}</span>
+          {info.label}
+        </p>
+        <div className="flex items-center gap-3 text-xs tabular-nums">
+          <span className="font-mono opacity-70">{pct.toFixed(0)}% do investimento</span>
+          <span className="font-bold text-sm">{brlF(agg.spend)}</span>
+        </div>
+      </div>
+
+      <div className="p-4 bg-background/50 space-y-4">
+        {/* métricas por tipo */}
+        {agg.group === 'traffic' && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {agg.linkClicks > 0 && (
+              <Stat label="Visitas" value={nf(agg.linkClicks)} sublabel={agg.cpc !== null ? `CPC ${brlF(agg.cpc)}` : undefined} highlight />
+            )}
+            {agg.videoViews > 0 && (
+              <Stat label="Video views" value={nf(agg.videoViews)} sublabel={agg.cpVideoView !== null ? `${brlF(agg.cpVideoView)}/view` : undefined} />
+            )}
+            {agg.reach > 0 && <Stat label="Alcance" value={nf(agg.reach)} />}
+            {agg.msgs > 0 && <Stat label="Msgs bônus" value={nf(agg.msgs)} sublabel="não é objetivo" />}
+          </div>
+        )}
+
+        {agg.group === 'message' && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Stat label="Mensagens" value={nf(agg.msgs)} sublabel={agg.cpmsg !== null ? `CPmsg ${brlF(agg.cpmsg)}` : undefined} highlight />
+            {agg.firstReply > 0 && (
+              <Stat label="1ª resposta" value={nf(agg.firstReply)} sublabel={agg.msgs > 0 ? `${Math.round(agg.firstReply / agg.msgs * 100)}% respondeu` : undefined} />
+            )}
+            {agg.d2 > 0 && <Stat label="D2 (voltou 2x)" value={nf(agg.d2)} />}
+            {agg.d3 > 0 && <Stat label="D3 (voltou 3x)" value={nf(agg.d3)} />}
+            {agg.d5 > 0 && <Stat label="D5 ⭐ quente" value={nf(agg.d5)} sublabel="conversa evoluiu 5x" />}
+            {agg.reach > 0 && <Stat label="Alcance" value={nf(agg.reach)} />}
+          </div>
+        )}
+
+        {agg.group === 'sales' && (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <Stat label="Compras" value={nf(agg.purchases)} sublabel={agg.cpa !== null ? `CPA ${brlF(agg.cpa)}` : undefined} highlight />
+            {agg.msgs > 0 && <Stat label="Msgs" value={nf(agg.msgs)} sublabel="funil pré-venda" />}
+            {agg.leads > 0 && <Stat label="Leads" value={nf(agg.leads)} />}
+          </div>
+        )}
+
+        {agg.group === 'leads' && (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <Stat label="Leads" value={nf(agg.leads)} sublabel={agg.cpl !== null ? `CPL ${brlF(agg.cpl)}` : undefined} highlight />
+            {agg.msgs > 0 && <Stat label="Msgs" value={nf(agg.msgs)} />}
+          </div>
+        )}
+
+        {agg.group === 'awareness' && (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <Stat label="Alcance único" value={nf(agg.reach)} highlight />
+            {agg.videoViews > 0 && <Stat label="Video views" value={nf(agg.videoViews)} />}
+          </div>
+        )}
+
+        {agg.group === 'video' && (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <Stat label="Video views" value={nf(agg.videoViews)} highlight />
+            {agg.reach > 0 && <Stat label="Alcance" value={nf(agg.reach)} />}
+          </div>
+        )}
+
+        {/* Campanhas do grupo */}
+        {agg.campaigns.length > 0 && (
+          <div className="border-t border-current/10 pt-3">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
+              Campanhas ({agg.campaigns.length})
+            </p>
+            <ul className="space-y-2">
+              {agg.campaigns.map((c, i) => {
+                const cpmsg = c.cpmsg ?? null
+                const cpc = c.cpc ?? null
+                const cMsgs = c.msgs ?? c.conv ?? 0
+                const cLinks = c.linkClicks ?? 0
+                return (
+                  <li key={i} className="text-xs flex items-baseline gap-2 flex-wrap">
+                    <span className="font-medium truncate max-w-[260px]" title={c.name}>{c.name}</span>
+                    <span className="text-muted-foreground tabular-nums">
+                      — {brlF(c.spend)}
+                      {agg.group === 'message' && cMsgs > 0 && ` · ${cMsgs} msgs @ ${cpmsg !== null ? brlF(cpmsg) : '—'}`}
+                      {agg.group === 'traffic' && cLinks > 0 && ` · ${nf(cLinks)} visitas${cpc !== null ? ` @ ${brlF(cpc)}` : ''}`}
+                      {c.freq > 0 && ` · freq ${c.freq.toFixed(1)}x`}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
