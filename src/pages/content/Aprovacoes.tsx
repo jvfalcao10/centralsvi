@@ -88,7 +88,7 @@ export default function Aprovacoes() {
       .eq('id', r.id)
     setBusy(null)
     if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-    toast({ title: 'Aprovado ✅', description: `${r.cliente} vai pro cliente no dia 1.` })
+    toast({ title: 'Aprovado ✅', description: `${r.cliente} vai pro cliente no dia 28.` })
     setRows(prev => prev.filter(x => x.id !== r.id))
   }
 
@@ -124,7 +124,7 @@ export default function Aprovacoes() {
             <Sparkles className="h-5 w-5 text-primary" /> Aprovações de Conteúdo IA
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Planos gerados pela IA. O que você aprovar aqui, a Sofia envia pro grupo do cliente no dia 1.
+            Planos gerados pela IA. O que você aprovar aqui, a Sofia envia pro grupo do cliente no dia 28.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => { load(); loadCounts() }} disabled={loading}>
