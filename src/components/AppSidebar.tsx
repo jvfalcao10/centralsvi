@@ -56,6 +56,7 @@ const NAV: NavEntry[] = [
   { type: 'item', title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard, minRole: 'manager' },
   { type: 'item', title: 'Acessos', url: '/acessos', icon: Compass, minRole: 'executor' },
   { type: 'item', title: 'Diretoria', url: '/diretoria', icon: Gauge, minRole: 'manager' },
+  { type: 'item', title: 'Aprovações IA', url: '/content/aprovacoes', icon: Sparkles, minRole: 'executor' },
 
   {
     type: 'group',
