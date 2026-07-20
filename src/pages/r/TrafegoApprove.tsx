@@ -7,6 +7,18 @@ import logoSvi from '@/assets/logo-svi.png'
 
 const APPROVAL_WEBHOOK_URL = 'https://n8n-n8n-start.wrqknp.easypanel.host/webhook/aprovar-relatorio-trafego'
 
+/** Quem pode aprovar. "Outro" abre campo livre. */
+const PESSOAS = ['João Falcão', 'Aleilson', 'Arthur', 'Outro'] as const
+
+/** Motivos de reprovação mais comuns. "Outro" abre campo livre. */
+const MOTIVOS = [
+  'Número está errado',
+  'Falta contexto',
+  'Texto precisa de ajuste',
+  'Não é hora de enviar',
+  'Outro',
+] as const
+
 interface CampaignRow {
   name: string
   objective: string
@@ -182,7 +194,9 @@ export default function TrafegoApprove() {
   const [params] = useSearchParams()
   const token = params.get('token') || ''
   const [aprovador, setAprovador] = useState('')
+  const [pessoaSel, setPessoaSel] = useState('')
   const [rejectReason, setRejectReason] = useState('')
+  const [motivoSel, setMotivoSel] = useState('')
   const [submitting, setSubmitting] = useState<null | 'approve' | 'reject'>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState<'approved' | 'rejected' | null>(null)
@@ -338,31 +352,78 @@ export default function TrafegoApprove() {
         {!alreadyDecided && !submitSuccess && (
           <div className="space-y-4 border-t border-border pt-6">
             <div>
-              <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-1.5">
-                Seu nome (registrado como aprovador)
+              <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-2">
+                Quem está aprovando
               </label>
-              <input
-                type="text"
-                placeholder="Ex: João Falcão"
-                value={aprovador}
-                onChange={(e) => setAprovador(e.target.value)}
-                disabled={!!submitting}
-                className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
+              <div className="flex flex-wrap gap-2">
+                {PESSOAS.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => {
+                      setPessoaSel(p)
+                      setAprovador(p === 'Outro' ? '' : p)
+                    }}
+                    disabled={!!submitting}
+                    className={`px-3.5 py-2 rounded-md border text-sm transition-colors disabled:opacity-50 ${
+                      pessoaSel === p
+                        ? 'border-primary bg-primary/15 text-primary font-medium'
+                        : 'border-border hover:bg-accent'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+              {pessoaSel === 'Outro' && (
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Digite seu nome"
+                  value={aprovador}
+                  onChange={(e) => setAprovador(e.target.value)}
+                  disabled={!!submitting}
+                  className="mt-2 w-full px-3 py-2 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              )}
             </div>
 
             <div>
-              <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-1.5">
-                Motivo da reprovação (opcional)
+              <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-2">
+                Motivo (só se reprovar)
               </label>
-              <textarea
-                rows={2}
-                placeholder="Só usado se você reprovar"
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                disabled={!!submitting}
-                className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
-              />
+              <div className="flex flex-wrap gap-2">
+                {MOTIVOS.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => {
+                      const novo = motivoSel === m ? '' : m
+                      setMotivoSel(novo)
+                      setRejectReason(novo === 'Outro' || novo === '' ? '' : novo)
+                    }}
+                    disabled={!!submitting}
+                    className={`px-3.5 py-2 rounded-md border text-sm transition-colors disabled:opacity-50 ${
+                      motivoSel === m
+                        ? 'border-rose-500 bg-rose-500/15 text-rose-500 font-medium'
+                        : 'border-border hover:bg-accent'
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+              {motivoSel === 'Outro' && (
+                <textarea
+                  rows={2}
+                  autoFocus
+                  placeholder="Descreva o motivo"
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  disabled={!!submitting}
+                  className="mt-2 w-full px-3 py-2 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+                />
+              )}
             </div>
 
             {submitError && (
