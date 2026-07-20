@@ -3,7 +3,9 @@ import { useQuery } from '@tanstack/react-query'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/integrations/supabase/client'
 import { Loader2, CheckCircle2, XCircle, AlertTriangle, Eye, ExternalLink } from 'lucide-react'
+import { useTheme } from '@/contexts/ThemeContext'
 import logoSvi from '@/assets/logo-svi.png'
+import logoBranca from '@/assets/logo-branca.png'
 
 const APPROVAL_WEBHOOK_URL = 'https://n8n-n8n-start.wrqknp.easypanel.host/webhook/aprovar-relatorio-trafego'
 
@@ -193,6 +195,7 @@ export default function TrafegoApprove() {
   const { slug } = useParams<{ slug: string }>()
   const [params] = useSearchParams()
   const token = params.get('token') || ''
+  const { theme } = useTheme()
   const [aprovador, setAprovador] = useState('')
   const [pessoaSel, setPessoaSel] = useState('')
   const [rejectReason, setRejectReason] = useState('')
@@ -283,7 +286,7 @@ export default function TrafegoApprove() {
     <div className="min-h-screen bg-background">
       <div className="max-w-3xl mx-auto px-5 py-8 md:py-12 space-y-6">
         <div className="flex items-center justify-between gap-4">
-          <img src={logoSvi} alt="SVI" className="h-8 object-contain" />
+          <img src={theme === 'dark' ? logoBranca : logoSvi} alt="SVI" className="h-8 object-contain" />
           <span className="text-[11px] uppercase tracking-wider px-2 py-1 rounded-full border border-border bg-muted/40 text-muted-foreground">
             Aprovação interna
           </span>
