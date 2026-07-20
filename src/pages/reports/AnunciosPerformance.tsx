@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import {
   Loader2, CheckCircle2, XCircle, Clock, Eye, ExternalLink,
-  TrendingUp, MessageSquare, Wallet, RefreshCw,
+  TrendingUp, MessageSquare, Wallet, RefreshCw, Users,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -28,6 +28,8 @@ interface Report {
   conv_count: number
   link_clicks: number
   cpmsg_cents: number | null
+  ig_followers_gained_7d: number | null
+  ig_followers: number | null
   status: 'pending' | 'approved' | 'rejected' | 'sent' | 'failed'
   approved_by_name: string | null
   rejected_reason: string | null
@@ -58,7 +60,7 @@ export default function AnunciosPerformance() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('weekly_traffic_reports')
-        .select('id,slug,approval_token,cliente_label,account_id,period_start,period_end,spend_cents,reach,conv_count,link_clicks,cpmsg_cents,status,approved_by_name,rejected_reason')
+        .select('id,slug,approval_token,cliente_label,account_id,period_start,period_end,spend_cents,reach,conv_count,link_clicks,cpmsg_cents,status,approved_by_name,rejected_reason,ig_followers_gained_7d,ig_followers')
         .order('period_end', { ascending: false })
         .limit(1000)
       if (error) throw error
@@ -90,6 +92,7 @@ export default function AnunciosPerformance() {
       investido,
       conversas,
       custoConversa: conversas > 0 ? investido / conversas : null,
+      seguidores: doPeriodo.reduce((s, r) => s + (r.ig_followers_gained_7d || 0), 0),
       pendentes: doPeriodo.filter(r => r.status === 'pending').length,
     }
   }, [doPeriodo])
@@ -137,9 +140,10 @@ export default function AnunciosPerformance() {
       </div>
 
       {/* KPIs da semana */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Kpi icon={Wallet} label="Investido na semana" value={brl(kpis.investido)} />
         <Kpi icon={MessageSquare} label="Conversas" value={String(kpis.conversas)} />
+        <Kpi icon={Users} label="Seguidores ganhos" value={`+${kpis.seguidores}`} />
         <Kpi icon={TrendingUp} label="Custo por conversa" value={kpis.custoConversa ? brl(kpis.custoConversa) : '—'} />
         <Kpi icon={Clock} label="Aguardando aprovação" value={String(kpis.pendentes)} highlight={kpis.pendentes > 0} />
       </div>
@@ -186,6 +190,7 @@ export default function AnunciosPerformance() {
                     <Metric label="investido" value={brl(r.spend_cents)} />
                     <Metric label="conversas" value={String(r.conv_count || 0)} />
                     <Metric label="custo/conv" value={r.cpmsg_cents ? brl(r.cpmsg_cents) : '—'} />
+                    <Metric label="seguidores" value={r.ig_followers_gained_7d ? `+${r.ig_followers_gained_7d}` : '—'} />
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
