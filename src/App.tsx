@@ -25,6 +25,7 @@ import Prospecting from "@/pages/Prospecting";
 import Scripts from "@/pages/Scripts";
 import Onboarding from "@/pages/Onboarding";
 import Acessos from "@/pages/Acessos";
+import Catalogo from "@/pages/Catalogo";
 import Diretoria from "@/pages/Diretoria";
 import ActivityLog from "@/pages/ActivityLog";
 import Team from "@/pages/Team";
@@ -110,6 +111,9 @@ const App = () => (
               } />
               <Route path="/acessos" element={
                 <ProtectedRoute requiredRole="executor"><AppLayout><Acessos /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/catalogo" element={
+                <ProtectedRoute requiredRole="manager"><AppLayout><Catalogo /></AppLayout></ProtectedRoute>
               } />
               <Route path="/diretoria" element={
                 <ProtectedRoute requiredRole="manager"><AppLayout><Diretoria /></AppLayout></ProtectedRoute>
