@@ -139,24 +139,35 @@ async function coletarVercel(token: string): Promise<Item[]> {
 
 // ---------------------------------------------------------------- n8n
 
-async function coletarN8n(base: string, chave: string): Promise<Item[]> {
+async function coletarN8n(
+  base: string,
+  chave: string,
+): Promise<{ itens: Item[]; arquivados: number; janelaHoras: number | null }> {
   const raiz_ = base.replace(/\/+$/, '');
   const headers = { 'X-N8N-API-KEY': chave, accept: 'application/json' };
 
-  const wfs: any[] = [];
+  const todos: any[] = [];
   let cursor: string | undefined;
   for (let pagina = 0; pagina < 10; pagina++) {
     const u = `${raiz_}/api/v1/workflows?limit=250${cursor ? `&cursor=${cursor}` : ''}`;
     const r = await fetch(u, { headers });
     if (!r.ok) throw new Error(`n8n workflows -> ${r.status}`);
     const d: any = await r.json();
-    wfs.push(...(d.data || []));
+    todos.push(...(d.data || []));
     if (!d.nextCursor) break;
     cursor = d.nextCursor;
   }
 
-  // Ultima execucao por workflow (uma varredura das execucoes recentes).
+  // Arquivado ja foi decidido como morto — nao polui o catalogo, so vira contagem.
+  const arquivados = todos.filter((w) => w.isArchived).length;
+  const wfs = todos.filter((w) => !w.isArchived);
+
+  // Ultima execucao por workflow. ATENCAO: a API so devolve as execucoes recentes,
+  // entao essa varredura cobre uma janela curta (medido: ~7h numa instancia movimentada).
+  // Ausencia de execucao aqui NAO prova que o workflow esta parado — so que nao rodou
+  // dentro da janela. Por isso ausencia nunca vira alerta; so erro explicito vira.
   const ultima = new Map<string, { em: string; status: string }>();
+  let maisAntiga: string | null = null;
   try {
     let ec: string | undefined;
     for (let pagina = 0; pagina < 4; pagina++) {
@@ -166,9 +177,9 @@ async function coletarN8n(base: string, chave: string): Promise<Item[]> {
       const d: any = await r.json();
       for (const e of d.data || []) {
         const wid = String(e.workflowId);
-        if (!ultima.has(wid)) {
-          ultima.set(wid, { em: e.startedAt || e.createdAt, status: e.status || 'unknown' });
-        }
+        const em = e.startedAt || e.createdAt;
+        if (em && (!maisAntiga || em < maisAntiga)) maisAntiga = em;
+        if (!ultima.has(wid)) ultima.set(wid, { em, status: e.status || 'unknown' });
       }
       if (!d.nextCursor) break;
       ec = d.nextCursor;
@@ -177,7 +188,11 @@ async function coletarN8n(base: string, chave: string): Promise<Item[]> {
     /* sem historico de execucao — o inventario continua valido */
   }
 
-  return wfs.map((w: any) => {
+  const janelaHoras = maisAntiga
+    ? Math.round(((Date.now() - Date.parse(maisAntiga)) / 3600000) * 10) / 10
+    : null;
+
+  const itens = wfs.map((w: any) => {
     const exec = ultima.get(String(w.id)) || null;
     const parado = dias(w.updatedAt || null);
     const flags: string[] = [];
@@ -186,18 +201,11 @@ async function coletarN8n(base: string, chave: string): Promise<Item[]> {
     if (!w.active) {
       flags.push('desligado');
       status = 'atencao';
-      if (!exec) {
-        flags.push('nunca rodou');
-        status = 'dormente';
-      }
     }
+    // Unico sinal confiavel de quebra: a instancia registrou erro de verdade.
     if (exec && ['error', 'crashed', 'failed'].includes(exec.status)) {
       flags.push(`ultima execucao: ${exec.status}`);
       status = 'quebrado';
-    }
-    if (w.active && !exec) {
-      flags.push('ligado mas sem execucao recente');
-      status = 'atencao';
     }
     if (parado !== null && parado > 90) flags.push(`sem edicao ha ${parado}d`);
 
@@ -218,6 +226,8 @@ async function coletarN8n(base: string, chave: string): Promise<Item[]> {
       grupo: raiz(w.name),
     };
   });
+
+  return { itens, arquivados, janelaHoras };
 }
 
 // ---------------------------------------------------------------- health
@@ -291,7 +301,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const n8nKey = process.env.N8N_API_KEY;
 
   const itens: Item[] = [];
-  const fontes: Record<string, { ok: boolean; total: number; erro?: string }> = {};
+  const fontes: Record<
+    string,
+    { ok: boolean; total: number; erro?: string; nota?: string }
+  > = {};
 
   const [rv, rn] = await Promise.allSettled([
     vercelToken ? coletarVercel(vercelToken) : Promise.reject(new Error('VERCEL_TOKEN ausente')),
@@ -308,8 +321,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (rn.status === 'fulfilled') {
-    itens.push(...rn.value);
-    fontes.n8n = { ok: true, total: rn.value.length };
+    const { itens: wf, arquivados, janelaHoras } = rn.value;
+    itens.push(...wf);
+    const nota = [
+      arquivados ? `${arquivados} arquivados fora da lista` : '',
+      janelaHoras !== null
+        ? `historico de execucao cobre ~${janelaHoras}h (ausencia nao significa parado)`
+        : 'sem historico de execucao',
+    ]
+      .filter(Boolean)
+      .join(' · ');
+    fontes.n8n = { ok: true, total: wf.length, nota };
   } else {
     fontes.n8n = { ok: false, total: 0, erro: String(rn.reason?.message || rn.reason) };
   }

@@ -34,7 +34,7 @@ interface Item {
 interface Resposta {
   geradoEm: string
   comHealth: boolean
-  fontes: Record<string, { ok: boolean; total: number; erro?: string }>
+  fontes: Record<string, { ok: boolean; total: number; erro?: string; nota?: string }>
   resumo: {
     total: number; sites: number; workflows: number
     quebrados: number; dormentes: number; inacabados: number
@@ -201,6 +201,13 @@ export default function Catalogo() {
           Gerado em {new Date(data.geradoEm).toLocaleString('pt-BR')}
           {data.comHealth ? ' · com checagem de saúde' : ' · checando saúde…'}
           {' · '}mostrando {itens.length} de {data.resumo.total}
+          {Object.entries(data.fontes)
+            .filter(([, f]) => f.ok && f.nota)
+            .map(([nome, f]) => (
+              <span key={nome} className="block">
+                {nome}: {f.nota}
+              </span>
+            ))}
         </p>
       )}
     </div>
