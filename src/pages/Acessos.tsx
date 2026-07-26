@@ -54,6 +54,13 @@ const GROUPS: Group[] = [
     ['Kickoff CRM AI', 'kickoffcrmai-svicompanyy-2539s-projects.vercel.app'],
     ['SVI OS', 'svi-os.vercel.app'],
   ]},
+  { title: 'Câmera na Mão (produto)', items: [
+    ['App · Câmera na Mão (cada vendedor cria o seu)', 'camera.svicompany.com.br'],
+    ['Aula · apresentação do curso (ministrar ao vivo)', 'aula-camera.svicompany.com.br'],
+    ['Apresentação de venda (deck + QR do app)', 'camera-app.svicompany.com.br'],
+    ['Curso completo (página em texto)', 'curso-exatta.svicompany.com.br'],
+    ['Folha de bolso do vendedor (imprimir)', 'camera-folha.svicompany.com.br'],
+  ]},
   { title: 'Raio-X / Diagnóstico', items: [
     ['Raio-X SVI', 'raiox-svi.vercel.app'],
     ['Raio-X (app)', 'raiox-svi-app.vercel.app'],
