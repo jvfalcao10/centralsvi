@@ -3,7 +3,7 @@ import { DollarSign, TrendingUp, TrendingDown, Percent, Plus, CheckCircle, Send,
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { Invoice, Expense, formatCurrency, formatDate } from '@/types'
-import { monthKeyOf, monthKeyOfDate, monthLabel, buildMonthOptions, addMonths, getDueDate } from '@/lib/months'
+import { monthKeyOf, monthKeyOfDate, monthLabel, buildMonthOptions, addMonths, getDueDate, firstBillingMonth } from '@/lib/months'
 import { useUsdRate, mrrBRL } from '@/hooks/useUsdRate'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -500,10 +500,12 @@ export default function Financial() {
     currentMonth,
   )
 
-  // Cliente só entra na conta de um mês se o contrato já tinha começado.
-  // Sem isso, quem fechou em agosto apareceria como "não pagou" em julho.
+  // Cliente só entra na conta de um mês se a primeira mensalidade dele já tinha caído.
+  // Sem isso, quem fechou em agosto apareceria como "não pagou" em julho, e quem
+  // fechou no próprio dia do vencimento apareceria devendo o mês em que entrou.
   const clientsInMonth = clientsWithDue.filter(c =>
-    !c.inicio_contrato || monthKeyOf(c.inicio_contrato) <= cobrancaMonth
+    !c.inicio_contrato || !c.dia_vencimento ||
+    firstBillingMonth(c.inicio_contrato, c.dia_vencimento) <= cobrancaMonth
   )
   const hasPaidInMonth = (clientId: string) => invoices.some(inv =>
     inv.client_id === clientId && inv.status === 'pago' && inv.vencimento.startsWith(cobrancaMonth)
@@ -650,7 +652,8 @@ export default function Financial() {
                 {...billingRowDeps}
               />
               <p className="text-xs text-muted-foreground px-1">
-                Considera só clientes ativos hoje com dia de vencimento definido e contrato iniciado até {monthLabel(cobrancaMonth)}.
+                Considera só clientes ativos hoje com dia de vencimento definido, e apenas quem já tinha primeira mensalidade
+                vencida em {monthLabel(cobrancaMonth)} (quem fechou contrato no próprio dia do vencimento só passa a contar no mês seguinte).
                 Quem saiu da carteira depois não aparece aqui. Dá pra registrar um pagamento atrasado direto na linha: ele entra com vencimento no mês escolhido.
               </p>
             </>

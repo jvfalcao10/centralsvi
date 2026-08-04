@@ -1,5 +1,36 @@
 import { describe, it, expect } from 'vitest'
-import { addMonths, getDueDate, monthKeyOf, monthLabel, buildMonthOptions } from '@/lib/months'
+import { addMonths, getDueDate, monthKeyOf, monthLabel, buildMonthOptions, firstBillingMonth } from '@/lib/months'
+
+describe('firstBillingMonth (a partir de quando o cliente deve)', () => {
+  it('cobra ja no mes de entrada quando o vencimento ainda ia chegar', () => {
+    // Spa Nature / ProLife: contrato 09/03, vence dia 25
+    expect(firstBillingMonth('2026-03-09', 25)).toBe('2026-03')
+  })
+
+  it('joga pro mes seguinte quando o contrato comeca no proprio dia do vencimento', () => {
+    // Dra. Enia: contrato 30/07, vence dia 30 -> primeira mensalidade e 30/08
+    expect(firstBillingMonth('2026-07-30', 30)).toBe('2026-08')
+  })
+
+  it('joga pro mes seguinte quando o vencimento ja passou na entrada', () => {
+    expect(firstBillingMonth('2026-07-28', 10)).toBe('2026-08')
+  })
+
+  it('vira o ano quando entra em dezembro depois do vencimento', () => {
+    expect(firstBillingMonth('2026-12-20', 5)).toBe('2027-01')
+  })
+
+  it('clampa o dia em mes curto: dia 31 em fevereiro vira 28', () => {
+    // contrato 27/02, vence dia 31 -> no mes de fevereiro o vencimento e 28, que ainda ia chegar
+    expect(firstBillingMonth('2026-02-27', 31)).toBe('2026-02')
+    // contrato 28/02, vence dia 31 -> o 28 e o proprio dia da entrada, vai pro mes seguinte
+    expect(firstBillingMonth('2026-02-28', 31)).toBe('2026-03')
+  })
+
+  it('aceita timestamp completo do banco', () => {
+    expect(firstBillingMonth('2026-03-09T00:00:00.000Z', 25)).toBe('2026-03')
+  })
+})
 
 describe('addMonths (data de parcela)', () => {
   it('soma mês simples', () => {
