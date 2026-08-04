@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
-import { DollarSign, TrendingUp, TrendingDown, Percent, Plus, CheckCircle, Send, AlertCircle, Clock, Calendar, CalendarCheck, Pencil, Trash2, Undo2, ExternalLink, Repeat } from 'lucide-react'
+import { DollarSign, TrendingUp, TrendingDown, Percent, Plus, CheckCircle, Send, AlertCircle, Clock, Calendar, CalendarCheck, Pencil, Trash2, Undo2, ExternalLink, Repeat, Layers } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { Invoice, Expense, formatCurrency, formatDate } from '@/types'
+import { monthKeyOf, monthKeyOfDate, monthLabel, buildMonthOptions, addMonths, getDueDate } from '@/lib/months'
 import { useUsdRate, mrrBRL } from '@/hooks/useUsdRate'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -47,6 +48,7 @@ type ActiveClient = {
   status: string
   dia_vencimento: number | null
   instagram: string | null
+  inicio_contrato: string | null
 }
 
 const CASH_PROJECTION = [
@@ -78,11 +80,11 @@ const HIGHLIGHT_COLOR_MAP: Record<'danger' | 'warning' | 'primary' | 'muted', st
 
 interface BillingRowDeps {
   invoices: InvoiceWithClient[]
-  today: Date
+  monthKey: string
   usdRate: number
-  getDueDate: (dia: number) => Date
+  getDueDate: (dia: number, monthKey?: string) => Date
   registeringPayment: string | null
-  registerPayment: (c: ActiveClient) => void
+  registerPayment: (c: ActiveClient, monthKey: string) => void
 }
 
 interface ClientBillingRowProps extends BillingRowDeps {
@@ -91,15 +93,15 @@ interface ClientBillingRowProps extends BillingRowDeps {
 }
 
 function ClientBillingRow({
-  client, highlight, invoices, today, usdRate, getDueDate, registeringPayment, registerPayment,
+  client, highlight, invoices, monthKey, usdRate, getDueDate, registeringPayment, registerPayment,
 }: ClientBillingRowProps) {
-  const dueDate = client.dia_vencimento ? getDueDate(client.dia_vencimento) : null
+  const dueDate = client.dia_vencimento ? getDueDate(client.dia_vencimento, monthKey) : null
   const dueDateStr = dueDate ? dueDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '—'
 
   const alreadyPaid = invoices.some(inv =>
     inv.client_id === client.id &&
     inv.status === 'pago' &&
-    inv.vencimento.startsWith(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`)
+    inv.vencimento.startsWith(monthKey)
   )
 
   return (
@@ -128,7 +130,7 @@ function ClientBillingRow({
             size="sm"
             className="h-7 text-xs gap-1 text-success hover:text-success"
             disabled={registeringPayment === client.id}
-            onClick={() => registerPayment(client)}
+            onClick={() => registerPayment(client, monthKey)}
           >
             <CheckCircle className="h-3 w-3" /> Registrar pag.
           </Button>
@@ -203,10 +205,6 @@ const expenseCatClass: Record<string, string> = {
   operacional: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
 }
 
-function getDueDate(dia: number): Date {
-  const now = new Date()
-  return new Date(now.getFullYear(), now.getMonth(), dia)
-}
 
 export default function Financial() {
   const { toast } = useToast()
@@ -220,8 +218,12 @@ export default function Financial() {
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('all')
   const [expenseStatusFilter, setExpenseStatusFilter] = useState('all')
   const [expenseCatFilter, setExpenseCatFilter] = useState('all')
+  // Filtros de mês: começam no mês corrente, com opção "Todos os meses".
+  const [invoiceMonthFilter, setInvoiceMonthFilter] = useState(() => monthKeyOfDate(new Date()))
+  const [expenseMonthFilter, setExpenseMonthFilter] = useState(() => monthKeyOfDate(new Date()))
+  const [cobrancaMonth, setCobrancaMonth] = useState(() => monthKeyOfDate(new Date()))
   const [showNewExpense, setShowNewExpense] = useState(false)
-  const [newExpense, setNewExpense] = useState({ categoria: 'operacional', descricao: '', valor: '', vencimento: '', recorrente: false })
+  const [newExpense, setNewExpense] = useState({ categoria: 'operacional', descricao: '', valor: '', vencimento: '', recorrente: false, parcelado: false, parcelas: '2' })
   const [registeringPayment, setRegisteringPayment] = useState<string | null>(null)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [editForm, setEditForm] = useState({ categoria: 'operacional', descricao: '', valor: '', vencimento: '', status: 'pendente', recorrente: false })
@@ -231,7 +233,7 @@ export default function Financial() {
     const [{ data: inv }, { data: exp }, { data: clientsData }, { data: cobrancasData }] = await Promise.all([
       supabase.from('invoices').select('*, clients(name)').order('vencimento'),
       supabase.from('expenses').select('*').order('vencimento'),
-      supabase.from('clients').select('id, name, company, mrr, currency, status, dia_vencimento, instagram'),
+      supabase.from('clients').select('id, name, company, mrr, currency, status, dia_vencimento, instagram, inicio_contrato'),
       supabase.from('cobrancas_manuais').select('*').eq('ativo', true).order('proximo_vencimento', { ascending: true, nullsFirst: false }),
     ])
     setInvoices(inv || [])
@@ -332,24 +334,63 @@ export default function Financial() {
     fetchData()
   }
 
+  const resetNewExpense = () =>
+    setNewExpense({ categoria: 'operacional', descricao: '', valor: '', vencimento: '', recorrente: false, parcelado: false, parcelas: '2' })
+
   const addExpense = async () => {
     if (!newExpense.descricao || !newExpense.valor || !newExpense.vencimento) return
-    await supabase.from('expenses').insert({
-      ...newExpense,
-      valor: parseFloat(newExpense.valor),
-      status: 'pendente'
-    })
-    toast({ title: 'Despesa adicionada!' })
+    const valor = parseFloat(newExpense.valor)
+    const qtd = newExpense.parcelado
+      ? Math.max(2, Math.min(120, parseInt(newExpense.parcelas, 10) || 2))
+      : 1
+
+    if (qtd > 1) {
+      // Parcelada: cria as N linhas de uma vez, uma por mês. Nunca recorrente.
+      const rows = Array.from({ length: qtd }, (_, i) => ({
+        categoria: newExpense.categoria,
+        descricao: newExpense.descricao,
+        valor,
+        vencimento: addMonths(newExpense.vencimento, i),
+        status: 'pendente',
+        recorrente: false,
+        parcela_atual: i + 1,
+        parcelas_total: qtd,
+      }))
+      const { error } = await supabase.from('expenses').insert(rows)
+      if (error) {
+        toast({ title: 'Erro ao criar as parcelas', description: error.message, variant: 'destructive' })
+        return
+      }
+      toast({
+        title: `${qtd} parcelas criadas`,
+        description: `${formatCurrency(valor)} por mês, de ${formatDate(rows[0].vencimento)} até ${formatDate(rows[qtd - 1].vencimento)}.`,
+      })
+    } else {
+      const { error } = await supabase.from('expenses').insert({
+        categoria: newExpense.categoria,
+        descricao: newExpense.descricao,
+        valor,
+        vencimento: newExpense.vencimento,
+        status: 'pendente',
+        recorrente: newExpense.recorrente,
+      })
+      if (error) {
+        toast({ title: 'Erro ao adicionar despesa', description: error.message, variant: 'destructive' })
+        return
+      }
+      toast({ title: 'Despesa adicionada!' })
+    }
+
     setShowNewExpense(false)
-    setNewExpense({ categoria: 'operacional', descricao: '', valor: '', vencimento: '', recorrente: false })
+    resetNewExpense()
     fetchData()
   }
 
-  const registerPayment = async (client: ActiveClient) => {
+  const registerPayment = async (client: ActiveClient, monthKey: string) => {
     if (!client.dia_vencimento) return
     setRegisteringPayment(client.id)
     const today = new Date().toISOString().split('T')[0]
-    const dueDate = getDueDate(client.dia_vencimento).toISOString().split('T')[0]
+    const dueDate = getDueDate(client.dia_vencimento, monthKey).toISOString().split('T')[0]
     await supabase.from('invoices').insert({
       client_id: client.id,
       valor: mrrBRL(client.mrr, client.currency, usdRate),
@@ -357,7 +398,7 @@ export default function Financial() {
       vencimento: dueDate,
       data_pagamento: today,
     })
-    toast({ title: `Pagamento de ${client.name} registrado!` })
+    toast({ title: `Pagamento de ${client.name} registrado em ${monthLabel(monthKey)}!` })
     setRegisteringPayment(null)
     fetchData()
   }
@@ -379,12 +420,35 @@ export default function Financial() {
   const netProfit = totalRevenue - totalExpensesVal
   const margin = totalRevenue > 0 ? (netProfit / totalRevenue * 100).toFixed(1) : '0.0'
 
-  const filteredInvoices = invoices.filter(i => invoiceStatusFilter === 'all' || i.status === invoiceStatusFilter)
+  const currentMonth = monthKeyOfDate(today)
+  const expenseMonthOptions = buildMonthOptions(expenses.map(e => e.vencimento), currentMonth)
+  const invoiceMonthOptions = buildMonthOptions(invoices.map(i => i.vencimento), currentMonth)
+
+  const filteredInvoices = invoices.filter(i => {
+    if (invoiceStatusFilter !== 'all' && i.status !== invoiceStatusFilter) return false
+    if (invoiceMonthFilter !== 'all' && monthKeyOf(i.vencimento) !== invoiceMonthFilter) return false
+    return true
+  })
   const filteredExpenses = expenses.filter(e => {
     if (expenseStatusFilter !== 'all' && e.status !== expenseStatusFilter) return false
     if (expenseCatFilter !== 'all' && e.categoria !== expenseCatFilter) return false
+    if (expenseMonthFilter !== 'all' && monthKeyOf(e.vencimento) !== expenseMonthFilter) return false
     return true
   })
+
+  // Totais do mês escolhido no contas a pagar. Ignora o filtro de status de propósito:
+  // ela precisa ver o total do mês, o que já saiu e o que ainda falta sair.
+  const monthExpenses = expenses.filter(e => {
+    if (expenseCatFilter !== 'all' && e.categoria !== expenseCatFilter) return false
+    if (expenseMonthFilter !== 'all' && monthKeyOf(e.vencimento) !== expenseMonthFilter) return false
+    return true
+  })
+  const monthExpensesTotal = monthExpenses.reduce((s, e) => s + e.valor, 0)
+  const monthExpensesPaid = monthExpenses.filter(e => e.status === 'pago').reduce((s, e) => s + e.valor, 0)
+  const monthExpensesOpen = monthExpensesTotal - monthExpensesPaid
+
+  // Total do mês escolhido no contas a receber.
+  const monthInvoicesTotal = filteredInvoices.reduce((s, i) => s + i.valor, 0)
 
   const costosDirectos = expenses.filter(e => e.categoria === 'pessoal').reduce((s, e) => s + e.valor, 0)
   const fixedExpenses = expenses.filter(e => e.categoria !== 'pessoal').reduce((s, e) => s + e.valor, 0)
@@ -423,8 +487,37 @@ export default function Financial() {
     { label: 'Já vencidos', value: clientsOverdue.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0), count: clientsOverdue.length, color: 'text-muted-foreground' },
   ]
 
+  // --- Cobrança por mês ---
+  // O mês corrente mantém a visão por vencimento (hoje / semana / mês / vencidos).
+  // Mês passado vira a pergunta que importa: quem pagou e quem não pagou.
+  const isCurrentMonth = cobrancaMonth === currentMonth
+
+  const cobrancaMonthOptions = buildMonthOptions(
+    [
+      ...invoices.map(i => i.vencimento),
+      ...Array.from({ length: 12 }, (_, i) => monthKeyOfDate(new Date(today.getFullYear(), today.getMonth() - i, 1))),
+    ],
+    currentMonth,
+  )
+
+  // Cliente só entra na conta de um mês se o contrato já tinha começado.
+  // Sem isso, quem fechou em agosto apareceria como "não pagou" em julho.
+  const clientsInMonth = clientsWithDue.filter(c =>
+    !c.inicio_contrato || monthKeyOf(c.inicio_contrato) <= cobrancaMonth
+  )
+  const hasPaidInMonth = (clientId: string) => invoices.some(inv =>
+    inv.client_id === clientId && inv.status === 'pago' && inv.vencimento.startsWith(cobrancaMonth)
+  )
+  const monthClientsPaid = clientsInMonth.filter(c => hasPaidInMonth(c.id))
+  const monthClientsUnpaid = clientsInMonth.filter(c => !hasPaidInMonth(c.id))
+
+  const monthReceived = invoices
+    .filter(i => i.status === 'pago' && i.vencimento.startsWith(cobrancaMonth))
+    .reduce((s, i) => s + i.valor, 0)
+  const monthMissing = monthClientsUnpaid.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0)
+
   const billingRowDeps = {
-    invoices, today, usdRate, getDueDate, registeringPayment, registerPayment,
+    invoices, monthKey: cobrancaMonth, usdRate, getDueDate, registeringPayment, registerPayment,
   }
 
   if (loading) return (
@@ -490,20 +583,81 @@ export default function Financial() {
 
         {/* COBRANÇA */}
         <TabsContent value="cobranca" className="space-y-4 mt-4">
-          {/* KPIs */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {billingKpis.map(kpi => (
-              <Card key={kpi.label} className="border-border bg-card">
-                <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground mb-1">{kpi.label}</p>
-                  <p className={`text-lg font-bold ${kpi.color}`}>{formatCurrency(kpi.value)}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{kpi.count} cliente{kpi.count !== 1 ? 's' : ''}</p>
-                </CardContent>
-              </Card>
-            ))}
+          {/* Seletor de mês */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <Select value={cobrancaMonth} onValueChange={setCobrancaMonth}>
+              <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {cobrancaMonthOptions.map(m => (
+                  <SelectItem key={m} value={m}>
+                    {monthLabel(m)}{m === currentMonth ? ' (mês atual)' : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!isCurrentMonth && (
+              <Badge variant="outline" className="text-xs bg-warning/10 text-warning border-warning/30">
+                Fechamento de {monthLabel(cobrancaMonth)}
+              </Badge>
+            )}
           </div>
 
+          {/* KPIs */}
+          {isCurrentMonth ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {billingKpis.map(kpi => (
+                <Card key={kpi.label} className="border-border bg-card">
+                  <CardContent className="p-4">
+                    <p className="text-xs text-muted-foreground mb-1">{kpi.label}</p>
+                    <p className={`text-lg font-bold ${kpi.color}`}>{formatCurrency(kpi.value)}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{kpi.count} cliente{kpi.count !== 1 ? 's' : ''}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <Card className="border-border bg-card"><CardContent className="p-4">
+                <p className="text-xs text-muted-foreground mb-1">Recebido em {monthLabel(cobrancaMonth)}</p>
+                <p className="text-lg font-bold text-success">{formatCurrency(monthReceived)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{monthClientsPaid.length} cliente{monthClientsPaid.length !== 1 ? 's' : ''} pagaram</p>
+              </CardContent></Card>
+              <Card className="border-danger/30 bg-card"><CardContent className="p-4">
+                <p className="text-xs text-muted-foreground mb-1">Sem pagamento registrado</p>
+                <p className="text-lg font-bold text-danger">{formatCurrency(monthMissing)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{monthClientsUnpaid.length} cliente{monthClientsUnpaid.length !== 1 ? 's' : ''} em aberto</p>
+              </CardContent></Card>
+            </div>
+          )}
+
+          {/* Mês passado: quem não pagou primeiro, depois quem pagou */}
+          {!isCurrentMonth && (
+            <>
+              <BillingSection
+                title={`Não pagaram em ${monthLabel(cobrancaMonth)}`}
+                clients={monthClientsUnpaid}
+                icon={AlertCircle}
+                highlight="danger"
+                borderColor="border-danger/30"
+                {...billingRowDeps}
+              />
+              <BillingSection
+                title={`Pagaram em ${monthLabel(cobrancaMonth)}`}
+                clients={monthClientsPaid}
+                icon={CheckCircle}
+                highlight="muted"
+                borderColor="border-border"
+                {...billingRowDeps}
+              />
+              <p className="text-xs text-muted-foreground px-1">
+                Considera só clientes ativos hoje com dia de vencimento definido e contrato iniciado até {monthLabel(cobrancaMonth)}.
+                Quem saiu da carteira depois não aparece aqui. Dá pra registrar um pagamento atrasado direto na linha: ele entra com vencimento no mês escolhido.
+              </p>
+            </>
+          )}
+
           {/* Sections */}
+          {isCurrentMonth && <>
           <BillingSection
             title="Vence Hoje"
             clients={clientsToday}
@@ -536,6 +690,7 @@ export default function Financial() {
             borderColor="border-border"
             {...billingRowDeps}
           />
+          </>}
 
           {clientsWithDue.length === 0 && clientsNoDue.length === 0 && (
             <div className="text-center py-12 text-muted-foreground text-sm">
@@ -660,7 +815,14 @@ export default function Financial() {
 
         {/* RECEIVABLE */}
         <TabsContent value="receivable" className="space-y-4 mt-4">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Card className="border-primary/30 bg-card"><CardContent className="p-4">
+              <p className="text-xs text-muted-foreground">
+                {invoiceMonthFilter === 'all' ? 'Todos os meses' : monthLabel(invoiceMonthFilter)}
+              </p>
+              <p className="text-lg font-bold text-primary">{formatCurrency(monthInvoicesTotal)}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{filteredInvoices.length} fatura{filteredInvoices.length !== 1 ? 's' : ''}</p>
+            </CardContent></Card>
             <Card className="border-border bg-card"><CardContent className="p-4">
               <p className="text-xs text-muted-foreground">Total a Receber</p>
               <p className="text-lg font-bold text-success">{formatCurrency(totalReceivable)}</p>
@@ -675,7 +837,18 @@ export default function Financial() {
             </CardContent></Card>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
+            <Select value={invoiceMonthFilter} onValueChange={setInvoiceMonthFilter}>
+              <SelectTrigger className="w-48"><SelectValue placeholder="Mês" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os meses</SelectItem>
+                {invoiceMonthOptions.map(m => (
+                  <SelectItem key={m} value={m}>
+                    {monthLabel(m)}{m === currentMonth ? ' (mês atual)' : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={invoiceStatusFilter} onValueChange={setInvoiceStatusFilter}>
               <SelectTrigger className="w-40"><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
@@ -719,6 +892,13 @@ export default function Financial() {
                     </TableCell>
                   </TableRow>
                 ))}
+                {filteredInvoices.length === 0 && (
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableCell colSpan={5} className="text-center py-10 text-sm text-muted-foreground">
+                      Nenhuma fatura {invoiceMonthFilter === 'all' ? 'com esse filtro' : `em ${monthLabel(invoiceMonthFilter)}`}.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
@@ -726,7 +906,36 @@ export default function Financial() {
 
         {/* PAYABLE */}
         <TabsContent value="payable" className="space-y-4 mt-4">
-          <div className="flex gap-3 items-center">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Card className="border-border bg-card"><CardContent className="p-4">
+              <p className="text-xs text-muted-foreground">
+                Total {expenseMonthFilter === 'all' ? '(todos os meses)' : monthLabel(expenseMonthFilter)}
+              </p>
+              <p className="text-lg font-bold">{formatCurrency(monthExpensesTotal)}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{monthExpenses.length} despesa{monthExpenses.length !== 1 ? 's' : ''}</p>
+            </CardContent></Card>
+            <Card className="border-border bg-card"><CardContent className="p-4">
+              <p className="text-xs text-muted-foreground">Já pago</p>
+              <p className="text-lg font-bold text-success">{formatCurrency(monthExpensesPaid)}</p>
+            </CardContent></Card>
+            <Card className="border-border bg-card"><CardContent className="p-4">
+              <p className="text-xs text-muted-foreground">Falta pagar</p>
+              <p className="text-lg font-bold text-danger">{formatCurrency(monthExpensesOpen)}</p>
+            </CardContent></Card>
+          </div>
+
+          <div className="flex gap-3 items-center flex-wrap">
+            <Select value={expenseMonthFilter} onValueChange={setExpenseMonthFilter}>
+              <SelectTrigger className="w-48"><SelectValue placeholder="Mês" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os meses</SelectItem>
+                {expenseMonthOptions.map(m => (
+                  <SelectItem key={m} value={m}>
+                    {monthLabel(m)}{m === currentMonth ? ' (mês atual)' : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={expenseCatFilter} onValueChange={setExpenseCatFilter}>
               <SelectTrigger className="w-44"><SelectValue placeholder="Categoria" /></SelectTrigger>
               <SelectContent>
@@ -773,6 +982,11 @@ export default function Financial() {
                     <TableCell className="text-sm">
                       <div className="flex items-center gap-2">
                         <span>{exp.descricao}</span>
+                        {exp.parcelas_total ? (
+                          <Badge variant="outline" className="text-[10px] gap-1 bg-info/10 text-info border-info/30">
+                            <Layers className="h-2.5 w-2.5" /> Parcela {exp.parcela_atual}/{exp.parcelas_total}
+                          </Badge>
+                        ) : null}
                         {exp.recorrente && (
                           <Badge variant="outline" className="text-[10px] gap-1 bg-primary/10 text-primary border-primary/30">
                             <RotateCw className="h-2.5 w-2.5" /> Recorrente
@@ -806,6 +1020,13 @@ export default function Financial() {
                     </TableCell>
                   </TableRow>
                 ))}
+                {filteredExpenses.length === 0 && (
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableCell colSpan={6} className="text-center py-10 text-sm text-muted-foreground">
+                      Nenhuma despesa {expenseMonthFilter === 'all' ? 'com esse filtro' : `em ${monthLabel(expenseMonthFilter)}`}.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
@@ -911,17 +1132,60 @@ export default function Financial() {
             <div className="flex items-center justify-between rounded-lg border border-border p-3">
               <div className="space-y-0.5">
                 <Label className="text-sm">Despesa recorrente mensal</Label>
-                <p className="text-xs text-muted-foreground">Ao marcar como paga, a próxima do mês seguinte é criada automaticamente.</p>
+                <p className="text-xs text-muted-foreground">
+                  {newExpense.parcelado
+                    ? 'Indisponível: uma despesa parcelada já nasce com todas as parcelas criadas.'
+                    : 'Ao marcar como paga, a próxima do mês seguinte é criada automaticamente.'}
+                </p>
               </div>
               <Switch
                 checked={newExpense.recorrente}
+                disabled={newExpense.parcelado}
                 onCheckedChange={v => setNewExpense(p => ({ ...p, recorrente: v }))}
               />
             </div>
+
+            <div className="rounded-lg border border-border p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-sm">Compra parcelada</Label>
+                  <p className="text-xs text-muted-foreground">Cria uma despesa por mês, cada uma marcada com a parcela.</p>
+                </div>
+                <Switch
+                  checked={newExpense.parcelado}
+                  onCheckedChange={v => setNewExpense(p => ({ ...p, parcelado: v, recorrente: v ? false : p.recorrente }))}
+                />
+              </div>
+
+              {newExpense.parcelado && (
+                <div className="flex items-end gap-3 pt-1">
+                  <div className="space-y-2">
+                    <Label className="text-xs">Número de parcelas</Label>
+                    <Input
+                      type="number"
+                      min={2}
+                      max={120}
+                      className="w-28"
+                      value={newExpense.parcelas}
+                      onChange={e => setNewExpense(p => ({ ...p, parcelas: e.target.value }))}
+                    />
+                  </div>
+                  {newExpense.valor && newExpense.vencimento && (
+                    <p className="text-xs text-muted-foreground pb-2.5">
+                      {Math.max(2, Math.min(120, parseInt(newExpense.parcelas, 10) || 2))}x de{' '}
+                      <span className="font-medium text-foreground">{formatCurrency(parseFloat(newExpense.valor) || 0)}</span>
+                      {' '}· 1ª em {formatDate(newExpense.vencimento)}, última em{' '}
+                      {formatDate(addMonths(newExpense.vencimento, Math.max(2, Math.min(120, parseInt(newExpense.parcelas, 10) || 2)) - 1))}
+                      {' '}· total {formatCurrency((parseFloat(newExpense.valor) || 0) * Math.max(2, Math.min(120, parseInt(newExpense.parcelas, 10) || 2)))}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNewExpense(false)}>Cancelar</Button>
-            <Button onClick={addExpense}>Adicionar</Button>
+            <Button variant="outline" onClick={() => { setShowNewExpense(false); resetNewExpense() }}>Cancelar</Button>
+            <Button onClick={addExpense}>{newExpense.parcelado ? 'Criar parcelas' : 'Adicionar'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -933,6 +1197,15 @@ export default function Financial() {
             <DialogTitle>Editar Despesa</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-2">
+            {editingExpense?.parcelas_total ? (
+              <div className="flex items-center gap-2 rounded-lg border border-info/30 bg-info/10 p-3">
+                <Layers className="h-4 w-4 text-info shrink-0" />
+                <p className="text-xs text-muted-foreground">
+                  Parcela <span className="font-medium text-foreground">{editingExpense.parcela_atual} de {editingExpense.parcelas_total}</span>.
+                  A edição vale só para esta parcela, as outras seguem como estão.
+                </p>
+              </div>
+            ) : null}
             <div className="space-y-2">
               <Label>Descrição</Label>
               <Input value={editForm.descricao} onChange={e => setEditForm(p => ({ ...p, descricao: e.target.value }))} />

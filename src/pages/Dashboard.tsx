@@ -141,62 +141,63 @@ export default function Dashboard() {
     : null
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-        {kpis.map((kpi) => {
+        {kpis.map((kpi, i) => {
           const Icon = kpi.icon
           const isPositive = kpi.change > 0
-          const isGoodPositive = kpi.label !== 'Churn Mensal' ? isPositive : !isPositive
+          const isGood = kpi.label !== 'Churn Mensal' ? isPositive : !isPositive
           return (
-            <Card key={kpi.label} className="border-border bg-card hover:border-primary/30 transition-colors">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="text-muted-foreground text-sm mb-1">{kpi.label}</p>
-                    <p className="text-2xl font-bold text-foreground">{kpi.value}</p>
-                  </div>
-                  <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-                    <Icon className="h-5 w-5 text-primary" />
+            <div
+              key={kpi.label}
+              className="group relative overflow-hidden rounded-xl border border-border bg-card p-5 transition-all duration-300 hover:border-primary/50 animate-in fade-in slide-in-from-bottom-4"
+              style={{ animationDelay: `${i * 80}ms`, animationFillMode: 'both' }}
+            >
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+              <div className="relative">
+                <div className="mb-3 flex items-start justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">{kpi.label}</span>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary transition-colors duration-300 group-hover:bg-primary/10">
+                    <Icon className="h-4 w-4 text-muted-foreground transition-colors duration-300 group-hover:text-primary" />
                   </div>
                 </div>
-                {kpi.change !== 0 && (
-                  <div className={`flex items-center gap-1 mt-3 text-xs font-medium ${isGoodPositive ? 'text-success' : 'text-danger'}`}>
-                    {isPositive ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-                    <span>{Math.abs(kpi.change)}% vs mês anterior</span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                <div className="flex items-end gap-2">
+                  <span className="text-2xl font-bold tracking-tight text-foreground lg:text-3xl">{kpi.value}</span>
+                  {kpi.change !== 0 && (
+                    <span className={`mb-1 flex items-center gap-1 text-xs font-medium ${isGood ? 'text-success' : 'text-danger'}`}>
+                      {isPositive ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                      {Math.abs(kpi.change)}%
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
           )
         })}
 
         {/* USD Rate Card */}
-        <Card className="border-border bg-card hover:border-primary/30 transition-colors">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <p className="text-muted-foreground text-sm mb-1">Cotação USD</p>
-                <p className="text-2xl font-bold text-foreground">
-                  {usdIsEstimate && !usdTime ? 'Carregando...' : `R$ ${usdFormatted}`}
-                </p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-info/15 flex items-center justify-center">
-                <span className="text-lg leading-none">🇺🇸</span>
-              </div>
+        <div className="group relative overflow-hidden rounded-xl border border-border bg-card p-5 transition-all duration-300 hover:border-primary/50">
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-info/5 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+          <div className="relative">
+            <div className="mb-3 flex items-start justify-between">
+              <span className="text-sm font-medium text-muted-foreground">Cotação USD</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary text-lg leading-none">🇺🇸</div>
             </div>
-            <div className="flex items-center gap-1 mt-3 text-xs text-muted-foreground">
+            <div className="flex items-end gap-2">
+              <span className="text-2xl font-bold tracking-tight text-foreground lg:text-3xl">
+                {usdIsEstimate && !usdTime ? 'Carregando...' : `R$ ${usdFormatted}`}
+              </span>
+            </div>
+            <div className="mt-2 text-xs text-muted-foreground">
               {usdIsEstimate ? (
-                <Badge variant="outline" className="text-xs py-0 px-1.5 border-warning/30 text-warning bg-warning/10">Estimado</Badge>
+                <Badge variant="outline" className="border-warning/30 bg-warning/10 px-1.5 py-0 text-xs text-warning">Estimado</Badge>
               ) : usdTime ? (
-                <>
-                  <RefreshCw className="h-3 w-3" />
-                  <span>Atualizado às {usdTime}</span>
-                </>
+                <span className="flex items-center gap-1"><RefreshCw className="h-3 w-3" />Atualizado às {usdTime}</span>
               ) : null}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Charts */}

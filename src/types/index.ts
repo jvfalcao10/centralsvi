@@ -82,6 +82,9 @@ export interface Expense {
   status: string
   recorrente: boolean
   recorrencia_gerada: boolean
+  // Despesa parcelada: 3 de 12. Nulo quando não é parcelada (avulsa ou recorrente).
+  parcela_atual?: number | null
+  parcelas_total?: number | null
 }
 
 export type CommercialPersonaKey = 'pedro' | 'arthur' | 'ruan'
