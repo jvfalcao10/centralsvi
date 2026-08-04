@@ -22,6 +22,14 @@ COMMENT ON COLUMN public.clients.permuta IS 'Cliente ativo que nao paga em dinhe
 COMMENT ON COLUMN public.clients.permuta_ate IS 'Ultimo dia da permuta. Nulo = permuta sem prazo. Volta a gerar fatura no mes seguinte a esta data.';
 
 -- Regera a funcao de faturamento ensinando a pular quem esta em permuta no mes.
+--
+-- DROP antes do CREATE porque o retorno mudou: ganhou a coluna `puladas_permuta`.
+-- CREATE OR REPLACE nao muda tipo de retorno (Postgres 42P13). Dropar e seguro
+-- aqui: o job do pg_cron guarda o comando como TEXTO ("SELECT
+-- public.gerar_faturas_do_mes();") e so resolve a funcao na hora de rodar, entao
+-- o agendamento continua valendo sem precisar reagendar.
+DROP FUNCTION IF EXISTS public.gerar_faturas_do_mes(date);
+
 CREATE OR REPLACE FUNCTION public.gerar_faturas_do_mes(
   p_mes date DEFAULT (date_trunc('month', (now() AT TIME ZONE 'America/Sao_Paulo')))::date
 )
