@@ -4,7 +4,7 @@ import {
   LayoutDashboard, GitBranch, Users, CheckSquare, DollarSign, Crosshair, FileText,
   ClipboardCheck, Clock, UserCog, UserCheck, Kanban, BarChart3, Sun, Moon, LogOut,
   ChevronRight, ChevronDown, Briefcase, Sparkles, ShieldCheck, Settings, PieChart,
-  Activity, Compass, Gauge, Boxes,
+  Activity, Compass, Gauge, Boxes, KeyRound,
 } from 'lucide-react'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
@@ -55,6 +55,7 @@ const NAV_TRAFFIC: NavEntry[] = [
 const NAV: NavEntry[] = [
   { type: 'item', title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard, minRole: 'manager' },
   { type: 'item', title: 'Acessos', url: '/acessos', icon: Compass, minRole: 'executor' },
+  { type: 'item', title: 'Senhas', url: '/senhas', icon: KeyRound, minRole: 'executor' },
   { type: 'item', title: 'Catálogo', url: '/catalogo', icon: Boxes, minRole: 'manager' },
   { type: 'item', title: 'Diretoria', url: '/diretoria', icon: Gauge, minRole: 'manager' },
   { type: 'item', title: 'Aprovações IA', url: '/content/aprovacoes', icon: Sparkles, minRole: 'executor' },
@@ -94,6 +95,7 @@ const NAV: NavEntry[] = [
     minRole: 'executor',
     items: [
       { title: 'Performance Geral', url: '/reports/overview', minRole: 'manager' },
+      { title: 'Performance de Anúncios', url: '/reports/anuncios', minRole: 'executor' },
       { title: 'Relatório Google', url: '/reports/google', minRole: 'executor' },
       { title: 'Atividades', url: '/activity', minRole: 'executor' },
     ],

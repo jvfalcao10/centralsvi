@@ -25,6 +25,7 @@ import Prospecting from "@/pages/Prospecting";
 import Scripts from "@/pages/Scripts";
 import Onboarding from "@/pages/Onboarding";
 import Acessos from "@/pages/Acessos";
+import Senhas from "@/pages/Senhas";
 import Catalogo from "@/pages/Catalogo";
 import Diretoria from "@/pages/Diretoria";
 import ActivityLog from "@/pages/ActivityLog";
@@ -37,6 +38,7 @@ import TrafegoAnaliseDetalhe from "@/pages/TrafegoAnaliseDetalhe";
 import TrafegoPlanoSemana from "@/pages/TrafegoPlanoSemana";
 import ReportsOverview from "@/pages/reports/Overview";
 import GoogleReports from "@/pages/reports/GoogleReports";
+import AnunciosPerformance from "@/pages/reports/AnunciosPerformance";
 
 // Client pages
 import MinhaArea from "@/pages/MinhaArea";
@@ -112,6 +114,9 @@ const App = () => (
               <Route path="/acessos" element={
                 <ProtectedRoute requiredRole="executor"><AppLayout><Acessos /></AppLayout></ProtectedRoute>
               } />
+              <Route path="/senhas" element={
+                <ProtectedRoute requiredRole="executor"><AppLayout><Senhas /></AppLayout></ProtectedRoute>
+              } />
               <Route path="/catalogo" element={
                 <ProtectedRoute requiredRole="manager"><AppLayout><Catalogo /></AppLayout></ProtectedRoute>
               } />
@@ -162,6 +167,9 @@ const App = () => (
               } />
               <Route path="/reports/google" element={
                 <ProtectedRoute requiredRole="executor"><AppLayout><GoogleReports /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/reports/anuncios" element={
+                <ProtectedRoute requiredRole="executor"><AppLayout><AnunciosPerformance /></AppLayout></ProtectedRoute>
               } />
 
               {/* Client-only */}

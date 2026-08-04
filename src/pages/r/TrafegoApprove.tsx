@@ -3,9 +3,23 @@ import { useQuery } from '@tanstack/react-query'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/integrations/supabase/client'
 import { Loader2, CheckCircle2, XCircle, AlertTriangle, Eye, ExternalLink } from 'lucide-react'
+import { useTheme } from '@/contexts/ThemeContext'
 import logoSvi from '@/assets/logo-svi.png'
+import logoBranca from '@/assets/logo-branca.png'
 
 const APPROVAL_WEBHOOK_URL = 'https://n8n-n8n-start.wrqknp.easypanel.host/webhook/aprovar-relatorio-trafego'
+
+/** Quem pode aprovar. "Outro" abre campo livre. */
+const PESSOAS = ['João Falcão', 'Aleilson', 'Arthur', 'Outro'] as const
+
+/** Motivos de reprovação mais comuns. "Outro" abre campo livre. */
+const MOTIVOS = [
+  'Número está errado',
+  'Falta contexto',
+  'Texto precisa de ajuste',
+  'Não é hora de enviar',
+  'Outro',
+] as const
 
 interface CampaignRow {
   name: string
@@ -181,8 +195,11 @@ export default function TrafegoApprove() {
   const { slug } = useParams<{ slug: string }>()
   const [params] = useSearchParams()
   const token = params.get('token') || ''
+  const { theme } = useTheme()
   const [aprovador, setAprovador] = useState('')
+  const [pessoaSel, setPessoaSel] = useState('')
   const [rejectReason, setRejectReason] = useState('')
+  const [motivoSel, setMotivoSel] = useState('')
   const [submitting, setSubmitting] = useState<null | 'approve' | 'reject'>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState<'approved' | 'rejected' | null>(null)
@@ -269,7 +286,7 @@ export default function TrafegoApprove() {
     <div className="min-h-screen bg-background">
       <div className="max-w-3xl mx-auto px-5 py-8 md:py-12 space-y-6">
         <div className="flex items-center justify-between gap-4">
-          <img src={logoSvi} alt="SVI" className="h-8 object-contain" />
+          <img src={theme === 'dark' ? logoBranca : logoSvi} alt="SVI" className="h-8 object-contain" />
           <span className="text-[11px] uppercase tracking-wider px-2 py-1 rounded-full border border-border bg-muted/40 text-muted-foreground">
             Aprovação interna
           </span>
@@ -338,31 +355,78 @@ export default function TrafegoApprove() {
         {!alreadyDecided && !submitSuccess && (
           <div className="space-y-4 border-t border-border pt-6">
             <div>
-              <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-1.5">
-                Seu nome (registrado como aprovador)
+              <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-2">
+                Quem está aprovando
               </label>
-              <input
-                type="text"
-                placeholder="Ex: João Falcão"
-                value={aprovador}
-                onChange={(e) => setAprovador(e.target.value)}
-                disabled={!!submitting}
-                className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
+              <div className="flex flex-wrap gap-2">
+                {PESSOAS.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => {
+                      setPessoaSel(p)
+                      setAprovador(p === 'Outro' ? '' : p)
+                    }}
+                    disabled={!!submitting}
+                    className={`px-3.5 py-2 rounded-md border text-sm transition-colors disabled:opacity-50 ${
+                      pessoaSel === p
+                        ? 'border-primary bg-primary/15 text-primary font-medium'
+                        : 'border-border hover:bg-accent'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+              {pessoaSel === 'Outro' && (
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Digite seu nome"
+                  value={aprovador}
+                  onChange={(e) => setAprovador(e.target.value)}
+                  disabled={!!submitting}
+                  className="mt-2 w-full px-3 py-2 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              )}
             </div>
 
             <div>
-              <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-1.5">
-                Motivo da reprovação (opcional)
+              <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-2">
+                Motivo (só se reprovar)
               </label>
-              <textarea
-                rows={2}
-                placeholder="Só usado se você reprovar"
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                disabled={!!submitting}
-                className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
-              />
+              <div className="flex flex-wrap gap-2">
+                {MOTIVOS.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => {
+                      const novo = motivoSel === m ? '' : m
+                      setMotivoSel(novo)
+                      setRejectReason(novo === 'Outro' || novo === '' ? '' : novo)
+                    }}
+                    disabled={!!submitting}
+                    className={`px-3.5 py-2 rounded-md border text-sm transition-colors disabled:opacity-50 ${
+                      motivoSel === m
+                        ? 'border-rose-500 bg-rose-500/15 text-rose-500 font-medium'
+                        : 'border-border hover:bg-accent'
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+              {motivoSel === 'Outro' && (
+                <textarea
+                  rows={2}
+                  autoFocus
+                  placeholder="Descreva o motivo"
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  disabled={!!submitting}
+                  className="mt-2 w-full px-3 py-2 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+                />
+              )}
             </div>
 
             {submitError && (
