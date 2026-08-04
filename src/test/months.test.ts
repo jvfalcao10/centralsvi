@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { addMonths, getDueDate, monthKeyOf, monthLabel, buildMonthOptions, firstBillingMonth } from '@/lib/months'
+import { addMonths, getDueDate, monthKeyOf, monthLabel, buildMonthOptions, firstBillingMonth, lastDayOfMonth } from '@/lib/months'
+
+describe('lastDayOfMonth', () => {
+  it('acha o ultimo dia certo', () => {
+    expect(lastDayOfMonth('2026-08')).toBe('2026-08-31')
+    expect(lastDayOfMonth('2026-06')).toBe('2026-06-30')
+    expect(lastDayOfMonth('2026-02')).toBe('2026-02-28')
+    expect(lastDayOfMonth('2028-02')).toBe('2028-02-29')
+  })
+})
 
 describe('firstBillingMonth (a partir de quando o cliente deve)', () => {
   it('cobra ja no mes de entrada quando o vencimento ainda ia chegar', () => {

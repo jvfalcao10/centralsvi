@@ -3,7 +3,7 @@ import { DollarSign, TrendingUp, TrendingDown, Percent, Plus, CheckCircle, Send,
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { Invoice, Expense, formatCurrency, formatDate } from '@/types'
-import { monthKeyOf, monthKeyOfDate, monthLabel, buildMonthOptions, addMonths, getDueDate, firstBillingMonth } from '@/lib/months'
+import { monthKeyOf, monthKeyOfDate, monthLabel, buildMonthOptions, addMonths, getDueDate, firstBillingMonth, lastDayOfMonth } from '@/lib/months'
 import { useUsdRate, mrrBRL } from '@/hooks/useUsdRate'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -391,13 +391,32 @@ export default function Financial() {
     setRegisteringPayment(client.id)
     const today = new Date().toISOString().split('T')[0]
     const dueDate = getDueDate(client.dia_vencimento, monthKey).toISOString().split('T')[0]
-    await supabase.from('invoices').insert({
-      client_id: client.id,
-      valor: mrrBRL(client.mrr, client.currency, usdRate),
-      status: 'pago',
-      vencimento: dueDate,
-      data_pagamento: today,
-    })
+
+    // Desde a geracao automatica (todo dia 1), a fatura do mes ja existe como
+    // `pendente`. Registrar pagamento e dar BAIXA nela, nao criar outra, senao o
+    // mes fica com duas linhas e o total a receber conta dobrado.
+    const { data: emAberto } = await supabase
+      .from('invoices')
+      .select('id')
+      .eq('client_id', client.id)
+      .neq('status', 'pago')
+      .gte('vencimento', `${monthKey}-01`)
+      .lte('vencimento', lastDayOfMonth(monthKey))
+      .limit(1)
+
+    if (emAberto && emAberto.length > 0) {
+      await supabase.from('invoices')
+        .update({ status: 'pago', data_pagamento: today })
+        .eq('id', emAberto[0].id)
+    } else {
+      await supabase.from('invoices').insert({
+        client_id: client.id,
+        valor: mrrBRL(client.mrr, client.currency, usdRate),
+        status: 'pago',
+        vencimento: dueDate,
+        data_pagamento: today,
+      })
+    }
     toast({ title: `Pagamento de ${client.name} registrado em ${monthLabel(monthKey)}!` })
     setRegisteringPayment(null)
     fetchData()
@@ -449,6 +468,10 @@ export default function Financial() {
 
   // Total do mês escolhido no contas a receber.
   const monthInvoicesTotal = filteredInvoices.reduce((s, i) => s + i.valor, 0)
+
+  // Clientes fora da geração automática de fatura: a conversão de moeda depende
+  // da cotação do dia, que só o app tem. Esses continuam sendo registrados a mão.
+  const clientesForaDaGeracao = activeClients.filter(c => c.currency !== 'BRL' && c.dia_vencimento !== null)
 
   const costosDirectos = expenses.filter(e => e.categoria === 'pessoal').reduce((s, e) => s + e.valor, 0)
   const fixedExpenses = expenses.filter(e => e.categoria !== 'pessoal').reduce((s, e) => s + e.valor, 0)
@@ -862,6 +885,20 @@ export default function Financial() {
               </SelectContent>
             </Select>
           </div>
+
+          {clientesForaDaGeracao.length > 0 && (
+            <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3">
+              <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+              <p className="text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">
+                  {clientesForaDaGeracao.map(c => `${c.name} (${c.currency})`).join(', ')}
+                </span>
+                {' '}não {clientesForaDaGeracao.length > 1 ? 'entram' : 'entra'} na geração automática de fatura do dia 1,
+                porque a conversão de moeda depende da cotação do dia. Registrar o pagamento pela aba Cobrança,
+                que converte na hora.
+              </p>
+            </div>
+          )}
 
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             <Table>

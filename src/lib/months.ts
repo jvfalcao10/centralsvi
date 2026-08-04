@@ -35,6 +35,12 @@ export function addMonths(dateStr: string, n: number): string {
   return `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}-${String(Math.min(d, lastDay)).padStart(2, '0')}`
 }
 
+/** '2026-08' -> '2026-08-31' (último dia do mês, respeitando fevereiro e bissexto) */
+export function lastDayOfMonth(monthKey: string): string {
+  const [y, m] = monthKey.split('-').map(Number)
+  return `${monthKey}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`
+}
+
 /**
  * Mês da PRIMEIRA cobrança de um cliente.
  *
