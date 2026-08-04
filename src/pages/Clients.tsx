@@ -505,6 +505,14 @@ export default function Clients() {
                 />
               </div>
 
+              {form.permuta && Number(form.mrr) === 0 && (
+                <p className="text-xs text-info">
+                  Sem MRR preenchido, essa permuta aparece como &quot;valor a definir&quot;. Se quiser enxergar o tamanho
+                  real da carteira, coloque quanto vale o que você recebe em troca: entra no MRR contratado sem
+                  virar cobrança nem receita.
+                </p>
+              )}
+
               {form.permuta && (
                 <div className="space-y-1.5 pt-1">
                   <Label htmlFor="cf-permuta-ate" className="text-xs">Permuta até (deixe vazio para permuta sem prazo)</Label>

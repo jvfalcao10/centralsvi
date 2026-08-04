@@ -112,7 +112,13 @@ function ClientBillingRow({
       <TableCell className="text-xs text-muted-foreground">{client.company || '—'}</TableCell>
       <TableCell>
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-sm font-bold text-success">{formatCurrency(mrrBRL(client.mrr, client.currency, usdRate))}</span>
+          {emPermutaNoMes(client, monthKey) && client.mrr === 0 ? (
+            // Permuta sem valor definido. Mostrar "R$ 0,00" faria parecer que a
+            // troca não vale nada; o certo é dizer que ninguém precificou ainda.
+            <span className="text-sm text-muted-foreground italic">valor a definir</span>
+          ) : (
+            <span className="text-sm font-bold text-success">{formatCurrency(mrrBRL(client.mrr, client.currency, usdRate))}</span>
+          )}
           {client.currency === 'USD' && (
             <Badge variant="outline" className="text-xs bg-info/10 text-info border-info/30">🇺🇸 USD</Badge>
           )}
@@ -590,11 +596,19 @@ export default function Financial() {
         <TabsContent value="overview" className="space-y-4 mt-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
             {[
-              { label: 'MRR (Clientes Ativos)', value: formatCurrency(mrr), icon: DollarSign, color: 'text-primary' },
-              { label: 'Receita Mês', value: formatCurrency(totalRevenue), icon: TrendingUp, color: 'text-success' },
-              { label: 'Despesas Mês', value: formatCurrency(totalExpensesVal), icon: TrendingDown, color: 'text-danger' },
-              { label: 'Lucro Líquido', value: formatCurrency(netProfit), icon: DollarSign, color: netProfit > 0 ? 'text-success' : 'text-danger' },
-              { label: 'Margem', value: `${margin}%`, icon: Percent, color: 'text-info' },
+              {
+                label: 'MRR (Clientes Ativos)', value: formatCurrency(mrr), icon: DollarSign, color: 'text-primary',
+                // Explica a diferença entre este card e a Receita. Sem isso, dois
+                // números diferentes lado a lado parecem erro.
+                hint: mrrEmPermuta > 0 ? `Inclui ${formatCurrency(mrrEmPermuta)} em permuta` : null,
+              },
+              {
+                label: 'Receita Mês', value: formatCurrency(totalRevenue), icon: TrendingUp, color: 'text-success',
+                hint: mrrEmPermuta > 0 ? `Sem ${formatCurrency(mrrEmPermuta)} de permuta` : null,
+              },
+              { label: 'Despesas Mês', value: formatCurrency(totalExpensesVal), icon: TrendingDown, color: 'text-danger', hint: null },
+              { label: 'Lucro Líquido', value: formatCurrency(netProfit), icon: DollarSign, color: netProfit > 0 ? 'text-success' : 'text-danger', hint: null },
+              { label: 'Margem', value: `${margin}%`, icon: Percent, color: 'text-info', hint: null },
             ].map(kpi => {
               const Icon = kpi.icon
               return (
@@ -605,6 +619,7 @@ export default function Financial() {
                       <p className="text-xs text-muted-foreground">{kpi.label}</p>
                     </div>
                     <p className="text-lg font-bold">{kpi.value}</p>
+                    {kpi.hint && <p className="text-[11px] text-muted-foreground mt-0.5">{kpi.hint}</p>}
                   </CardContent>
                 </Card>
               )
