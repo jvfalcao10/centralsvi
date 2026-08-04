@@ -1,5 +1,34 @@
 import { describe, it, expect } from 'vitest'
 import { addMonths, getDueDate, monthKeyOf, monthLabel, buildMonthOptions, firstBillingMonth, lastDayOfMonth } from '@/lib/months'
+import { emPermutaNoMes } from '@/types'
+
+describe('emPermutaNoMes', () => {
+  it('cliente sem permuta nunca esta em permuta', () => {
+    expect(emPermutaNoMes({ permuta: false, permuta_ate: null }, '2026-08')).toBe(false)
+    expect(emPermutaNoMes({}, '2026-08')).toBe(false)
+  })
+
+  it('permuta sem prazo vale para qualquer mes', () => {
+    // Numeros Contabilidade
+    const c = { permuta: true, permuta_ate: null }
+    expect(emPermutaNoMes(c, '2026-08')).toBe(true)
+    expect(emPermutaNoMes(c, '2027-03')).toBe(true)
+  })
+
+  it('permuta com prazo para no mes seguinte ao limite', () => {
+    // Carlotinha: permuta ate 31/08, volta a pagar em setembro
+    const c = { permuta: true, permuta_ate: '2026-08-31' }
+    expect(emPermutaNoMes(c, '2026-07')).toBe(true)
+    expect(emPermutaNoMes(c, '2026-08')).toBe(true)
+    expect(emPermutaNoMes(c, '2026-09')).toBe(false)
+    expect(emPermutaNoMes(c, '2026-10')).toBe(false)
+  })
+
+  it('aceita timestamp completo vindo do banco', () => {
+    expect(emPermutaNoMes({ permuta: true, permuta_ate: '2026-08-31T00:00:00Z' }, '2026-08')).toBe(true)
+    expect(emPermutaNoMes({ permuta: true, permuta_ate: '2026-08-31T00:00:00Z' }, '2026-09')).toBe(false)
+  })
+})
 
 describe('lastDayOfMonth', () => {
   it('acha o ultimo dia certo', () => {

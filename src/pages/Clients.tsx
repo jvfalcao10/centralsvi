@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Search, Eye, Building2, User, Plus, Pencil, Trash2, MessageSquare, Send, ExternalLink, Instagram } from 'lucide-react'
+import { Search, Eye, Building2, User, Plus, Pencil, Trash2, MessageSquare, Send, ExternalLink, Instagram, Handshake } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
@@ -39,6 +40,8 @@ const EMPTY_FORM = {
   notes: '',
   instagram: '',
   dia_vencimento: '',
+  permuta: false,
+  permuta_ate: '',
 }
 
 const INTERACTION_TYPES = [
@@ -112,12 +115,14 @@ export default function Clients() {
       notes: client.notes || '',
       instagram: client.instagram || '',
       dia_vencimento: client.dia_vencimento ? String(client.dia_vencimento) : '',
+      permuta: client.permuta ?? false,
+      permuta_ate: client.permuta_ate ? client.permuta_ate.slice(0, 10) : '',
     })
     setFormErrors({})
     setShowForm(true)
   }
 
-  const setField = (field: keyof ClientForm, value: string | number) => {
+  const setField = (field: keyof ClientForm, value: string | number | boolean) => {
     setForm(prev => ({ ...prev, [field]: value }))
     setFormErrors(prev => ({ ...prev, [field]: undefined }))
   }
@@ -153,6 +158,9 @@ export default function Clients() {
       notes: form.notes.trim() || null,
       instagram: form.instagram.trim() || null,
       dia_vencimento: form.dia_vencimento !== '' ? parseInt(form.dia_vencimento) : null,
+      permuta: form.permuta,
+      // sem data = permuta sem prazo
+      permuta_ate: form.permuta && form.permuta_ate ? form.permuta_ate : null,
     }
     const { error } = editingClient
       ? await supabase.from('clients').update(payload).eq('id', editingClient.id)
@@ -308,6 +316,14 @@ export default function Clients() {
                     <Badge variant="outline" className={`text-xs ${statusConf?.className}`}>
                       {statusConf?.label || client.status}
                     </Badge>
+                    {client.permuta && (
+                      <Badge variant="outline" className="text-xs gap-1 bg-info/10 text-info border-info/30">
+                        <Handshake className="h-3 w-3" />
+                        {client.permuta_ate
+                          ? `Permuta até ${client.permuta_ate.slice(0, 10).split('-').reverse().join('/')}`
+                          : 'Permuta'}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">
@@ -470,6 +486,42 @@ export default function Clients() {
                 <Input id="cf-inicio" type="date" value={form.inicio_contrato} onChange={e => setField('inicio_contrato', e.target.value)} className={formErrors.inicio_contrato ? 'border-destructive' : ''} />
                 {formErrors.inicio_contrato && <p className="text-xs text-destructive">{formErrors.inicio_contrato}</p>}
               </div>
+            </div>
+
+            {/* Permuta: cliente ativo que não paga em dinheiro */}
+            <div className="rounded-lg border border-border p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-sm flex items-center gap-1.5">
+                    <Handshake className="h-3.5 w-3.5 text-info" /> Permuta
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Cliente ativo que troca o serviço em vez de pagar. Não gera fatura no dia 1 e não entra na lista de quem não pagou.
+                  </p>
+                </div>
+                <Switch
+                  checked={form.permuta}
+                  onCheckedChange={v => setField('permuta', v)}
+                />
+              </div>
+
+              {form.permuta && (
+                <div className="space-y-1.5 pt-1">
+                  <Label htmlFor="cf-permuta-ate" className="text-xs">Permuta até (deixe vazio para permuta sem prazo)</Label>
+                  <Input
+                    id="cf-permuta-ate"
+                    type="date"
+                    className="w-52"
+                    value={form.permuta_ate}
+                    onChange={e => setField('permuta_ate', e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {form.permuta_ate
+                      ? `Volta a ser cobrado normalmente a partir do mês seguinte a ${form.permuta_ate.split('-').reverse().join('/')}.`
+                      : 'Sem data: nunca gera cobrança enquanto a permuta estiver ligada.'}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">

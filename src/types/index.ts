@@ -44,8 +44,22 @@ export interface Client {
   notes: string | null
   instagram: string | null
   dia_vencimento: number | null
+  // Permuta: cliente ativo que não paga em dinheiro (troca por serviço/produto).
+  // `permuta_ate` nulo = permuta sem prazo. Com data = volta a ser cobrado no mês seguinte.
+  permuta: boolean
+  permuta_ate: string | null
   created_at: string
   updated_at: string
+}
+
+/** Cliente está em permuta no mês pedido? ('2026-08') */
+export function emPermutaNoMes(
+  c: { permuta?: boolean; permuta_ate?: string | null },
+  monthKey: string,
+): boolean {
+  if (!c.permuta) return false
+  if (!c.permuta_ate) return true
+  return c.permuta_ate.slice(0, 7) >= monthKey
 }
 
 export interface Delivery {

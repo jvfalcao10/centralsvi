@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
-import { DollarSign, TrendingUp, TrendingDown, Percent, Plus, CheckCircle, Send, AlertCircle, Clock, Calendar, CalendarCheck, Pencil, Trash2, Undo2, ExternalLink, Repeat, Layers } from 'lucide-react'
+import { DollarSign, TrendingUp, TrendingDown, Percent, Plus, CheckCircle, Send, AlertCircle, Clock, Calendar, CalendarCheck, Pencil, Trash2, Undo2, ExternalLink, Repeat, Layers, Handshake } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
-import { Invoice, Expense, formatCurrency, formatDate } from '@/types'
+import { Invoice, Expense, formatCurrency, formatDate, emPermutaNoMes } from '@/types'
 import { monthKeyOf, monthKeyOfDate, monthLabel, buildMonthOptions, addMonths, getDueDate, firstBillingMonth, lastDayOfMonth } from '@/lib/months'
 import { useUsdRate, mrrBRL } from '@/hooks/useUsdRate'
 import { Badge } from '@/components/ui/badge'
@@ -49,6 +49,8 @@ type ActiveClient = {
   dia_vencimento: number | null
   instagram: string | null
   inicio_contrato: string | null
+  permuta: boolean
+  permuta_ate: string | null
 }
 
 const CASH_PROJECTION = [
@@ -120,7 +122,14 @@ function ClientBillingRow({
         <span className={`text-sm font-medium ${HIGHLIGHT_COLOR_MAP[highlight]}`}>Dia {client.dia_vencimento} · {dueDateStr}</span>
       </TableCell>
       <TableCell className="text-right">
-        {alreadyPaid ? (
+        {emPermutaNoMes(client, monthKey) ? (
+          <Badge variant="outline" className="text-xs gap-1 bg-info/10 text-info border-info/30">
+            <Handshake className="h-3 w-3" />
+            {client.permuta_ate
+              ? `Permuta até ${client.permuta_ate.slice(0, 10).split('-').reverse().join('/')}`
+              : 'Permuta'}
+          </Badge>
+        ) : alreadyPaid ? (
           <Badge variant="outline" className="text-xs bg-success/20 text-success border-success/30">
             <CheckCircle className="h-3 w-3 mr-1" /> Pago
           </Badge>
@@ -233,7 +242,7 @@ export default function Financial() {
     const [{ data: inv }, { data: exp }, { data: clientsData }, { data: cobrancasData }] = await Promise.all([
       supabase.from('invoices').select('*, clients(name)').order('vencimento'),
       supabase.from('expenses').select('*').order('vencimento'),
-      supabase.from('clients').select('id, name, company, mrr, currency, status, dia_vencimento, instagram, inicio_contrato'),
+      supabase.from('clients').select('id, name, company, mrr, currency, status, dia_vencimento, instagram, inicio_contrato, permuta, permuta_ate'),
       supabase.from('cobrancas_manuais').select('*').eq('ativo', true).order('proximo_vencimento', { ascending: true, nullsFirst: false }),
     ])
     setInvoices(inv || [])
@@ -427,19 +436,25 @@ export default function Financial() {
   const in7Days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
   const in7DaysStr = in7Days.toISOString().split('T')[0]
 
+  const currentMonth = monthKeyOfDate(today)
+
   // Use USD-converted MRR sum for financial calculations
   const mrr = activeClients.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0)
+
+  // Permuta não vira dinheiro. Fica no MRR contratado (é contrato ativo), mas sai
+  // da Receita do mês, senão o lucro e a margem contam caixa que nunca entrou.
+  const clientesEmPermuta = activeClients.filter(c => emPermutaNoMes(c, currentMonth))
+  const mrrEmPermuta = clientesEmPermuta.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0)
   const totalReceivable = invoices.filter(i => i.status !== 'pago').reduce((s, i) => s + i.valor, 0)
   const overdueInvoices = invoices.filter(i => i.status === 'atrasado' || (i.status === 'pendente' && i.vencimento < todayStr))
   const dueSoonInvoices = invoices.filter(i => i.status === 'pendente' && i.vencimento >= todayStr && i.vencimento <= in7DaysStr)
 
   // Receita Mês = MRR recorrente do mês (base do P&L). NÃO somar faturas pagas: cada fatura JÁ é a mensalidade realizada do cliente — somar MRR + faturas conta a recorrência 2x, e as faturas incluem meses anteriores.
-  const totalRevenue = mrr
+  const totalRevenue = mrr - mrrEmPermuta
   const totalExpensesVal = expenses.reduce((s, e) => s + e.valor, 0)
   const netProfit = totalRevenue - totalExpensesVal
   const margin = totalRevenue > 0 ? (netProfit / totalRevenue * 100).toFixed(1) : '0.0'
 
-  const currentMonth = monthKeyOfDate(today)
   const expenseMonthOptions = buildMonthOptions(expenses.map(e => e.vencimento), currentMonth)
   const invoiceMonthOptions = buildMonthOptions(invoices.map(i => i.vencimento), currentMonth)
 
@@ -479,9 +494,11 @@ export default function Financial() {
   const netProfitDRE = grossMargin - fixedExpenses
 
   // --- Billing module grouping ---
+  // Quem está em permuta não é cobrado, então sai das seções por vencimento e
+  // aparece na própria seção. Sem isso ele viraria "vence hoje" e depois "vencido".
   const todayDay = today.getDate()
-  const clientsWithDue = activeClients.filter(c => c.dia_vencimento !== null)
-  const clientsNoDue = activeClients.filter(c => c.dia_vencimento === null)
+  const clientsWithDue = activeClients.filter(c => c.dia_vencimento !== null && !emPermutaNoMes(c, currentMonth))
+  const clientsNoDue = activeClients.filter(c => c.dia_vencimento === null && !emPermutaNoMes(c, currentMonth))
 
   const clientsToday = clientsWithDue.filter(c => c.dia_vencimento === todayDay)
   const clientsThisWeek = clientsWithDue.filter(c => {
@@ -526,9 +543,15 @@ export default function Financial() {
   // Cliente só entra na conta de um mês se a primeira mensalidade dele já tinha caído.
   // Sem isso, quem fechou em agosto apareceria como "não pagou" em julho, e quem
   // fechou no próprio dia do vencimento apareceria devendo o mês em que entrou.
-  const clientsInMonth = clientsWithDue.filter(c =>
-    !c.inicio_contrato || !c.dia_vencimento ||
-    firstBillingMonth(c.inicio_contrato, c.dia_vencimento) <= cobrancaMonth
+  // Permuta no mês consultado sai da conta de cobrança e vai pra lista própria.
+  // Isso é por MÊS: a Carlotinha é permuta em agosto e cobrável em setembro.
+  const clientesPermutaNoMes = activeClients.filter(c =>
+    c.dia_vencimento !== null && emPermutaNoMes(c, cobrancaMonth)
+  )
+  const clientsInMonth = activeClients.filter(c =>
+    c.dia_vencimento !== null &&
+    !emPermutaNoMes(c, cobrancaMonth) &&
+    (!c.inicio_contrato || firstBillingMonth(c.inicio_contrato, c.dia_vencimento) <= cobrancaMonth)
   )
   const hasPaidInMonth = (clientId: string) => invoices.some(inv =>
     inv.client_id === clientId && inv.status === 'pago' && inv.vencimento.startsWith(cobrancaMonth)
@@ -681,6 +704,16 @@ export default function Financial() {
               </p>
             </>
           )}
+
+          {/* Em permuta: aparece nos dois modos, mês corrente e fechamento */}
+          <BillingSection
+            title={`Em permuta em ${monthLabel(cobrancaMonth)}`}
+            clients={clientesPermutaNoMes}
+            icon={Handshake}
+            highlight="primary"
+            borderColor="border-info/30"
+            {...billingRowDeps}
+          />
 
           {/* Sections */}
           {isCurrentMonth && <>
