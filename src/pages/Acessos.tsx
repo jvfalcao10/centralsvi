@@ -23,6 +23,8 @@ const GROUPS: Group[] = [
   ]},
   { title: 'Centrais & Painéis internos', items: [
     ['Central SVI (esta central)', 'centralsvi.vercel.app', 'interno'],
+    ['Datas Estratégicas (calendário)', '/content/datas', 'interno · fonte da Sofia'],
+    ['Painel de Produção de Conteúdo', '/content/producao', 'interno'],
     ['Diretoria — command center', 'diretoria.svicompany.com.br', 'interno'],
     ['Inteligência — central', 'inteligencia.svicompany.com.br', 'interno'],
     ['Catálogo de ofertas com preço', 'ofertas.svicompany.com.br', 'interno'],

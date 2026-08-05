@@ -62,6 +62,20 @@ const NAV: NavEntry[] = [
 
   {
     type: 'group',
+    title: 'Conteúdo',
+    icon: FileText,
+    minRole: 'executor',
+    items: [
+      { title: 'Datas Estratégicas', url: '/content/datas', minRole: 'executor' },
+      { title: 'Painel de Produção', url: '/content/producao', minRole: 'executor' },
+      { title: 'Calendário Editorial', url: '/content/calendar', minRole: 'executor' },
+      { title: 'Radar de Tendências', url: '/content/radar', minRole: 'executor' },
+      { title: 'Monitor de Referências', url: '/content/monitor', minRole: 'executor' },
+    ],
+  },
+
+  {
+    type: 'group',
     title: 'Comercial',
     icon: Briefcase,
     minRole: 'seller',

@@ -50,6 +50,8 @@ import Aprovacoes from "@/pages/content/Aprovacoes";
 import Calendar from "@/pages/content/Calendar";
 import Radar from "@/pages/content/Radar";
 import Monitor from "@/pages/content/Monitor";
+import Datas from "@/pages/content/Datas";
+import Producao from "@/pages/content/Producao";
 import SviCompany from "@/pages/content/SviCompany";
 import SviDoctor from "@/pages/content/SviDoctor";
 
@@ -194,6 +196,16 @@ const App = () => (
               <Route path="/content/calendar" element={
                 <ProtectedRoute requiredRole="executor" allowClient>
                   <AutoLayout><Calendar /></AutoLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/content/datas" element={
+                <ProtectedRoute requiredRole="executor" allowClient>
+                  <AutoLayout><Datas /></AutoLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/content/producao" element={
+                <ProtectedRoute requiredRole="executor">
+                  <AutoLayout><Producao /></AutoLayout>
                 </ProtectedRoute>
               } />
               <Route path="/content/radar" element={
