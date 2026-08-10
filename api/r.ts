@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createAdminClient } from './_lib/supabase.js';
+import { handleAprovarConteudo } from './_lib/aprovar-conteudo.js';
 
 const CSS = `
 *{box-sizing:border-box;margin:0;padding:0}
@@ -60,6 +61,14 @@ function deltaHtml(pct: any): string {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Endpoint público compartilhado. A aprovação de conteúdo entra por aqui via
+  // rewrite (/api/aprovar-conteudo -> /api/r?__rota=aprovar-conteudo) porque o
+  // plano Hobby limita quantas Serverless Functions o deploy pode ter, e o
+  // projeto já está no teto. Ver api/_lib/aprovar-conteudo.ts.
+  if (req.query.__rota === 'aprovar-conteudo') {
+    return handleAprovarConteudo(req, res);
+  }
+
   const slug = String(req.query.slug || '').trim().replace(/\/$/, '');
   const host = req.headers.host || 'centralsvi.vercel.app';
   const pageUrl = `https://${host}/r/${slug}`;

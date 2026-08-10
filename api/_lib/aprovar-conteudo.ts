@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createAdminClient } from './_lib/supabase.js';
+import { createAdminClient } from './supabase.js';
 
 /**
  * Aprovação de conteúdo pelo cliente, sem login.
@@ -10,6 +10,12 @@ import { createAdminClient } from './_lib/supabase.js';
  *
  *   GET  /api/aprovar-conteudo?token=xxx   -> devolve a peça
  *   POST /api/aprovar-conteudo             -> { token, acao: 'aprovar'|'ajuste', nome?, motivo? }
+ *
+ * ⚠️ Mora em `_lib/` de propósito, e NÃO é uma rota própria: o plano Hobby da
+ * Vercel limita as Serverless Functions do deploy, e o projeto já está no teto
+ * (o build quebrou com "No more than 12 Serverless Functions"). Arquivo com
+ * underscore não vira função. Quem expõe isso é o `api/r.ts`, que já é o
+ * endpoint público, via rewrite em vercel.json. A URL de fora segue bonita.
  */
 
 type Acao = 'aprovar' | 'ajuste';
@@ -18,7 +24,7 @@ type Acao = 'aprovar' | 'ajuste';
 // mostra o resultado mas não aceita nova gravação.
 const ABERTAS = ['aprovacao'];
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handleAprovarConteudo(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
 
   const supabase = createAdminClient();
