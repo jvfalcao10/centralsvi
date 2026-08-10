@@ -83,6 +83,7 @@ const NAV: NavEntry[] = [
     items: [
       { title: 'Pipeline', url: '/pipeline', minRole: 'seller' },
       { title: 'Scripts', url: '/scripts', minRole: 'executor' },
+      { title: 'Lista de Espera', url: '/lista-espera', minRole: 'manager' },
     ],
   },
 

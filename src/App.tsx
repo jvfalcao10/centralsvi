@@ -21,6 +21,7 @@ import Pipeline from "@/pages/Pipeline";
 import Clients from "@/pages/Clients";
 import Financial from "@/pages/Financial";
 import Scripts from "@/pages/Scripts";
+import ListaEspera from "@/pages/ListaEspera";
 import Onboarding from "@/pages/Onboarding";
 import Acessos from "@/pages/Acessos";
 import Senhas from "@/pages/Senhas";
@@ -115,6 +116,9 @@ const App = () => (
               } />
               <Route path="/financial" element={
                 <ProtectedRoute requiredRole="admin"><AppLayout><Financial /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/lista-espera" element={
+                <ProtectedRoute requiredRole="manager"><AppLayout><ListaEspera /></AppLayout></ProtectedRoute>
               } />
               <Route path="/scripts" element={
                 <ProtectedRoute requiredRole="executor"><AppLayout><Scripts /></AppLayout></ProtectedRoute>
