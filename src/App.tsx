@@ -42,6 +42,7 @@ import AnunciosPerformance from "@/pages/reports/AnunciosPerformance";
 import MinhaArea from "@/pages/MinhaArea";
 
 // Shared content modules (staff + client)
+import Posts from "@/pages/content/Posts";
 import Pautas from "@/pages/content/Pautas";
 import Aprovacoes from "@/pages/content/Aprovacoes";
 import Radar from "@/pages/content/Radar";
@@ -62,6 +63,7 @@ import AdminPaineis from "@/pages/painel/AdminPaineis";
 // Relatórios públicos (link compartilhado)
 import TrafegoReport from "@/pages/r/TrafegoReport";
 import TrafegoApprove from "@/pages/r/TrafegoApprove";
+import ConteudoApprove from "@/pages/r/ConteudoApprove";
 
 import NotFound from "./pages/NotFound";
 
@@ -87,6 +89,7 @@ const App = () => (
               {/* Public */}
               <Route path="/r/trafego/:slug" element={<TrafegoReport />} />
               <Route path="/aprovar/trafego/:slug" element={<TrafegoApprove />} />
+              <Route path="/aprovar/conteudo/:token" element={<ConteudoApprove />} />
               <Route path="/login" element={<Login />} />
               <Route path="/client-signup" element={<ClientSignup />} />
               <Route path="/reset-password" element={<ResetPassword />} />
@@ -163,6 +166,11 @@ const App = () => (
               } />
 
               {/* Shared (staff executor+ OR client aprovado) */}
+              <Route path="/content/posts" element={
+                <ProtectedRoute requiredRole="executor" allowClient>
+                  <AutoLayout><Posts /></AutoLayout>
+                </ProtectedRoute>
+              } />
               <Route path="/content/pautas" element={
                 <ProtectedRoute requiredRole="executor" allowClient>
                   <AutoLayout><Pautas /></AutoLayout>

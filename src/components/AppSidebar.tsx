@@ -68,6 +68,7 @@ const NAV: NavEntry[] = [
     items: [
       // O kanban e o banco de pautas existiam sem entrada no menu desde julho.
       // Ninguém achava, por isso as duas tabelas estavam zeradas.
+      { title: 'Pipeline de Conteúdo', url: '/content/posts', minRole: 'executor' },
       { title: 'Banco de Pautas', url: '/content/pautas', minRole: 'executor' },
       { title: 'Datas Estratégicas', url: '/content/datas', minRole: 'executor' },
       { title: 'Painel de Produção', url: '/content/producao', minRole: 'executor' },

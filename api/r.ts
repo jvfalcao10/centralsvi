@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createAdminClient } from './_lib/supabase.js';
+import { handleAprovarConteudo } from './_lib/aprovar-conteudo.js';
 
 const CSS = `
 *{box-sizing:border-box;margin:0;padding:0}
@@ -60,6 +61,11 @@ function deltaHtml(pct: any): string {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Aprovacao de conteudo entra por aqui: o plano Hobby limita as functions.
+  if (req.query.__rota === 'aprovar-conteudo') {
+    return handleAprovarConteudo(req, res);
+  }
+
 
   const slug = String(req.query.slug || '').trim().replace(/\/$/, '');
   const host = req.headers.host || 'centralsvi.vercel.app';
