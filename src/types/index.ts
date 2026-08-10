@@ -288,7 +288,9 @@ export function formatTimestamp(ts: string): string {
 // ============================================================================
 
 export type ContentFormat = 'carrossel' | 'reels' | 'stories' | 'feed'
-export type PostStatus = 'ideia' | 'producao' | 'agendado' | 'publicado'
+// Funil de conteúdo. As três do meio são o que faltava: a peça sai da produção,
+// vai pro cliente e volta aprovada ou com ajuste, sem passar por WhatsApp solto.
+export type PostStatus = 'ideia' | 'producao' | 'aprovacao' | 'ajuste' | 'aprovado' | 'agendado' | 'publicado'
 export type PautaUrgency = 'evergreen' | 'tendencia' | 'sazonal'
 export type PautaStatus = 'disponivel' | 'usada' | 'descartada'
 export type RefPlatform = 'instagram' | 'youtube' | 'linkedin' | 'tiktok'
@@ -309,6 +311,19 @@ export interface ContentPost {
   created_by: string | null
   created_at: string
   updated_at: string
+  // Entregável e aprovação do cliente
+  responsavel_id: string | null
+  /** Link do arquivo final (Drive). Vídeo não sobe pra cá: fica no Drive e vem o link. */
+  arquivo_url: string | null
+  /** Print/thumb pro cliente ver sem baixar nada. */
+  preview_url: string | null
+  motivo_ajuste: string | null
+  enviado_em: string | null
+  aprovado_em: string | null
+  /** Nome de quem aprovou do lado do cliente. */
+  aprovado_por: string | null
+  /** Token do link público de aprovação. */
+  token: string | null
 }
 
 export interface ContentPauta {
@@ -354,10 +369,13 @@ export interface ContentTrend {
 }
 
 export const POST_STATUS_CONFIG: Record<PostStatus, { label: string; className: string }> = {
-  ideia:      { label: 'Ideia',       className: 'bg-muted text-muted-foreground' },
-  producao:   { label: 'Em produção', className: 'bg-info/15 text-info' },
-  agendado:   { label: 'Agendado',    className: 'bg-warning/15 text-warning' },
-  publicado:  { label: 'Publicado',   className: 'bg-success/15 text-success' },
+  ideia:      { label: 'Ideia',           className: 'bg-muted text-muted-foreground' },
+  producao:   { label: 'Em produção',     className: 'bg-info/15 text-info' },
+  aprovacao:  { label: 'Com o cliente',   className: 'bg-orange-500/15 text-orange-400' },
+  ajuste:     { label: 'Ajuste pedido',   className: 'bg-danger/15 text-danger' },
+  aprovado:   { label: 'Aprovado',        className: 'bg-success/15 text-success' },
+  agendado:   { label: 'Agendado',        className: 'bg-warning/15 text-warning' },
+  publicado:  { label: 'Publicado',       className: 'bg-primary/15 text-primary' },
 }
 
 export const CONTENT_FORMAT_CONFIG: Record<ContentFormat, { label: string; className: string; chipBg: string }> = {

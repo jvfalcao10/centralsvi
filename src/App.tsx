@@ -71,6 +71,7 @@ import Pricing from "@/pages/landing/Pricing";
 // Relatórios públicos (link compartilhado)
 import TrafegoReport from "@/pages/r/TrafegoReport";
 import TrafegoApprove from "@/pages/r/TrafegoApprove";
+import ConteudoApprove from "@/pages/r/ConteudoApprove";
 
 import NotFound from "./pages/NotFound";
 
@@ -98,6 +99,7 @@ const App = () => (
               <Route path="/precos" element={<Pricing />} />
               <Route path="/r/trafego/:slug" element={<TrafegoReport />} />
               <Route path="/aprovar/trafego/:slug" element={<TrafegoApprove />} />
+              <Route path="/aprovar/conteudo/:token" element={<ConteudoApprove />} />
               <Route path="/login" element={<Login />} />
               <Route path="/client-signup" element={<ClientSignup />} />
               <Route path="/reset-password" element={<ResetPassword />} />

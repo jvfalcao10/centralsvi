@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Pencil, Trash2, Calendar as CalendarIcon, ArrowRight, Lightbulb, Wrench, Clock, CheckCircle2, Sparkles, Stethoscope, Send } from 'lucide-react'
+import { Plus, Pencil, Trash2, Calendar as CalendarIcon, ArrowRight, Lightbulb, Wrench, Clock, CheckCircle2, Sparkles, Stethoscope, Send, MessageSquareWarning, Link2, Paperclip } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
@@ -57,8 +57,11 @@ interface StaffClient {
 const COLUMNS: { id: PostStatus; label: string; icon: typeof Lightbulb }[] = [
   { id: 'ideia', label: 'Ideia', icon: Lightbulb },
   { id: 'producao', label: 'Em produção', icon: Wrench },
+  { id: 'aprovacao', label: 'Com o cliente', icon: Send },
+  { id: 'ajuste', label: 'Ajuste pedido', icon: MessageSquareWarning },
+  { id: 'aprovado', label: 'Aprovado', icon: CheckCircle2 },
   { id: 'agendado', label: 'Agendado', icon: Clock },
-  { id: 'publicado', label: 'Publicado', icon: CheckCircle2 },
+  { id: 'publicado', label: 'Publicado', icon: Sparkles },
 ]
 
 const FORMAT_OPTIONS: ContentFormat[] = ['carrossel', 'reels', 'stories', 'feed']
@@ -72,6 +75,10 @@ const EMPTY_FORM = {
   caption: '',
   hashtags: '',
   notes: '',
+  // Entregável: vídeo não sobe pra cá. Fica no Drive (qualidade + peso) e vem o
+  // link, mais um print pro cliente ver sem precisar baixar nada.
+  arquivo_url: '',
+  preview_url: '',
 }
 
 type PostForm = typeof EMPTY_FORM
@@ -138,9 +145,9 @@ export default function Posts() {
   }, [isClient, isStaff, clientId, selectedStaffClientId, fetchPosts])
 
   const postsByColumn = useMemo(() => {
-    const grouped: Record<PostStatus, ContentPost[]> = {
-      ideia: [], producao: [], agendado: [], publicado: [],
-    }
+    // Deriva das COLUMNS pra nunca esquecer uma etapa nova aqui.
+    const grouped = Object.fromEntries(COLUMNS.map(c => [c.id, []])) as Record<PostStatus, ContentPost[]>
+
     for (const p of posts) grouped[p.status]?.push(p)
     return grouped
   }, [posts])
@@ -167,6 +174,8 @@ export default function Posts() {
       caption: post.caption || '',
       hashtags: post.hashtags || '',
       notes: post.notes || '',
+      arquivo_url: post.arquivo_url || '',
+      preview_url: post.preview_url || '',
     })
     setFormErrors({})
     setShowForm(true)
@@ -204,6 +213,8 @@ export default function Posts() {
       caption: form.caption.trim() || null,
       hashtags: form.hashtags.trim() || null,
       notes: form.notes.trim() || null,
+      arquivo_url: form.arquivo_url.trim() || null,
+      preview_url: form.preview_url.trim() || null,
     }
     const { error } = editing
       ? await supabase.from('content_posts').update(payload).eq('id', editing.id)
@@ -234,26 +245,69 @@ export default function Posts() {
     fetchPosts()
   }
 
+  /**
+   * Manda a peça pro cliente: gera o token do link público, move pra "Com o
+   * cliente" e copia o link. O mesmo token serve pra Sofia disparar no WhatsApp.
+   *
+   * Exige arquivo ou print de propósito: aprovar no escuro é o que fazia a
+   * aprovação acontecer fora do sistema e voltar como "aprovado" sem rastro.
+   */
   const sendForApproval = async (post: ContentPost) => {
     if (!post.client_id) {
       toast({ title: 'Post sem cliente', description: 'Atribua um cliente ao post antes.', variant: 'destructive' })
       return
     }
-    const { error } = await supabase.from('painel_post_approvals').upsert({
+    if (!post.arquivo_url && !post.preview_url) {
+      toast({
+        title: 'Falta o entregável',
+        description: 'Coloque o link do arquivo (Drive) ou o print antes de mandar pro cliente.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    const token = post.token || `${crypto.randomUUID()}${crypto.randomUUID()}`.replace(/-/g, '').slice(0, 32)
+
+    const { error } = await supabase.from('content_posts').update({
+      status: 'aprovacao',
+      token,
+      enviado_em: new Date().toISOString(),
+      motivo_ajuste: null,
+    }).eq('id', post.id)
+
+    if (error) {
+      toast({ title: 'Erro ao enviar pra aprovação', description: error.message, variant: 'destructive' })
+      return
+    }
+
+    // Mantém o painel do cliente em sincronia com o link (as duas portas valem).
+    await supabase.from('painel_post_approvals').upsert({
       post_id: post.id,
       client_id: post.client_id,
       status: 'aguardando',
       decided_at: null,
       decided_by: null,
     }, { onConflict: 'post_id' })
-    if (error) {
-      toast({ title: 'Erro ao enviar pra aprovação', description: error.message, variant: 'destructive' })
-      return
-    }
+
+    const link = `${window.location.origin}/aprovar/conteudo/${token}`
+    try { await navigator.clipboard.writeText(link) } catch { /* clipboard bloqueado, o link aparece no card */ }
+
     toast({
-      title: 'Enviado pra aprovação do cliente',
-      description: 'Cliente recebeu notificação no painel.',
+      title: 'Link de aprovação copiado',
+      description: 'Cole no WhatsApp do cliente. Quando ele responder, a etapa muda sozinha.',
     })
+    fetchPosts()
+  }
+
+  const copyApprovalLink = async (post: ContentPost) => {
+    if (!post.token) return
+    const link = `${window.location.origin}/aprovar/conteudo/${post.token}`
+    try {
+      await navigator.clipboard.writeText(link)
+      toast({ title: 'Link copiado' })
+    } catch {
+      toast({ title: 'Copie o link', description: link })
+    }
   }
 
   const handleDelete = async () => {
@@ -368,19 +422,58 @@ export default function Posts() {
                                 ))}
                                 {isStaff && post.client_id && (
                                   <DropdownMenuItem onClick={() => sendForApproval(post)}>
-                                    <Send className="h-3.5 w-3.5 mr-2" />Enviar pra aprovação do cliente
+                                    <Send className="h-3.5 w-3.5 mr-2" />
+                                    {post.status === 'ajuste' ? 'Reenviar pro cliente' : 'Enviar pra aprovação do cliente'}
+                                  </DropdownMenuItem>
+                                )}
+                                {isStaff && post.token && (
+                                  <DropdownMenuItem onClick={() => copyApprovalLink(post)}>
+                                    <Link2 className="h-3.5 w-3.5 mr-2" />Copiar link de aprovação
                                   </DropdownMenuItem>
                                 )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
 
+                          {post.preview_url && (
+                            <img
+                              src={post.preview_url}
+                              alt=""
+                              loading="lazy"
+                              className="w-full h-24 object-cover rounded-md border border-border"
+                            />
+                          )}
+
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <Badge variant="outline" className={`text-xs ${fmt.className}`}>{fmt.label}</Badge>
+                            {post.arquivo_url && (
+                              <Badge variant="outline" className="text-[10px] gap-1 bg-info/10 text-info border-info/30">
+                                <Paperclip className="h-2.5 w-2.5" /> arquivo
+                              </Badge>
+                            )}
                             {post.category && (
                               <span className="text-xs text-muted-foreground">· {post.category}</span>
                             )}
                           </div>
+
+                          {/* O que o cliente respondeu, na cara do card */}
+                          {post.status === 'ajuste' && post.motivo_ajuste && (
+                            <p className="text-xs text-danger bg-danger/10 border border-danger/25 rounded-md px-2 py-1.5 line-clamp-3">
+                              {post.motivo_ajuste}
+                            </p>
+                          )}
+                          {post.status === 'aprovado' && post.aprovado_por && (
+                            <p className="text-xs text-success">
+                              Aprovado por {post.aprovado_por}
+                              {post.aprovado_em ? ` · ${formatDate(post.aprovado_em.slice(0, 10))}` : ''}
+                            </p>
+                          )}
+                          {post.status === 'aprovacao' && (
+                            <p className="text-xs text-orange-400">
+                              Aguardando o cliente
+                              {post.enviado_em ? ` desde ${formatDate(post.enviado_em.slice(0, 10))}` : ''}
+                            </p>
+                          )}
 
                           {post.scheduled_date && (
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -513,6 +606,47 @@ export default function Posts() {
                 onChange={e => setField('hashtags', e.target.value)}
                 maxLength={500}
               />
+            </div>
+
+            {/* Entregável: é o que o cliente vai ver na hora de aprovar */}
+            <div className="rounded-lg border border-border p-3 space-y-3">
+              <div className="flex items-center gap-2">
+                <Paperclip className="h-3.5 w-3.5 text-info" />
+                <Label className="text-sm">Entregável</Label>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="pf-arquivo" className="text-xs">Link do arquivo (Drive)</Label>
+                <Input
+                  id="pf-arquivo"
+                  placeholder="https://drive.google.com/..."
+                  value={form.arquivo_url}
+                  onChange={e => setField('arquivo_url', e.target.value)}
+                  maxLength={600}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Vídeo fica no Drive, não sobe pra cá: mantém a qualidade e não pesa.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="pf-preview" className="text-xs">Print / prévia (URL da imagem)</Label>
+                <Input
+                  id="pf-preview"
+                  placeholder="https://... (o cliente vê sem baixar nada)"
+                  value={form.preview_url}
+                  onChange={e => setField('preview_url', e.target.value)}
+                  maxLength={600}
+                />
+              </div>
+
+              {form.preview_url && (
+                <img
+                  src={form.preview_url}
+                  alt="Prévia"
+                  className="w-full max-h-48 object-contain rounded-md border border-border bg-muted/20"
+                />
+              )}
             </div>
 
             <div className="space-y-1.5">
