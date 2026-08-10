@@ -85,7 +85,6 @@ const GROUPS: Group[] = [
     ['SVI Company (site)', 'svicompany.com.br', 'público'],
     ['SVI Autoridade (Topo)', 'topo.svicompany.com.br', 'público'],
     ['SVI Authority (EN)', 'svi-authority-en.vercel.app', 'público'],
-    ['SVI Doctor', 'svidoctor.vercel.app', 'público'],
   ]},
   { title: 'Estratégia & Backs (por cliente)', items: [
     ['Back Estratégia', 'back.svicompany.com.br', 'interno'],
