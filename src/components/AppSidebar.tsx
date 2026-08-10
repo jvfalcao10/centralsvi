@@ -71,7 +71,6 @@ const NAV: NavEntry[] = [
       { title: 'Banco de Pautas', url: '/content/pautas', minRole: 'executor' },
       { title: 'Datas Estratégicas', url: '/content/datas', minRole: 'executor' },
       { title: 'Painel de Produção', url: '/content/producao', minRole: 'executor' },
-      { title: 'Calendário Editorial', url: '/content/calendar', minRole: 'executor' },
       { title: 'Radar de Tendências', url: '/content/radar', minRole: 'executor' },
     ],
   },

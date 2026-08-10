@@ -90,7 +90,6 @@ export default function MinhaArea() {
         <h2 className="text-lg font-semibold mb-3">Atalhos</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           <ShortcutCard to="/content/pautas"   title="Banco de Pautas"   desc="Repositório de ideias"        icon={Lightbulb} />
-          <ShortcutCard to="/content/calendar" title="Calendário Editorial" desc="Visão mensal da produção"     icon={Calendar} />
           <ShortcutCard to="/content/radar"    title="Radar de Tendências" desc="Temas em alta do seu nicho"   icon={TrendingUp} />
           <ShortcutCard to="/content/monitor"  title="Referências"       desc="Perfis que você acompanha"    icon={Users2} />
         </div>
