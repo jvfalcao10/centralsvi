@@ -18,7 +18,6 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { title: 'Minha Área',    url: '/minha-area',      icon: LayoutDashboard },
-  { title: 'Gestor de Posts', url: '/content/posts',   icon: Kanban },
   { title: 'Banco de Pautas', url: '/content/pautas',  icon: Lightbulb },
   { title: 'Calendário',    url: '/content/calendar', icon: Calendar },
   { title: 'Radar',         url: '/content/radar',    icon: TrendingUp },

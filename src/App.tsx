@@ -19,9 +19,7 @@ import ResetPassword from "@/pages/ResetPassword";
 import Dashboard from "@/pages/Dashboard";
 import Pipeline from "@/pages/Pipeline";
 import Clients from "@/pages/Clients";
-import Deliveries from "@/pages/Deliveries";
 import Financial from "@/pages/Financial";
-import Prospecting from "@/pages/Prospecting";
 import Scripts from "@/pages/Scripts";
 import Onboarding from "@/pages/Onboarding";
 import Acessos from "@/pages/Acessos";
@@ -31,7 +29,6 @@ import Diretoria from "@/pages/Diretoria";
 import ActivityLog from "@/pages/ActivityLog";
 import Team from "@/pages/Team";
 import Approvals from "@/pages/Approvals";
-import Comercial from "@/pages/Comercial";
 import Trafego from "@/pages/Trafego";
 import TrafegoAnalises from "@/pages/TrafegoAnalises";
 import TrafegoAnaliseDetalhe from "@/pages/TrafegoAnaliseDetalhe";
@@ -44,16 +41,12 @@ import AnunciosPerformance from "@/pages/reports/AnunciosPerformance";
 import MinhaArea from "@/pages/MinhaArea";
 
 // Shared content modules (staff + client)
-import Posts from "@/pages/content/Posts";
 import Pautas from "@/pages/content/Pautas";
 import Aprovacoes from "@/pages/content/Aprovacoes";
 import Calendar from "@/pages/content/Calendar";
 import Radar from "@/pages/content/Radar";
-import Monitor from "@/pages/content/Monitor";
 import Datas from "@/pages/content/Datas";
 import Producao from "@/pages/content/Producao";
-import SviCompany from "@/pages/content/SviCompany";
-import SviDoctor from "@/pages/content/SviDoctor";
 
 // Painel cliente (svi.ai)
 import PainelLayout from "@/components/PainelLayout";
@@ -65,13 +58,10 @@ import PainelAISdr from "@/pages/painel/AISdr";
 import AdminPaineis from "@/pages/painel/AdminPaineis";
 
 // Landing pública SaaS
-import ProdutoLanding from "@/pages/landing/ProdutoLanding";
-import Pricing from "@/pages/landing/Pricing";
 
 // Relatórios públicos (link compartilhado)
 import TrafegoReport from "@/pages/r/TrafegoReport";
 import TrafegoApprove from "@/pages/r/TrafegoApprove";
-import ConteudoApprove from "@/pages/r/ConteudoApprove";
 
 import NotFound from "./pages/NotFound";
 
@@ -95,11 +85,8 @@ const App = () => (
               <Route path="/" element={<Navigate to="/login" replace />} />
 
               {/* Public */}
-              <Route path="/produto" element={<ProdutoLanding />} />
-              <Route path="/precos" element={<Pricing />} />
               <Route path="/r/trafego/:slug" element={<TrafegoReport />} />
               <Route path="/aprovar/trafego/:slug" element={<TrafegoApprove />} />
-              <Route path="/aprovar/conteudo/:token" element={<ConteudoApprove />} />
               <Route path="/login" element={<Login />} />
               <Route path="/client-signup" element={<ClientSignup />} />
               <Route path="/reset-password" element={<ResetPassword />} />
@@ -127,14 +114,8 @@ const App = () => (
               <Route path="/diretoria" element={
                 <ProtectedRoute requiredRole="manager"><AppLayout><Diretoria /></AppLayout></ProtectedRoute>
               } />
-              <Route path="/deliveries" element={
-                <ProtectedRoute requiredRole="executor"><AppLayout><Deliveries /></AppLayout></ProtectedRoute>
-              } />
               <Route path="/financial" element={
                 <ProtectedRoute requiredRole="admin"><AppLayout><Financial /></AppLayout></ProtectedRoute>
-              } />
-              <Route path="/prospecting" element={
-                <ProtectedRoute requiredRole="seller"><AppLayout><Prospecting /></AppLayout></ProtectedRoute>
               } />
               <Route path="/scripts" element={
                 <ProtectedRoute requiredRole="executor"><AppLayout><Scripts /></AppLayout></ProtectedRoute>
@@ -150,9 +131,6 @@ const App = () => (
               } />
               <Route path="/admin/approvals" element={
                 <ProtectedRoute requiredRole="manager"><AppLayout><Approvals /></AppLayout></ProtectedRoute>
-              } />
-              <Route path="/comercial" element={
-                <ProtectedRoute requiredRole="seller"><AppLayout><Comercial /></AppLayout></ProtectedRoute>
               } />
               <Route path="/operacional/trafego" element={
                 <ProtectedRoute requiredRole="manager" allowTraffic><AppLayout><Trafego /></AppLayout></ProtectedRoute>
@@ -182,11 +160,6 @@ const App = () => (
               } />
 
               {/* Shared (staff executor+ OR client aprovado) */}
-              <Route path="/content/posts" element={
-                <ProtectedRoute requiredRole="executor" allowClient>
-                  <AutoLayout><Posts /></AutoLayout>
-                </ProtectedRoute>
-              } />
               <Route path="/content/pautas" element={
                 <ProtectedRoute requiredRole="executor" allowClient>
                   <AutoLayout><Pautas /></AutoLayout>
@@ -213,21 +186,6 @@ const App = () => (
               <Route path="/content/radar" element={
                 <ProtectedRoute requiredRole="executor" allowClient>
                   <AutoLayout><Radar /></AutoLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/content/monitor" element={
-                <ProtectedRoute requiredRole="executor" allowClient>
-                  <AutoLayout><Monitor /></AutoLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/content/svi-company" element={
-                <ProtectedRoute requiredRole="executor">
-                  <AppLayout><SviCompany /></AppLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/content/svi-doctor" element={
-                <ProtectedRoute requiredRole="executor">
-                  <AppLayout><SviDoctor /></AppLayout>
                 </ProtectedRoute>
               } />
 

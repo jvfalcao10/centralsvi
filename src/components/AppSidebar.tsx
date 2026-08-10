@@ -68,13 +68,11 @@ const NAV: NavEntry[] = [
     items: [
       // O kanban e o banco de pautas existiam sem entrada no menu desde julho.
       // Ninguém achava, por isso as duas tabelas estavam zeradas.
-      { title: 'Pipeline de Conteúdo', url: '/content/posts', minRole: 'executor' },
       { title: 'Banco de Pautas', url: '/content/pautas', minRole: 'executor' },
       { title: 'Datas Estratégicas', url: '/content/datas', minRole: 'executor' },
       { title: 'Painel de Produção', url: '/content/producao', minRole: 'executor' },
       { title: 'Calendário Editorial', url: '/content/calendar', minRole: 'executor' },
       { title: 'Radar de Tendências', url: '/content/radar', minRole: 'executor' },
-      { title: 'Monitor de Referências', url: '/content/monitor', minRole: 'executor' },
     ],
   },
 
@@ -85,8 +83,6 @@ const NAV: NavEntry[] = [
     minRole: 'seller',
     items: [
       { title: 'Pipeline', url: '/pipeline', minRole: 'seller' },
-      { title: 'Metas SDR/IS', url: '/comercial', minRole: 'seller' },
-      { title: 'Prospecção', url: '/prospecting', minRole: 'seller' },
       { title: 'Scripts', url: '/scripts', minRole: 'executor' },
     ],
   },
@@ -100,7 +96,6 @@ const NAV: NavEntry[] = [
     items: [
       { title: 'Clientes', url: '/clients', minRole: 'executor', badgeKey: 'clients' },
       { title: 'Onboarding', url: '/onboarding', minRole: 'manager' },
-      { title: 'Entregas', url: '/deliveries', minRole: 'executor', badgeKey: 'deliveries' },
     ],
   },
 
