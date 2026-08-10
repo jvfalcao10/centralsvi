@@ -1223,7 +1223,7 @@ export default function Financial() {
                 <p className="text-xs text-muted-foreground">
                   {newExpense.parcelado
                     ? 'Indisponível: uma despesa parcelada já nasce com todas as parcelas criadas.'
-                    : 'Ao marcar como paga, a próxima do mês seguinte é criada automaticamente.'}
+                    : 'Repete sozinha todo dia 1, sem precisar marcar nada. Cadastre uma vez só.'}
                 </p>
               </div>
               <Switch
@@ -1336,7 +1336,7 @@ export default function Financial() {
             <div className="flex items-center justify-between rounded-lg border border-border p-3">
               <div className="space-y-0.5">
                 <Label className="text-sm">Despesa recorrente mensal</Label>
-                <p className="text-xs text-muted-foreground">Ao marcar como paga, a próxima do mês seguinte é criada automaticamente.</p>
+                <p className="text-xs text-muted-foreground">Repete sozinha todo dia 1. Editar aqui muda só esta, o valor das próximas vem do último lançamento.</p>
               </div>
               <Switch
                 checked={editForm.recorrente}
