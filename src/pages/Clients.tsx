@@ -42,6 +42,7 @@ const EMPTY_FORM = {
   dia_vencimento: '',
   permuta: false,
   permuta_ate: '',
+  cobranca_inicio: '',
 }
 
 const INTERACTION_TYPES = [
@@ -117,6 +118,7 @@ export default function Clients() {
       dia_vencimento: client.dia_vencimento ? String(client.dia_vencimento) : '',
       permuta: client.permuta ?? false,
       permuta_ate: client.permuta_ate ? client.permuta_ate.slice(0, 10) : '',
+      cobranca_inicio: client.cobranca_inicio ? client.cobranca_inicio.slice(0, 10) : '',
     })
     setFormErrors({})
     setShowForm(true)
@@ -161,6 +163,7 @@ export default function Clients() {
       permuta: form.permuta,
       // sem data = permuta sem prazo
       permuta_ate: form.permuta && form.permuta_ate ? form.permuta_ate : null,
+      cobranca_inicio: form.cobranca_inicio || null,
     }
     const { error } = editingClient
       ? await supabase.from('clients').update(payload).eq('id', editingClient.id)
@@ -485,6 +488,19 @@ export default function Clients() {
                 <Label htmlFor="cf-inicio">Início do Contrato <span className="text-destructive">*</span></Label>
                 <Input id="cf-inicio" type="date" value={form.inicio_contrato} onChange={e => setField('inicio_contrato', e.target.value)} className={formErrors.inicio_contrato ? 'border-destructive' : ''} />
                 {formErrors.inicio_contrato && <p className="text-xs text-destructive">{formErrors.inicio_contrato}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cf-cobranca">Começa a pagar em</Label>
+                <Input
+                  id="cf-cobranca"
+                  type="date"
+                  value={form.cobranca_inicio}
+                  onChange={e => setField('cobranca_inicio', e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Só preencha se a primeira mensalidade não for logo após a assinatura.
+                  Serve pra carência, cortesia ou contrato fechado antes de começar.
+                </p>
               </div>
             </div>
 

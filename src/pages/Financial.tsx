@@ -51,6 +51,7 @@ type ActiveClient = {
   inicio_contrato: string | null
   permuta: boolean
   permuta_ate: string | null
+  cobranca_inicio: string | null
 }
 
 const CASH_PROJECTION = [
@@ -248,7 +249,7 @@ export default function Financial() {
     const [{ data: inv }, { data: exp }, { data: clientsData }, { data: cobrancasData }] = await Promise.all([
       supabase.from('invoices').select('*, clients(name)').order('vencimento'),
       supabase.from('expenses').select('*').order('vencimento'),
-      supabase.from('clients').select('id, name, company, mrr, currency, status, dia_vencimento, instagram, inicio_contrato, permuta, permuta_ate'),
+      supabase.from('clients').select('id, name, company, mrr, currency, status, dia_vencimento, instagram, inicio_contrato, permuta, permuta_ate, cobranca_inicio'),
       supabase.from('cobrancas_manuais').select('*').eq('ativo', true).order('proximo_vencimento', { ascending: true, nullsFirst: false }),
     ])
     setInvoices(inv || [])
@@ -557,7 +558,10 @@ export default function Financial() {
   const clientsInMonth = activeClients.filter(c =>
     c.dia_vencimento !== null &&
     !emPermutaNoMes(c, cobrancaMonth) &&
-    (!c.inicio_contrato || firstBillingMonth(c.inicio_contrato, c.dia_vencimento) <= cobrancaMonth)
+    // Data explicita de inicio de cobranca manda sobre a regra deduzida.
+    (c.cobranca_inicio
+      ? monthKeyOf(c.cobranca_inicio) <= cobrancaMonth
+      : (!c.inicio_contrato || firstBillingMonth(c.inicio_contrato, c.dia_vencimento) <= cobrancaMonth))
   )
   const hasPaidInMonth = (clientId: string) => invoices.some(inv =>
     inv.client_id === clientId && inv.status === 'pago' && inv.vencimento.startsWith(cobrancaMonth)

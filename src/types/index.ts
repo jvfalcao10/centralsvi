@@ -48,6 +48,9 @@ export interface Client {
   // `permuta_ate` nulo = permuta sem prazo. Com data = volta a ser cobrado no mês seguinte.
   permuta: boolean
   permuta_ate: string | null
+  /** Data da PRIMEIRA cobrança, quando difere do início do contrato (carência,
+   *  cortesia, contrato assinado antes de começar). Nulo = regra padrão. */
+  cobranca_inicio: string | null
   created_at: string
   updated_at: string
 }
