@@ -28,6 +28,7 @@ import Senhas from "@/pages/Senhas";
 import Catalogo from "@/pages/Catalogo";
 import Processos from "@/pages/Processos";
 import Diretoria from "@/pages/Diretoria";
+import Documentos from "@/pages/Documentos";
 import ActivityLog from "@/pages/ActivityLog";
 import Team from "@/pages/Team";
 import Approvals from "@/pages/Approvals";
@@ -120,6 +121,9 @@ const App = () => (
               } />
               <Route path="/diretoria" element={
                 <ProtectedRoute requiredRole="manager"><AppLayout><Diretoria /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/documentos" element={
+                <ProtectedRoute requiredRole="executor"><AppLayout><Documentos /></AppLayout></ProtectedRoute>
               } />
               <Route path="/financial" element={
                 <ProtectedRoute requiredRole="admin"><AppLayout><Financial /></AppLayout></ProtectedRoute>

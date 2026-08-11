@@ -59,6 +59,7 @@ const NAV: NavEntry[] = [
   { type: 'item', title: 'Processos', url: '/processos', icon: BookOpen, minRole: 'executor' },
   { type: 'item', title: 'Catálogo', url: '/catalogo', icon: Boxes, minRole: 'manager' },
   { type: 'item', title: 'Diretoria', url: '/diretoria', icon: Gauge, minRole: 'manager' },
+  { type: 'item', title: 'Documentos', url: '/documentos', icon: FileText, minRole: 'executor' },
   { type: 'item', title: 'Aprovações IA', url: '/content/aprovacoes', icon: Sparkles, minRole: 'executor' },
 
   {
