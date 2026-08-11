@@ -13,11 +13,6 @@ import {
 } from 'recharts'
 import { formatCurrency } from '@/types'
 
-const MRR_DATA = [
-  { month: 'Jan', mrr: 18500 }, { month: 'Fev', mrr: 21000 },
-  { month: 'Mar', mrr: 23500 }, { month: 'Abr', mrr: 25800 },
-  { month: 'Mai', mrr: 27200 }, { month: 'Jun', mrr: 28700 },
-]
 
 interface KPICard {
   label: string; value: string; change: number; icon: React.ElementType; prefix?: string
@@ -44,6 +39,7 @@ export default function Dashboard() {
   const [clients, setClients] = useState<{ status: string; mrr: number; currency: string }[]>([])
   const [leads, setLeads] = useState<{ stage: string }[]>([])
   const [expenses, setExpenses] = useState<{ valor: number; vencimento: string | null; recorrente: boolean }[]>([])
+  const [faturas, setFaturas] = useState<{ vencimento: string | null; valor: number }[]>([])
   const [loading, setLoading] = useState(true)
   const [alerts, setAlerts] = useState<{ msg: string; level: 'green' | 'yellow' | 'red' }[]>([])
 
@@ -59,7 +55,7 @@ export default function Dashboard() {
         supabase.from('clients').select('status, mrr, currency'),
         supabase.from('leads').select('stage'),
         supabase.from('deliveries').select('status, prazo'),
-        supabase.from('invoices').select('status, vencimento'),
+        supabase.from('invoices').select('status, vencimento, valor'),
         supabase.from('expenses').select('valor, vencimento, recorrente'),
       ])
 
@@ -74,6 +70,7 @@ export default function Dashboard() {
         if (atRisk > 0) newAlerts.push({ msg: `${atRisk} cliente(s) em risco de churn`, level: 'yellow' })
         if (defaulters > 0) newAlerts.push({ msg: `${defaulters} cliente(s) inadimplente(s)`, level: 'red' })
       }
+      setFaturas((invoices || []) as { vencimento: string | null; valor: number }[])
       if (invoices) {
         const today = new Date().toISOString().split('T')[0]
         const overdueInvoices = invoices.filter(i => i.status === 'atrasado' || (i.status === 'pendente' && i.vencimento < today)).length
@@ -112,8 +109,19 @@ export default function Dashboard() {
     { name: 'Despesas', valor: totalExpenses },
   ]
 
-  // Update last month in MRR_DATA with real value
-  const mrrChartData = MRR_DATA.map((d, i) => i === MRR_DATA.length - 1 && totalMRR > 0 ? { ...d, mrr: totalMRR } : d)
+  // Receita realizada por mes, do banco. Antes eram 6 pontos inventados no
+  // codigo com so o ultimo trocado pelo MRR real — grafico bonito e falso.
+  const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+  const mrrChartData = (() => {
+    const porMes = new Map<string, number>()
+    for (const i of faturas) {
+      if (!i.vencimento) continue
+      const k = i.vencimento.slice(0, 7)
+      porMes.set(k, (porMes.get(k) || 0) + Number(i.valor || 0))
+    }
+    return Array.from(porMes.entries()).sort().slice(-6)
+      .map(([k, v]) => ({ month: MESES[Number(k.slice(5, 7)) - 1], mrr: v }))
+  })()
 
   const kpis: KPICard[] = [
     { label: 'MRR Atual', value: formatCurrency(totalMRR), change: 5.4, icon: DollarSign },
@@ -206,7 +214,7 @@ export default function Dashboard() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-success" />
-              Evolução MRR (6 meses)
+              Receita por mês (últimos 6)
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -216,7 +224,7 @@ export default function Dashboard() {
                 <XAxis dataKey="month" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} />
                 <Tooltip content={<CustomTooltip />} />
-                <Line type="monotone" dataKey="mrr" name="MRR" stroke="#10b981" strokeWidth={2.5} dot={{ fill: '#10b981', r: 4 }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="mrr" name="Receita" stroke="#10b981" strokeWidth={2.5} dot={{ fill: '#10b981', r: 4 }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
