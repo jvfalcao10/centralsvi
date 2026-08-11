@@ -109,7 +109,7 @@ export default function Posts() {
         if (data) setClientId(data as string)
       } else if (isStaff) {
         const { data } = await supabase
-          .from('clients')
+          .from('clientes_operacional')
           .select('id, name, company')
           .order('name')
         setStaffClients((data || []) as StaffClient[])

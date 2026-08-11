@@ -116,7 +116,7 @@ export default function GoogleReports() {
   const { data: clients, isLoading: loadingClients } = useQuery({
     queryKey: ['clients-min'],
     queryFn: async (): Promise<ClientRow[]> => {
-      const { data, error } = await supabase.from('clients').select('id, name, slug').order('name')
+      const { data, error } = await supabase.from('clientes_operacional').select('id, name, slug').order('name')
       if (error) throw error
       return data || []
     },
