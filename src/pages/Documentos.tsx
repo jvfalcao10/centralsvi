@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { Plus, ExternalLink, Archive, RotateCcw, FileText } from 'lucide-react'
+import { Plus, ExternalLink, FileText, Wrench } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { Badge } from '@/components/ui/badge'
@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog'
 
 type DocTipo = 'estrategia' | 'roteiros' | 'proposta' | 'site' | 'outro'
-type DocStatus = 'ativo' | 'arquivado'
+type DocStatus = 'ativo' | 'nao_finalizado' | 'arquivado'
 
 interface Documento {
   id: string
@@ -24,7 +24,7 @@ interface Documento {
   tipo: DocTipo
   descricao: string
   url: string
-  mes: string // YYYY-MM-DD (dia 1)
+  mes: string
   status: DocStatus
   created_at: string
 }
@@ -39,6 +39,11 @@ const TIPO_VARIANT: Record<DocTipo, string> = {
   proposta: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
   site: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
   outro: 'bg-muted text-muted-foreground border-border',
+}
+
+const STATUS_OPTIONS: DocStatus[] = ['ativo', 'nao_finalizado', 'arquivado']
+const STATUS_LABEL: Record<DocStatus, string> = {
+  ativo: '🟢 Ativo', nao_finalizado: '🚧 Não finalizado', arquivado: '📦 Arquivado',
 }
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
@@ -91,6 +96,7 @@ export default function Documentos() {
     () => [...new Set(docs.map(d => d.cliente_nome))].filter(Boolean).sort(),
     [docs],
   )
+  const pendentes = useMemo(() => docs.filter(d => d.status === 'nao_finalizado').length, [docs])
 
   const filtered = useMemo(
     () => docs.filter(d =>
@@ -105,15 +111,14 @@ export default function Documentos() {
     return Object.keys(m).sort().reverse().map(mes => ({ mes, items: m[mes] }))
   }, [filtered])
 
-  async function toggleStatus(d: Documento) {
-    const novo: DocStatus = d.status === 'ativo' ? 'arquivado' : 'ativo'
+  async function setStatus(d: Documento, novo: DocStatus) {
     const { error } = await supabase.from('documentos').update({ status: novo }).eq('id', d.id)
     if (error) { toast({ title: 'Não deu', description: error.message, variant: 'destructive' }); return }
     fetchDocs()
   }
 
   async function arquivarMes(mes: string) {
-    if (!confirm(`Arquivar todos os ativos de ${mesLabel(mes)}?`)) return
+    if (!confirm(`Arquivar todos os ativos de ${mesLabel(mes)}? (não mexe nos 🚧 não finalizados)`)) return
     const { error } = await supabase.rpc('arquivar_documentos_do_mes', { p_mes: mes })
     if (error) { toast({ title: 'Não deu', description: error.message, variant: 'destructive' }); return }
     toast({ title: 'Mês arquivado', description: mesLabel(mes) })
@@ -167,6 +172,14 @@ export default function Documentos() {
         </Button>
       </div>
 
+      {pendentes > 0 && (
+        <button
+          onClick={() => setStatusFilter('nao_finalizado')}
+          className="mt-3 inline-flex items-center gap-2 rounded-lg border border-orange-500/40 bg-orange-500/10 text-orange-500 px-3 py-1.5 text-sm font-medium hover:bg-orange-500/15 transition-colors">
+          <Wrench className="h-4 w-4" /> {pendentes} não finalizado{pendentes > 1 ? 's' : ''} · retomar
+        </button>
+      )}
+
       <div className="flex flex-wrap gap-2 my-5">
         <Select value={clienteFilter} onValueChange={setClienteFilter}>
           <SelectTrigger className="w-auto min-w-[180px]"><SelectValue /></SelectTrigger>
@@ -176,9 +189,10 @@ export default function Documentos() {
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-auto min-w-[150px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-auto min-w-[170px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="ativo">🟢 Ativos</SelectItem>
+            <SelectItem value="nao_finalizado">🚧 Não finalizados</SelectItem>
             <SelectItem value="arquivado">📦 Arquivados</SelectItem>
             <SelectItem value="all">Todos</SelectItem>
           </SelectContent>
@@ -195,22 +209,27 @@ export default function Documentos() {
             <div className="flex items-center gap-3 mb-2 pb-2 border-b border-border">
               <h2 className="text-xs font-bold uppercase tracking-wider text-primary">{mesLabel(mes)}</h2>
               <span className="text-xs text-muted-foreground">{items.length}</span>
-              <Button variant="ghost" size="sm" className="ml-auto text-xs h-7"
-                onClick={() => arquivarMes(mes)}>
-                <Archive className="h-3.5 w-3.5 mr-1" /> arquivar o mês
+              <Button variant="ghost" size="sm" className="ml-auto text-xs h-7" onClick={() => arquivarMes(mes)}>
+                📦 arquivar o mês
               </Button>
             </div>
 
             <div className="space-y-2">
               {items.map(d => (
                 <div key={d.id}
-                  className={`flex items-start gap-3 rounded-xl border border-border bg-card p-4 ${d.status === 'arquivado' ? 'opacity-50' : ''}`}>
+                  className={`flex items-start gap-3 rounded-xl border bg-card p-4 ${
+                    d.status === 'arquivado' ? 'border-border opacity-50'
+                    : d.status === 'nao_finalizado' ? 'border-orange-500/40'
+                    : 'border-border'}`}>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-0.5">
                       <span className="font-semibold">{d.cliente_nome || '—'}</span>
                       <Badge variant="outline" className={`text-[10px] uppercase ${TIPO_VARIANT[d.tipo]}`}>
                         {TIPO_LABEL[d.tipo]}
                       </Badge>
+                      {d.status === 'nao_finalizado' && (
+                        <Badge variant="outline" className="text-[10px] bg-orange-500/15 text-orange-500 border-orange-500/40">🚧 não finalizado</Badge>
+                      )}
                       {d.status === 'arquivado' && (
                         <Badge variant="outline" className="text-[10px]">📦 arquivado</Badge>
                       )}
@@ -222,12 +241,12 @@ export default function Documentos() {
                       <ExternalLink className="h-3 w-3 shrink-0" /> {d.url}
                     </a>
                   </div>
-                  <Button variant="ghost" size="sm" className="text-xs h-7 shrink-0"
-                    onClick={() => toggleStatus(d)}>
-                    {d.status === 'ativo'
-                      ? <><Archive className="h-3.5 w-3.5 mr-1" /> arquivar</>
-                      : <><RotateCcw className="h-3.5 w-3.5 mr-1" /> reativar</>}
-                  </Button>
+                  <Select value={d.status} onValueChange={v => setStatus(d, v as DocStatus)}>
+                    <SelectTrigger className="w-auto min-w-[150px] h-8 text-xs shrink-0"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
               ))}
             </div>
