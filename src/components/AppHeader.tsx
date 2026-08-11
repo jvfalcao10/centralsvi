@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useLocation } from 'react-router-dom'
-import { Bell, ChevronRight, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { useLocation, Link } from 'react-router-dom'
+import { Bell, ChevronRight, AlertTriangle, CheckCircle2, ArrowRight } from 'lucide-react'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -12,14 +12,14 @@ const PAGE_TITLES: Record<string, { title: string; breadcrumb: string[] }> = {
   '/dashboard': { title: 'Dashboard', breadcrumb: ['Home', 'Dashboard'] },
   '/pipeline': { title: 'Pipeline CRM', breadcrumb: ['Home', 'Pipeline'] },
   '/clients': { title: 'Clientes', breadcrumb: ['Home', 'Clientes'] },
-  '/deliveries': { title: 'Entregas', breadcrumb: ['Home', 'Entregas'] },
   '/financial': { title: 'Financeiro', breadcrumb: ['Home', 'Financeiro'] },
 }
 
 interface Alert {
   msg: string
   level: 'red' | 'yellow'
-  type: string
+  /** Pra onde o alerta leva. Alerta que não é clicável só informa e não resolve. */
+  to: string
 }
 
 export function AppHeader() {
@@ -36,10 +36,9 @@ export function AppHeader() {
   useEffect(() => {
     async function loadAlerts() {
       const today = new Date().toISOString().split('T')[0]
-      const [{ data: clients }, { data: invoices }, { data: deliveries }] = await Promise.all([
+      const [{ data: clients }, { data: invoices }] = await Promise.all([
         supabase.from('clients').select('name, status, health_score'),
         supabase.from('invoices').select('status, vencimento, clients(name)').select('id, status, vencimento'),
-        supabase.from('deliveries').select('id, status, prazo, titulo'),
       ])
 
       const newAlerts: Alert[] = []
@@ -48,17 +47,13 @@ export function AppHeader() {
         const atRisk = clients.filter(c => c.status === 'risco').length
         const defaulters = clients.filter(c => c.status === 'inadimplente').length
         const lowHealth = clients.filter(c => c.health_score < 50 && c.status === 'ativo').length
-        if (defaulters > 0) newAlerts.push({ msg: `${defaulters} cliente(s) inadimplente(s)`, level: 'red', type: 'client' })
-        if (atRisk > 0) newAlerts.push({ msg: `${atRisk} cliente(s) em risco de churn`, level: 'yellow', type: 'client' })
-        if (lowHealth > 0) newAlerts.push({ msg: `${lowHealth} cliente(s) com health score crítico`, level: 'yellow', type: 'client' })
+        if (defaulters > 0) newAlerts.push({ msg: `${defaulters} cliente(s) inadimplente(s)`, level: 'red', to: '/clients' })
+        if (atRisk > 0) newAlerts.push({ msg: `${atRisk} cliente(s) em risco de churn`, level: 'yellow', to: '/clients' })
+        if (lowHealth > 0) newAlerts.push({ msg: `${lowHealth} cliente(s) com health score crítico`, level: 'yellow', to: '/clients' })
       }
       if (invoices) {
         const overdue = invoices.filter(i => i.status === 'atrasado' || (i.status === 'pendente' && i.vencimento < today)).length
-        if (overdue > 0) newAlerts.push({ msg: `${overdue} fatura(s) vencida(s)`, level: 'red', type: 'invoice' })
-      }
-      if (deliveries) {
-        const late = deliveries.filter(d => d.status !== 'entregue' && d.prazo < today).length
-        if (late > 0) newAlerts.push({ msg: `${late} entrega(s) atrasada(s)`, level: 'yellow', type: 'delivery' })
+        if (overdue > 0) newAlerts.push({ msg: `${overdue} fatura(s) vencida(s)`, level: 'red', to: '/financial' })
       }
       setAlerts(newAlerts)
     }
@@ -108,15 +103,23 @@ export function AppHeader() {
               </div>
             ) : (
               alerts.map((alert, i) => (
-                <div key={i} className={`flex items-start gap-3 px-4 py-3 border-b border-border last:border-0 ${alert.level === 'red' ? 'bg-danger/5' : 'bg-warning/5'}`}>
+                <Link
+                  key={i}
+                  to={alert.to}
+                  onClick={() => setOpenNotif(false)}
+                  className={`group flex items-start gap-3 px-4 py-3 border-b border-border last:border-0 transition-colors ${alert.level === 'red' ? 'bg-danger/5 hover:bg-danger/10' : 'bg-warning/5 hover:bg-warning/10'}`}
+                >
                   <AlertTriangle className={`h-4 w-4 shrink-0 mt-0.5 ${alert.level === 'red' ? 'text-danger' : 'text-warning'}`} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm">{alert.msg}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      Ver e resolver <ArrowRight className="h-3 w-3" />
+                    </p>
                   </div>
                   <Badge variant="outline" className={`text-xs shrink-0 ${alert.level === 'red' ? 'bg-danger/20 text-danger border-danger/30' : 'bg-warning/20 text-warning border-warning/30'}`}>
                     {alert.level === 'red' ? 'Crítico' : 'Atenção'}
                   </Badge>
-                </div>
+                </Link>
               ))
             )}
           </div>
