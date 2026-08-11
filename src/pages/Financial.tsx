@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { DollarSign, TrendingUp, TrendingDown, Percent, Plus, CheckCircle, Send, AlertCircle, Clock, Calendar, CalendarCheck, Pencil, Trash2, Undo2, ExternalLink, Repeat, Layers, Handshake } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
@@ -54,11 +54,6 @@ type ActiveClient = {
   cobranca_inicio: string | null
 }
 
-const CASH_PROJECTION = [
-  { day: 'Hoje', saldo: 45000 }, { day: '+15d', saldo: 52000 },
-  { day: '+30d', saldo: 38000 }, { day: '+45d', saldo: 61000 },
-  { day: '+60d', saldo: 55000 }, { day: '+90d', saldo: 72000 },
-]
 
 function CustomTooltip({ active, payload, label }: any) {
   if (active && payload && payload.length) {
@@ -195,12 +190,6 @@ function BillingSection({
   )
 }
 
-const MONTHLY_DRE = [
-  { month: 'Mar', receita: 26800, despesas: 14200, lucro: 12600 },
-  { month: 'Abr', receita: 27500, despesas: 14800, lucro: 12700 },
-  { month: 'Mai', receita: 27200, despesas: 15100, lucro: 12100 },
-  { month: 'Jun', receita: 28700, despesas: 15896, lucro: 12804 },
-]
 
 const invoiceStatusClass: Record<string, string> = {
   pendente: 'bg-warning/20 text-warning border-warning/30',
@@ -488,6 +477,41 @@ export default function Financial() {
   const monthExpensesPaid = monthExpenses.filter(e => e.status === 'pago').reduce((s, e) => s + e.valor, 0)
   const monthExpensesOpen = monthExpensesTotal - monthExpensesPaid
 
+  // ---- DRE real, mês a mês ----
+  // Antes isto era um array fixo no código com números inventados. Com dado real
+  // no banco, número inventado é pior que número nenhum: a pessoa acredita.
+  const dreMensal = useMemo(() => {
+    const meses = new Set<string>()
+    invoices.forEach(i => meses.add(monthKeyOf(i.vencimento)))
+    expenses.forEach(e => meses.add(monthKeyOf(e.vencimento)))
+    return Array.from(meses).sort().slice(-8).map(m => {
+      const receita = invoices.filter(i => monthKeyOf(i.vencimento) === m).reduce((s, i) => s + i.valor, 0)
+      const custo = expenses.filter(e => monthKeyOf(e.vencimento) === m).reduce((s, e) => s + e.valor, 0)
+      const temFolha = expenses.some(e => monthKeyOf(e.vencimento) === m && e.categoria === 'pessoal')
+      return {
+        mes: m,
+        label: monthLabel(m).split('/')[0].slice(0, 3),
+        receita, custo,
+        lucro: receita - custo,
+        margem: receita > 0 ? ((receita - custo) / receita) * 100 : 0,
+        // Sem folha lançada o lucro do mês é ficção. Melhor avisar que esconder.
+        incompleto: !temFolha,
+      }
+    })
+  }, [invoices, expenses])
+
+  // ---- Projeção: o que já está comprometido daqui pra frente ----
+  // Receita = MRR contratado menos permuta (é o que entra se ninguém sair).
+  // Custo = despesa já lançada no mês, incluindo parcela de cartão que continua correndo.
+  const projecao = useMemo(() => {
+    const base = mrr - mrrEmPermuta
+    return Array.from({ length: 6 }, (_, k) => {
+      const m = monthKeyOf(addMonths(`${currentMonth}-01`, k))
+      const custo = expenses.filter(e => monthKeyOf(e.vencimento) === m).reduce((s, e) => s + e.valor, 0)
+      return { mes: monthLabel(m).split('/')[0].slice(0, 3), receita: base, custo, saldo: base - custo }
+    })
+  }, [expenses, mrr, mrrEmPermuta, currentMonth])
+
   // Total do mês escolhido no contas a receber.
   const monthInvoicesTotal = filteredInvoices.reduce((s, i) => s + i.valor, 0)
 
@@ -632,16 +656,19 @@ export default function Financial() {
 
           <Card className="border-border bg-card">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Projeção de Caixa (90 dias)</CardTitle>
+              <CardTitle className="text-sm">Projeção de 6 meses</CardTitle>
+              <p className="text-xs text-muted-foreground">MRR contratado (sem permuta) contra a despesa já lançada em cada mês, incluindo parcela de cartão que continua correndo.</p>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={CASH_PROJECTION}>
+                <LineChart data={projecao}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="day" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="mes" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Line type="monotone" dataKey="saldo" name="Saldo" stroke="#3b82f6" strokeWidth={2.5} dot={{ fill: '#3b82f6', r: 4 }} />
+                  <Line type="monotone" dataKey="receita" name="Receita" stroke="#4ABE7C" strokeWidth={2} dot={{ fill: '#4ABE7C', r: 3 }} />
+                  <Line type="monotone" dataKey="custo" name="Custo" stroke="#E0726A" strokeWidth={2} dot={{ fill: '#E0726A', r: 3 }} />
+                  <Line type="monotone" dataKey="saldo" name="Sobra" stroke="#D0B870" strokeWidth={2.5} dot={{ fill: '#D0B870', r: 4 }} />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
@@ -1170,17 +1197,38 @@ export default function Financial() {
                       <TableHead className="text-xs">Receita</TableHead>
                       <TableHead className="text-xs">Despesas</TableHead>
                       <TableHead className="text-xs">Lucro</TableHead>
+                      <TableHead className="text-xs text-right">Margem</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {MONTHLY_DRE.map(row => (
-                      <TableRow key={row.month} className="border-border">
-                        <TableCell className="text-sm font-medium">{row.month}</TableCell>
+                    {dreMensal.map(row => (
+                      <TableRow key={row.mes} className="border-border">
+                        <TableCell className="text-sm font-medium">
+                          {row.label}
+                          {row.incompleto && (
+                            <Badge variant="outline" className="ml-2 text-[10px] bg-warning/15 text-warning border-warning/30">
+                              sem folha
+                            </Badge>
+                          )}
+                        </TableCell>
                         <TableCell className="text-success text-sm">{formatCurrency(row.receita)}</TableCell>
-                        <TableCell className="text-danger text-sm">{formatCurrency(row.despesas)}</TableCell>
-                        <TableCell className="text-sm font-bold text-success">{formatCurrency(row.lucro)}</TableCell>
+                        <TableCell className="text-danger text-sm">{formatCurrency(row.custo)}</TableCell>
+                        <TableCell className={`text-sm font-bold ${row.lucro >= 0 ? 'text-success' : 'text-danger'}`}>
+                          {formatCurrency(row.lucro)}
+                        </TableCell>
+                        <TableCell className="text-right text-sm text-muted-foreground">
+                          {row.receita > 0 ? `${row.margem.toFixed(1)}%` : '—'}
+                        </TableCell>
                       </TableRow>
                     ))}
+                    {dreMensal.some(r => r.incompleto) && (
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableCell colSpan={5} className="text-xs text-muted-foreground py-3">
+                          Mês marcado com <span className="text-warning">sem folha</span> não tem custo de time lançado,
+                          então o lucro dele está inflado. Não é resultado, é dado faltando.
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
