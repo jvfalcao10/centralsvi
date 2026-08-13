@@ -108,8 +108,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { data: auth } = await sb.auth.getUser();
   if (!auth?.user) return res.status(401).json({ error: 'unauthorized' });
 
+  // Le da VIEW, nao da tabela: `clients` exige manager porque guarda o mrr, e
+  // quem monta relatorio de GMN e executor. A view tem nome e slug, sem dinheiro.
   const { data: client, error: clientErr } = await sb
-    .from('clients')
+    .from('clientes_operacional')
     .select('id, name, slug')
     .eq('id', clientId)
     .maybeSingle();

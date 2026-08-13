@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   MapPin, Loader2, Upload, Sparkles, Link as LinkIcon, Copy, Check,
-  Eye, EyeOff, Image as ImageIcon, X, TrendingUp, TrendingDown, Minus, MessageCircle,
+  Eye, EyeOff, Image as ImageIcon, X, TrendingUp, TrendingDown, Minus, MessageCircle, Trash2,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -202,6 +202,23 @@ export default function GoogleReports() {
     setCurrent((c) => (c && c.id === report.id ? { ...c, status: next } : c))
     qc.invalidateQueries({ queryKey: ['google-reports', clientId] })
     toast.success(next === 'published' ? 'Relatório publicado. Link liberado.' : 'Relatório despublicado')
+  }
+
+  // Excluir relatorio. Confirmacao em dois toques em vez de dialog: a lista e
+  // pequena e o clique errado aqui apaga um link que ja pode estar com o cliente.
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState<string | null>(null)
+  const [excluindo, setExcluindo] = useState<string | null>(null)
+
+  async function excluirRelatorio(id: string, publicado: boolean) {
+    setExcluindo(id)
+    const { error } = await supabase.from('google_reports').delete().eq('id', id)
+    setExcluindo(null)
+    setConfirmandoExclusao(null)
+    if (error) return toast.error('Não consegui excluir', { description: error.message })
+    toast.success('Relatório excluído', {
+      description: publicado ? 'O link que já foi compartilhado para de funcionar.' : undefined,
+    })
+    qc.invalidateQueries({ queryKey: ['google-reports', clientId] })
   }
 
   async function copyLink(slug: string) {
@@ -489,6 +506,28 @@ export default function GoogleReports() {
                   {r.status === 'published' && (
                     <button onClick={() => copyLink(r.slug)} className="text-muted-foreground hover:text-primary" title="Copiar link">
                       <Copy className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  {confirmandoExclusao === r.id ? (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => excluirRelatorio(r.id, r.status === 'published')}
+                        disabled={excluindo === r.id}
+                        className="text-[11px] font-medium text-destructive hover:underline disabled:opacity-50"
+                      >
+                        {excluindo === r.id ? 'excluindo...' : 'confirmar'}
+                      </button>
+                      <button onClick={() => setConfirmandoExclusao(null)} className="text-[11px] text-muted-foreground hover:underline">
+                        cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmandoExclusao(r.id)}
+                      className="text-muted-foreground hover:text-destructive"
+                      title={r.status === 'published' ? 'Excluir (o link compartilhado para de funcionar)' : 'Excluir'}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   )}
                 </div>
