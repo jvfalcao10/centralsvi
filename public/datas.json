@@ -1,61 +1,686 @@
 {
-  "atualizado": "2026-08-05",
+  "atualizado": "2026-08-13",
   "faixas": {
-    "Agosto": ["<b>Agosto Dourado</b> (mês do aleitamento materno) · leva da <b>Dra. Ésia</b> (pediatria). Semana Mundial do Aleitamento 01 a 07/08."],
-    "Setembro": ["<b>Setembro Amarelo</b> (prevenção do suicídio) · mensagem segura + <b>CVV 188</b>. Leva já feita: <b>Dra. Enia</b>, <b>Dr. Brenno</b>, <b>Dra. Ésia</b>."],
-    "Outubro": ["<b>Outubro Rosa</b> (câncer de mama) · o mês inteiro para <b>Spa Nature</b>, <b>Uzi</b>, <b>Espaço Soraia</b> e saúde da mulher."],
-    "Novembro": ["<b>Novembro Azul</b> (saúde do homem / próstata) · o mês do <b>PROURO</b>. É aqui a campanha forte de saúde masculina, não em agosto."],
-    "Dezembro": ["<b>Fim de ano</b> · festas e confraternizações. A ativação do <b>Alpha</b> é o Projeto Fim de Ano."]
+    "Agosto": [
+      "<b>Agosto Dourado</b> (mês do aleitamento materno) · leva da <b>Dra. Ésia</b> (pediatria). Semana Mundial do Aleitamento 01 a 07/08."
+    ],
+    "Setembro": [
+      "<b>Setembro Amarelo</b> (prevenção do suicídio) · mensagem segura + <b>CVV 188</b>. Leva já feita: <b>Dra. Enia</b>, <b>Dr. Brenno</b>, <b>Dra. Ésia</b>."
+    ],
+    "Outubro": [
+      "<b>Outubro Rosa</b> (câncer de mama) · o mês inteiro para <b>Spa Nature</b>, <b>Uzi</b>, <b>Espaço Soraia</b> e saúde da mulher."
+    ],
+    "Novembro": [
+      "<b>Novembro Azul</b> (saúde do homem / próstata) · o mês do <b>PROURO</b>. É aqui a campanha forte de saúde masculina, não em agosto."
+    ],
+    "Dezembro": [
+      "<b>Fim de ano</b> · festas e confraternizações. A ativação do <b>Alpha</b> é o Projeto Fim de Ano."
+    ]
   },
   "eventos": [
-    {"dm":"08/08","mes":"Agosto","cat":"pop","nome":"Dia Internacional do Gato","ty":"Pop · engajamento","cli":["Alpha","Todos (comércio)"],"note":"Pet, super relacionável."},
-    {"dm":"09/08","mes":"Agosto","cat":"com","nome":"Dia dos Pais","ty":"Comercial + homenagem","cli":["Todos (comércio)","Médicos (institucional)"],"note":"Ângulo do nicho em cada médico."},
-    {"dm":"11/08","mes":"Agosto","cat":"com","nome":"Dia do Estudante","ty":"Educação","cli":["CCR","Alpha"]},
-    {"dm":"19/08","mes":"Agosto","cat":"pop","nome":"Dia Mundial da Fotografia","ty":"Pop · engajamento","cli":["Uzi","Espaço Soraia","Spa Nature","Ótica"]},
-    {"dm":"27/08","mes":"Agosto","cat":"sau","nome":"Dia do Psicólogo","ty":"Saúde mental","cli":["Dra. Enia"],"note":"Opcional, homenagem aos psicólogos."},
-    {"dm":"01/09","mes":"Setembro","cat":"com","nome":"Dia do Profissional de Educação Física","ty":"Fitness","cli":["Alpha","Pro Life"]},
-    {"dm":"05/09","mes":"Setembro","cat":"sau","nome":"Dia da Amazônia","ty":"Sustentabilidade","cli":["Exatta"]},
-    {"dm":"07/09","mes":"Setembro","cat":"fer","nome":"Independência do Brasil","ty":"Feriado nacional","cli":["Todos (comércio)","Carlotinha"]},
-    {"dm":"10/09","mes":"Setembro","cat":"sau","nome":"Prevenção ao Suicídio","ty":"Saúde mental · CVV 188","cli":["Dra. Enia"]},
-    {"dm":"12/09","mes":"Setembro","cat":"med","nome":"Dia do Urologista","ty":"Dia profissional","cli":["PROURO"]},
-    {"dm":"15/09","mes":"Setembro","cat":"com","nome":"Dia do Cliente","ty":"Comercial forte","cli":["Todos (comércio)"],"note":"Peça de agradecimento em cada comércio."},
-    {"dm":"19/09","mes":"Setembro","cat":"med","nome":"Dia do Ortopedista","ty":"Dia profissional","cli":["Dr. Brenno"]},
-    {"dm":"21/09","mes":"Setembro","cat":"sau","nome":"Dia Mundial do Alzheimer","ty":"Conscientização","cli":["Dra. Erika"]},
-    {"dm":"21/09","mes":"Setembro","cat":"sau","nome":"Dia da Árvore","ty":"Sustentabilidade","cli":["Exatta","CCR"]},
-    {"dm":"22/09","mes":"Setembro","cat":"com","nome":"Dia do Contador","ty":"Dia profissional","cli":["Números"]},
-    {"dm":"22/09","mes":"Setembro","cat":"pop","nome":"Dia da Primavera","ty":"Pop · renovação","cli":["Espaço Soraia","Uzi","Spa Nature","Ótica"],"note":"Confirmar 22 ou 23/09."},
-    {"dm":"23/09","mes":"Setembro","cat":"pop","nome":"Dia do Sorvete","ty":"Pop · engajamento","cli":["Alpha","Todos (comércio)"]},
-    {"dm":"25/09","mes":"Setembro","cat":"com","nome":"Dia do Trânsito","ty":"Trânsito","cli":["Carlotinha"]},
-    {"dm":"27/09","mes":"Setembro","cat":"sau","nome":"Dia Nacional do Idoso","ty":"Conscientização","cli":["Dra. Erika","Dr. Brenno"],"note":"Erika = autonomia; Brenno = dor/artrose."},
-    {"dm":"27/09","mes":"Setembro","cat":"pop","nome":"Dia Mundial do Turismo","ty":"Pop · engajamento","cli":["Ótica","Espaço Soraia","Alpha"]},
-    {"dm":"29/09","mes":"Setembro","cat":"sau","nome":"Dia Mundial do Coração","ty":"Saúde","cli":["Dra. Erika","PROURO","Alpha","Dr. Felipe"]},
-    {"dm":"01/10","mes":"Outubro","cat":"pop","nome":"Dia Internacional do Café","ty":"Pop · engajamento","cli":["GM Gás","Todos (comércio)"]},
-    {"dm":"04/10","mes":"Outubro","cat":"pop","nome":"Dia dos Animais / do Cachorro","ty":"Pop · engajamento","cli":["Alpha","Todos (comércio)"]},
-    {"dm":"08/10","mes":"Outubro","cat":"sau","nome":"Dia Mundial da Visão","ty":"Saúde ocular","cli":["Hospital Jordão","Ótica"]},
-    {"dm":"10/10","mes":"Outubro","cat":"sau","nome":"Dia Mundial da Saúde Mental","ty":"Saúde mental","cli":["Dra. Enia"]},
-    {"dm":"11/10","mes":"Outubro","cat":"sau","nome":"Combate à Obesidade","ty":"Saúde","cli":["Dr. Felipe","Alpha","Spa Nature"]},
-    {"dm":"12/10","mes":"Outubro","cat":"com","nome":"Dia das Crianças","ty":"Comercial + pediatria","cli":["Todos (comércio)","Dra. Ésia","CCR","Espaço Soraia"]},
-    {"dm":"13/10","mes":"Outubro","cat":"fem","nome":"Dia do Maquiador","ty":"Beleza","cli":["Uzi"]},
-    {"dm":"15/10","mes":"Outubro","cat":"com","nome":"Dia do Professor","ty":"Educação","cli":["CCR"]},
-    {"dm":"16/10","mes":"Outubro","cat":"sau","nome":"Dia Mundial da Alimentação","ty":"Saúde","cli":["Dr. Felipe","Alpha"]},
-    {"dm":"18/10","mes":"Outubro","cat":"med","nome":"Dia do Médico","ty":"Dia profissional","cli":["TODOS os médicos"]},
-    {"dm":"20/10","mes":"Outubro","cat":"sau","nome":"Dia Mundial da Osteoporose","ty":"Saúde","cli":["Dr. Brenno","Dra. Erika","Pro Life"]},
-    {"dm":"31/10","mes":"Outubro","cat":"pop","nome":"Halloween","ty":"Pop · altíssimo engajamento","cli":["Alpha","Uzi","Espaço Soraia","Spa Nature","Todos (comércio)"]},
-    {"dm":"01/11","mes":"Novembro","cat":"sau","nome":"Novembro Azul começa","ty":"Saúde do homem","cli":["PROURO"]},
-    {"dm":"03/11","mes":"Novembro","cat":"fem","nome":"Dia do Esteticista e Maquiador","ty":"Beleza","cli":["Spa Nature","Uzi","Espaço Soraia"]},
-    {"dm":"08/11","mes":"Novembro","cat":"com","nome":"ENEM 2026 · 1º dia","ty":"Vestibular","cli":["CCR"]},
-    {"dm":"11/11","mes":"Novembro","cat":"com","nome":"Singles Day (11.11)","ty":"Comercial forte (esquenta Black Friday)","cli":["Todos (comércio)"],"note":"Planejar oferta real."},
-    {"dm":"13/11","mes":"Novembro","cat":"pop","nome":"Dia Mundial da Gentileza","ty":"Pop · branding leve","cli":["Alpha","Spa Nature","Todos (comércio)"]},
-    {"dm":"14/11","mes":"Novembro","cat":"sau","nome":"Dia Mundial do Diabetes","ty":"Saúde","cli":["Dr. Felipe","Dra. Erika","Alpha"]},
-    {"dm":"15/11","mes":"Novembro","cat":"com","nome":"ENEM 2026 · 2º dia","ty":"Vestibular","cli":["CCR"]},
-    {"dm":"17/11","mes":"Novembro","cat":"sau","nome":"Combate ao Câncer de Próstata","ty":"Saúde do homem","cli":["PROURO"]},
-    {"dm":"19/11","mes":"Novembro","cat":"com","nome":"Dia Internacional do Homem","ty":"Comercial","cli":["PROURO","Alpha"]},
-    {"dm":"20/11","mes":"Novembro","cat":"fer","nome":"Consciência Negra","ty":"Feriado nacional","cli":["Todos (comércio)"]},
-    {"dm":"27/11","mes":"Novembro","cat":"com","nome":"Black Friday","ty":"Comercial (o pico do ano)","cli":["Todos (comércio)"],"note":"Definir oferta real com cada cliente."},
-    {"dm":"30/11","mes":"Novembro","cat":"com","nome":"Cyber Monday","ty":"Comercial","cli":["Ótica","Carlotinha","Espaço Soraia"]},
-    {"dm":"13/12","mes":"Dezembro","cat":"com","nome":"Dia do Óptico","ty":"Óptica","cli":["Ótica","Hospital Jordão"]},
-    {"dm":"25/12","mes":"Dezembro","cat":"fer","nome":"Natal","ty":"Feriado · comercial forte","cli":["Todos (comércio)"]},
-    {"dm":"28/12","mes":"Dezembro","cat":"pop","nome":"Dia dos Cinemas","ty":"Pop · leve","cli":["Todos (comércio)","Alpha"]},
-    {"dm":"31/12","mes":"Dezembro","cat":"com","nome":"Réveillon","ty":"Comercial","cli":["Espaço Soraia","Uzi","Spa Nature"]}
+    {
+      "dm": "01/08",
+      "mes": "Agosto",
+      "cat": "sau",
+      "nome": "Semana Mundial do Aleitamento Materno (Agosto Dourado)",
+      "ty": "Saúde · mês temático",
+      "cli": [
+        "Dra. Ésia"
+      ],
+      "note": "01 a 07/08, mas o mês todo é Agosto Dourado. Tema dela, pode usar à vontade."
+    },
+    {
+      "dm": "08/08",
+      "mes": "Agosto",
+      "cat": "pop",
+      "nome": "Dia Internacional do Gato",
+      "ty": "Pop · engajamento",
+      "cli": [
+        "Alpha",
+        "Todos (comércio)"
+      ],
+      "note": "Pet, super relacionável."
+    },
+    {
+      "dm": "09/08",
+      "mes": "Agosto",
+      "cat": "com",
+      "nome": "Dia dos Pais",
+      "ty": "Comercial + homenagem",
+      "cli": [
+        "Todos (comércio)",
+        "Médicos (institucional)"
+      ],
+      "note": "Ângulo do nicho em cada médico."
+    },
+    {
+      "dm": "11/08",
+      "mes": "Agosto",
+      "cat": "com",
+      "nome": "Dia do Estudante",
+      "ty": "Educação",
+      "cli": [
+        "CCR",
+        "Alpha"
+      ]
+    },
+    {
+      "dm": "13/08",
+      "mes": "Agosto",
+      "cat": "med",
+      "nome": "Dia Nacional do Médico Psiquiatra",
+      "ty": "Dia profissional · saúde mental",
+      "cli": [
+        "Dra. Enia"
+      ],
+      "note": "⚠️ PASSOU EM 2026 por falha do calendário. Enia é pós-graduanda, NÃO chamar de psiquiatra: ela HONRA a data como médica em saúde mental."
+    },
+    {
+      "dm": "19/08",
+      "mes": "Agosto",
+      "cat": "pop",
+      "nome": "Dia Mundial da Fotografia",
+      "ty": "Pop · engajamento",
+      "cli": [
+        "Uzi",
+        "Espaço Soraia",
+        "Spa Nature",
+        "Ótica"
+      ]
+    },
+    {
+      "dm": "27/08",
+      "mes": "Agosto",
+      "cat": "sau",
+      "nome": "Dia do Psicólogo",
+      "ty": "Saúde mental",
+      "cli": [
+        "Dra. Enia"
+      ],
+      "note": "Opcional, homenagem aos psicólogos."
+    },
+    {
+      "dm": "01/09",
+      "mes": "Setembro",
+      "cat": "com",
+      "nome": "Dia do Profissional de Educação Física",
+      "ty": "Fitness",
+      "cli": [
+        "Alpha",
+        "Pro Life"
+      ]
+    },
+    {
+      "dm": "04/09",
+      "mes": "Setembro",
+      "cat": "sau",
+      "nome": "Dia Mundial da Saúde Sexual",
+      "ty": "Saúde · tabu",
+      "cli": [
+        "PROURO",
+        "Dr. Daniel",
+        "Dra. Raquel",
+        "Dra. Enia"
+      ],
+      "note": "Uma data, 4 ângulos: PROURO disfunção erétil · Daniel região íntima sem tabu · Raquel libido e hormônio · Enia ansiedade de desempenho."
+    },
+    {
+      "dm": "05/09",
+      "mes": "Setembro",
+      "cat": "sau",
+      "nome": "Dia da Amazônia",
+      "ty": "Sustentabilidade",
+      "cli": [
+        "Exatta"
+      ]
+    },
+    {
+      "dm": "07/09",
+      "mes": "Setembro",
+      "cat": "fer",
+      "nome": "Independência do Brasil",
+      "ty": "Feriado nacional",
+      "cli": [
+        "Todos (comércio)",
+        "Carlotinha"
+      ]
+    },
+    {
+      "dm": "08/09",
+      "mes": "Setembro",
+      "cat": "sau",
+      "nome": "Dia Mundial da Fisioterapia",
+      "ty": "Dia profissional",
+      "cli": [
+        "Pro Life"
+      ],
+      "note": "Data da profissão, ângulo de valorização e do que a fisioterapia resolve."
+    },
+    {
+      "dm": "10/09",
+      "mes": "Setembro",
+      "cat": "sau",
+      "nome": "Prevenção ao Suicídio",
+      "ty": "Saúde mental · CVV 188",
+      "cli": [
+        "Dra. Enia",
+        "TODOS os médicos"
+      ]
+    },
+    {
+      "dm": "12/09",
+      "mes": "Setembro",
+      "cat": "med",
+      "nome": "Dia do Urologista",
+      "ty": "Dia profissional",
+      "cli": [
+        "PROURO"
+      ]
+    },
+    {
+      "dm": "15/09",
+      "mes": "Setembro",
+      "cat": "com",
+      "nome": "Dia do Cliente",
+      "ty": "Comercial forte",
+      "cli": [
+        "Todos (comércio)"
+      ],
+      "note": "Peça de agradecimento em cada comércio."
+    },
+    {
+      "dm": "19/09",
+      "mes": "Setembro",
+      "cat": "med",
+      "nome": "Dia do Ortopedista",
+      "ty": "Dia profissional",
+      "cli": [
+        "Dr. Brenno"
+      ]
+    },
+    {
+      "dm": "21/09",
+      "mes": "Setembro",
+      "cat": "sau",
+      "nome": "Dia Mundial do Alzheimer",
+      "ty": "Conscientização",
+      "cli": [
+        "Dra. Erika"
+      ]
+    },
+    {
+      "dm": "21/09",
+      "mes": "Setembro",
+      "cat": "sau",
+      "nome": "Dia da Árvore",
+      "ty": "Sustentabilidade",
+      "cli": [
+        "Exatta",
+        "CCR"
+      ]
+    },
+    {
+      "dm": "22/09",
+      "mes": "Setembro",
+      "cat": "com",
+      "nome": "Dia do Contador",
+      "ty": "Dia profissional",
+      "cli": [
+        "Números"
+      ]
+    },
+    {
+      "dm": "22/09",
+      "mes": "Setembro",
+      "cat": "pop",
+      "nome": "Dia da Primavera",
+      "ty": "Pop · renovação",
+      "cli": [
+        "Espaço Soraia",
+        "Uzi",
+        "Spa Nature",
+        "Ótica"
+      ],
+      "note": "Confirmar 22 ou 23/09."
+    },
+    {
+      "dm": "23/09",
+      "mes": "Setembro",
+      "cat": "pop",
+      "nome": "Dia do Sorvete",
+      "ty": "Pop · engajamento",
+      "cli": [
+        "Alpha",
+        "Todos (comércio)"
+      ]
+    },
+    {
+      "dm": "25/09",
+      "mes": "Setembro",
+      "cat": "com",
+      "nome": "Dia do Trânsito",
+      "ty": "Trânsito",
+      "cli": [
+        "Carlotinha"
+      ]
+    },
+    {
+      "dm": "27/09",
+      "mes": "Setembro",
+      "cat": "sau",
+      "nome": "Dia Nacional do Idoso",
+      "ty": "Conscientização",
+      "cli": [
+        "Dra. Erika",
+        "Dr. Brenno"
+      ],
+      "note": "Erika = autonomia; Brenno = dor/artrose."
+    },
+    {
+      "dm": "27/09",
+      "mes": "Setembro",
+      "cat": "pop",
+      "nome": "Dia Mundial do Turismo",
+      "ty": "Pop · engajamento",
+      "cli": [
+        "Ótica",
+        "Espaço Soraia",
+        "Alpha"
+      ]
+    },
+    {
+      "dm": "29/09",
+      "mes": "Setembro",
+      "cat": "sau",
+      "nome": "Dia Mundial do Coração",
+      "ty": "Saúde",
+      "cli": [
+        "Dra. Erika",
+        "PROURO",
+        "Alpha",
+        "Dr. Felipe",
+        "Dra. Raquel"
+      ]
+    },
+    {
+      "dm": "01/10",
+      "mes": "Outubro",
+      "cat": "pop",
+      "nome": "Dia Internacional do Café",
+      "ty": "Pop · engajamento",
+      "cli": [
+        "GM Gás",
+        "Todos (comércio)"
+      ]
+    },
+    {
+      "dm": "01/10",
+      "mes": "Outubro",
+      "cat": "sau",
+      "nome": "Dia Internacional do Idoso",
+      "ty": "Saúde do idoso",
+      "cli": [
+        "Dra. Erika",
+        "Pro Life",
+        "Dr. Brenno"
+      ],
+      "note": "Complementa o 27/09 (Dia Nacional). Avatar: o filho que cuida do pai idoso."
+    },
+    {
+      "dm": "04/10",
+      "mes": "Outubro",
+      "cat": "pop",
+      "nome": "Dia dos Animais / do Cachorro",
+      "ty": "Pop · engajamento",
+      "cli": [
+        "Alpha",
+        "Todos (comércio)"
+      ]
+    },
+    {
+      "dm": "08/10",
+      "mes": "Outubro",
+      "cat": "sau",
+      "nome": "Dia Mundial da Visão",
+      "ty": "Saúde ocular",
+      "cli": [
+        "Hospital Jordão",
+        "Ótica"
+      ]
+    },
+    {
+      "dm": "10/10",
+      "mes": "Outubro",
+      "cat": "sau",
+      "nome": "Dia Mundial da Saúde Mental",
+      "ty": "Saúde mental",
+      "cli": [
+        "Dra. Enia",
+        "TODOS os médicos"
+      ]
+    },
+    {
+      "dm": "11/10",
+      "mes": "Outubro",
+      "cat": "sau",
+      "nome": "Combate à Obesidade",
+      "ty": "Saúde",
+      "cli": [
+        "Dr. Felipe",
+        "Alpha",
+        "Spa Nature",
+        "Dra. Raquel"
+      ]
+    },
+    {
+      "dm": "12/10",
+      "mes": "Outubro",
+      "cat": "com",
+      "nome": "Dia das Crianças",
+      "ty": "Comercial + pediatria",
+      "cli": [
+        "Todos (comércio)",
+        "Dra. Ésia",
+        "CCR",
+        "Espaço Soraia"
+      ]
+    },
+    {
+      "dm": "12/10",
+      "mes": "Outubro",
+      "cat": "sau",
+      "nome": "Dia Mundial da Artrite",
+      "ty": "Saúde · dor e movimento",
+      "cli": [
+        "Dr. Brenno",
+        "Dra. Erika",
+        "Pro Life"
+      ],
+      "note": "Dor articular que o paciente acha que é 'da idade'."
+    },
+    {
+      "dm": "13/10",
+      "mes": "Outubro",
+      "cat": "fem",
+      "nome": "Dia do Maquiador",
+      "ty": "Beleza",
+      "cli": [
+        "Uzi"
+      ]
+    },
+    {
+      "dm": "13/10",
+      "mes": "Outubro",
+      "cat": "med",
+      "nome": "Dia do Fisioterapeuta",
+      "ty": "Dia profissional",
+      "cli": [
+        "Pro Life"
+      ],
+      "note": "Data da profissão no Brasil."
+    },
+    {
+      "dm": "15/10",
+      "mes": "Outubro",
+      "cat": "com",
+      "nome": "Dia do Professor",
+      "ty": "Educação",
+      "cli": [
+        "CCR"
+      ]
+    },
+    {
+      "dm": "16/10",
+      "mes": "Outubro",
+      "cat": "sau",
+      "nome": "Dia Mundial da Alimentação",
+      "ty": "Saúde",
+      "cli": [
+        "Dr. Felipe",
+        "Alpha",
+        "Dra. Ésia",
+        "Dra. Raquel"
+      ]
+    },
+    {
+      "dm": "18/10",
+      "mes": "Outubro",
+      "cat": "med",
+      "nome": "Dia do Médico",
+      "ty": "Dia profissional",
+      "cli": [
+        "TODOS os médicos"
+      ]
+    },
+    {
+      "dm": "20/10",
+      "mes": "Outubro",
+      "cat": "sau",
+      "nome": "Dia Mundial da Osteoporose",
+      "ty": "Saúde",
+      "cli": [
+        "Dr. Brenno",
+        "Dra. Erika",
+        "Pro Life",
+        "Dra. Raquel"
+      ]
+    },
+    {
+      "dm": "31/10",
+      "mes": "Outubro",
+      "cat": "pop",
+      "nome": "Halloween",
+      "ty": "Pop · altíssimo engajamento",
+      "cli": [
+        "Alpha",
+        "Uzi",
+        "Espaço Soraia",
+        "Spa Nature",
+        "Todos (comércio)"
+      ]
+    },
+    {
+      "dm": "01/11",
+      "mes": "Novembro",
+      "cat": "sau",
+      "nome": "Novembro Azul começa",
+      "ty": "Saúde do homem",
+      "cli": [
+        "PROURO"
+      ]
+    },
+    {
+      "dm": "03/11",
+      "mes": "Novembro",
+      "cat": "fem",
+      "nome": "Dia do Esteticista e Maquiador",
+      "ty": "Beleza",
+      "cli": [
+        "Spa Nature",
+        "Uzi",
+        "Espaço Soraia"
+      ]
+    },
+    {
+      "dm": "08/11",
+      "mes": "Novembro",
+      "cat": "com",
+      "nome": "ENEM 2026 · 1º dia",
+      "ty": "Vestibular",
+      "cli": [
+        "CCR"
+      ]
+    },
+    {
+      "dm": "11/11",
+      "mes": "Novembro",
+      "cat": "com",
+      "nome": "Singles Day (11.11)",
+      "ty": "Comercial forte (esquenta Black Friday)",
+      "cli": [
+        "Todos (comércio)"
+      ],
+      "note": "Planejar oferta real."
+    },
+    {
+      "dm": "13/11",
+      "mes": "Novembro",
+      "cat": "pop",
+      "nome": "Dia Mundial da Gentileza",
+      "ty": "Pop · branding leve",
+      "cli": [
+        "Alpha",
+        "Spa Nature",
+        "Todos (comércio)"
+      ]
+    },
+    {
+      "dm": "14/11",
+      "mes": "Novembro",
+      "cat": "sau",
+      "nome": "Dia Mundial do Diabetes",
+      "ty": "Saúde",
+      "cli": [
+        "Dr. Felipe",
+        "Dra. Erika",
+        "Alpha",
+        "Dra. Raquel"
+      ]
+    },
+    {
+      "dm": "15/11",
+      "mes": "Novembro",
+      "cat": "com",
+      "nome": "ENEM 2026 · 2º dia",
+      "ty": "Vestibular",
+      "cli": [
+        "CCR"
+      ]
+    },
+    {
+      "dm": "17/11",
+      "mes": "Novembro",
+      "cat": "sau",
+      "nome": "Combate ao Câncer de Próstata",
+      "ty": "Saúde do homem",
+      "cli": [
+        "PROURO",
+        "Dr. Daniel"
+      ]
+    },
+    {
+      "dm": "19/11",
+      "mes": "Novembro",
+      "cat": "com",
+      "nome": "Dia Internacional do Homem",
+      "ty": "Comercial",
+      "cli": [
+        "PROURO",
+        "Alpha"
+      ]
+    },
+    {
+      "dm": "20/11",
+      "mes": "Novembro",
+      "cat": "fer",
+      "nome": "Consciência Negra",
+      "ty": "Feriado nacional",
+      "cli": [
+        "Todos (comércio)"
+      ]
+    },
+    {
+      "dm": "25/11",
+      "mes": "Novembro",
+      "cat": "sau",
+      "nome": "Dia Nacional do Doador de Sangue",
+      "ty": "Conscientização",
+      "cli": [
+        "TODOS os médicos",
+        "Alpha"
+      ],
+      "note": "Institucional leve, alto valor social."
+    },
+    {
+      "dm": "27/11",
+      "mes": "Novembro",
+      "cat": "com",
+      "nome": "Black Friday",
+      "ty": "Comercial (o pico do ano)",
+      "cli": [
+        "Todos (comércio)"
+      ],
+      "note": "Definir oferta real com cada cliente."
+    },
+    {
+      "dm": "27/11",
+      "mes": "Novembro",
+      "cat": "sau",
+      "nome": "Dia Nacional de Combate ao Câncer",
+      "ty": "Conscientização",
+      "cli": [
+        "Dr. Daniel",
+        "Dr. Felipe",
+        "PROURO",
+        "TODOS os médicos"
+      ],
+      "note": "Daniel: colorretal. Felipe: aparelho digestivo. Prevenção e exame na hora certa, sem alarmismo."
+    },
+    {
+      "dm": "30/11",
+      "mes": "Novembro",
+      "cat": "com",
+      "nome": "Cyber Monday",
+      "ty": "Comercial",
+      "cli": [
+        "Ótica",
+        "Carlotinha",
+        "Espaço Soraia"
+      ]
+    },
+    {
+      "dm": "13/12",
+      "mes": "Dezembro",
+      "cat": "com",
+      "nome": "Dia do Óptico",
+      "ty": "Óptica",
+      "cli": [
+        "Ótica",
+        "Hospital Jordão"
+      ]
+    },
+    {
+      "dm": "25/12",
+      "mes": "Dezembro",
+      "cat": "fer",
+      "nome": "Natal",
+      "ty": "Feriado · comercial forte",
+      "cli": [
+        "Todos (comércio)"
+      ]
+    },
+    {
+      "dm": "28/12",
+      "mes": "Dezembro",
+      "cat": "pop",
+      "nome": "Dia dos Cinemas",
+      "ty": "Pop · leve",
+      "cli": [
+        "Todos (comércio)",
+        "Alpha"
+      ]
+    },
+    {
+      "dm": "31/12",
+      "mes": "Dezembro",
+      "cat": "com",
+      "nome": "Réveillon",
+      "ty": "Comercial",
+      "cli": [
+        "Espaço Soraia",
+        "Uzi",
+        "Spa Nature"
+      ]
+    }
   ]
 }
