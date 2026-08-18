@@ -1,5 +1,5 @@
 {
-  "atualizado": "2026-08-13",
+  "atualizado": "2026-08-18",
   "faixas": {
     "Agosto": [
       "<b>Agosto Dourado</b> (mês do aleitamento materno) · leva da <b>Dra. Ésia</b> (pediatria). Semana Mundial do Aleitamento 01 a 07/08."
@@ -106,8 +106,7 @@
       "nome": "Dia do Profissional de Educação Física",
       "ty": "Fitness",
       "cli": [
-        "Alpha",
-        "Pro Life"
+        "Alpha"
       ]
     },
     {
@@ -144,17 +143,6 @@
         "Todos (comércio)",
         "Carlotinha"
       ]
-    },
-    {
-      "dm": "08/09",
-      "mes": "Setembro",
-      "cat": "sau",
-      "nome": "Dia Mundial da Fisioterapia",
-      "ty": "Dia profissional",
-      "cli": [
-        "Pro Life"
-      ],
-      "note": "Data da profissão, ângulo de valorização e do que a fisioterapia resolve."
     },
     {
       "dm": "10/09",
@@ -321,7 +309,6 @@
       "ty": "Saúde do idoso",
       "cli": [
         "Dra. Erika",
-        "Pro Life",
         "Dr. Brenno"
       ],
       "note": "Complementa o 27/09 (Dia Nacional). Avatar: o filho que cuida do pai idoso."
@@ -393,8 +380,7 @@
       "ty": "Saúde · dor e movimento",
       "cli": [
         "Dr. Brenno",
-        "Dra. Erika",
-        "Pro Life"
+        "Dra. Erika"
       ],
       "note": "Dor articular que o paciente acha que é 'da idade'."
     },
@@ -407,17 +393,6 @@
       "cli": [
         "Uzi"
       ]
-    },
-    {
-      "dm": "13/10",
-      "mes": "Outubro",
-      "cat": "med",
-      "nome": "Dia do Fisioterapeuta",
-      "ty": "Dia profissional",
-      "cli": [
-        "Pro Life"
-      ],
-      "note": "Data da profissão no Brasil."
     },
     {
       "dm": "15/10",
@@ -461,7 +436,6 @@
       "cli": [
         "Dr. Brenno",
         "Dra. Erika",
-        "Pro Life",
         "Dra. Raquel"
       ]
     },
