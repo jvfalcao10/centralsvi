@@ -42,17 +42,6 @@
       "note": "Mês inteiro. Recomeço de ano é gatilho de ansiedade, tema forte pra Dra. Enia."
     },
     {
-      "dm": "20/01",
-      "mes": "Janeiro",
-      "cat": "med",
-      "nome": "Dia do Farmacêutico",
-      "ty": "Dia profissional",
-      "cli": [
-        "A Fórmula"
-      ],
-      "note": "Data da fundação da ABF em 1916. É a data da A Fórmula."
-    },
-    {
       "dm": "31/01",
       "mes": "Janeiro",
       "cat": "com",
@@ -729,17 +718,6 @@
       "cli": [
         "Carlotinha"
       ]
-    },
-    {
-      "dm": "25/09",
-      "mes": "Setembro",
-      "cat": "med",
-      "nome": "Dia Internacional do Farmacêutico",
-      "ty": "Dia profissional",
-      "cli": [
-        "A Fórmula"
-      ],
-      "note": "Versão internacional. A brasileira é 20/01."
     },
     {
       "dm": "27/09",

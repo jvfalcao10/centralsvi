@@ -32,14 +32,45 @@
    "Spa Nature",
    "Vanessa Back"
   ],
-  "farmacia": [
-   "A Fórmula"
-  ],
+  "farmacia": [],
   "fitness": [
    "Alpha"
   ],
   "*med": [
    "TODOS os médicos"
+  ],
+  "maquiagem": [
+   "Uzi"
+  ],
+  "moda": [
+   "Espaço Soraia"
+  ],
+  "educacao": [
+   "CCR"
+  ],
+  "contabilidade": [
+   "Números"
+  ],
+  "veiculos": [
+   "Carlotinha"
+  ],
+  "solar": [
+   "Exatta"
+  ],
+  "agro": [
+   "Norte Capital"
+  ],
+  "gas": [
+   "GM Gás"
+  ],
+  "aviacao": [
+   "Aerojet"
+  ],
+  "otica": [
+   "Ótica"
+  ],
+  "comercio": [
+   "Todos (comércio)"
   ]
  },
  "faixas": {
@@ -139,8 +170,8 @@
    "nome": "Dia do Profissional de Educação Física",
    "cat": "com",
    "ty": "Fitness",
-   "cli": [
-    "Alpha"
+   "esp": [
+    "fitness"
    ]
   },
   {
@@ -161,8 +192,8 @@
    "nome": "Dia da Amazônia",
    "cat": "sau",
    "ty": "Sustentabilidade",
-   "cli": [
-    "Exatta"
+   "esp": [
+    "solar"
    ]
   },
   {
@@ -237,8 +268,8 @@
    "nome": "Dia do Contador",
    "cat": "com",
    "ty": "Dia profissional",
-   "cli": [
-    "Números"
+   "esp": [
+    "contabilidade"
    ]
   },
   {
@@ -269,8 +300,8 @@
    "nome": "Dia do Trânsito",
    "cat": "com",
    "ty": "Trânsito",
-   "cli": [
-    "Carlotinha"
+   "esp": [
+    "veiculos"
    ]
   },
   {
@@ -400,8 +431,8 @@
    "nome": "Dia do Maquiador",
    "cat": "fem",
    "ty": "Beleza",
-   "cli": [
-    "Uzi"
+   "esp": [
+    "maquiagem"
    ]
   },
   {
@@ -409,8 +440,8 @@
    "nome": "Dia do Professor",
    "cat": "com",
    "ty": "Educação",
-   "cli": [
-    "CCR"
+   "esp": [
+    "educacao"
    ]
   },
   {
@@ -610,9 +641,9 @@
    "nome": "Dia do Óptico",
    "cat": "com",
    "ty": "Óptica",
-   "cli": [
-    "Ótica",
-    "Hospital Jordão"
+   "esp": [
+    "otica",
+    "oftalmo"
    ]
   },
   {
@@ -665,16 +696,6 @@
     "*med"
    ],
    "note": "Mês inteiro. Recomeço de ano é gatilho de ansiedade, tema forte pra Dra. Enia."
-  },
-  {
-   "dm": "20/01",
-   "nome": "Dia do Farmacêutico",
-   "cat": "med",
-   "ty": "Dia profissional",
-   "esp": [
-    "farmacia"
-   ],
-   "note": "Data da fundação da ABF em 1916. É a data da A Fórmula."
   },
   {
    "dm": "31/01",
@@ -1073,16 +1094,6 @@
    "note": "Rotina da família muda, bom pra pediatria e escola."
   },
   {
-   "dm": "25/09",
-   "nome": "Dia Internacional do Farmacêutico",
-   "cat": "med",
-   "ty": "Dia profissional",
-   "esp": [
-    "farmacia"
-   ],
-   "note": "Versão internacional. A brasileira é 20/01."
-  },
-  {
    "dm": "29/08",
    "nome": "Dia Nacional de Combate ao Fumo",
    "cat": "sau",
@@ -1092,5 +1103,9 @@
    ],
    "note": "Cada especialidade pelo seu ângulo."
   }
- ]
+ ],
+ "_notas": {
+  "farmacia": "A Fórmula é FRANQUIA e a matriz sempre faz o conteúdo das datas da profissão. Por isso não há Dia do Farmacêutico aqui. Se entrar farmácia independente, preencher esta lista e reincluir 20/01.",
+  "esp": "Toda data de nicho declara esp, nunca cliente pelo nome. Cliente novo entra só no bloco clientes acima."
+ }
 }
