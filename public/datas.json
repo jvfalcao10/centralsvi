@@ -1,5 +1,5 @@
 {
-  "atualizado": "2026-08-18",
+  "atualizado": "2026-08-20",
   "faixas": {
     "Agosto": [
       "<b>Agosto Dourado</b> (mês do aleitamento materno) · leva da <b>Dra. Ésia</b> (pediatria). Semana Mundial do Aleitamento 01 a 07/08."
@@ -18,6 +18,473 @@
     ]
   },
   "eventos": [
+    {
+      "dm": "01/01",
+      "mes": "Janeiro",
+      "cat": "fer",
+      "nome": "Confraternização Universal",
+      "ty": "Feriado nacional",
+      "cli": [
+        "Todos (comércio)"
+      ],
+      "note": "Virada de ano, mensagem institucional."
+    },
+    {
+      "dm": "01/01",
+      "mes": "Janeiro",
+      "cat": "sau",
+      "nome": "Janeiro Branco (saúde mental)",
+      "ty": "Mês temático",
+      "cli": [
+        "Dra. Enia",
+        "TODOS os médicos"
+      ],
+      "note": "Mês inteiro. Recomeço de ano é gatilho de ansiedade, tema forte pra Dra. Enia."
+    },
+    {
+      "dm": "20/01",
+      "mes": "Janeiro",
+      "cat": "med",
+      "nome": "Dia do Farmacêutico",
+      "ty": "Dia profissional",
+      "cli": [
+        "A Fórmula"
+      ],
+      "note": "Data da fundação da ABF em 1916. É a data da A Fórmula."
+    },
+    {
+      "dm": "31/01",
+      "mes": "Janeiro",
+      "cat": "com",
+      "nome": "Volta às aulas",
+      "ty": "Sazonal comercial",
+      "cli": [
+        "CCR",
+        "Espaço Soraia",
+        "Ótica",
+        "Todos (comércio)"
+      ],
+      "note": "Óculos e material escolar. Janeiro inteiro esquenta."
+    },
+    {
+      "dm": "01/02",
+      "mes": "Fevereiro",
+      "cat": "sau",
+      "nome": "Fevereiro Roxo e Laranja (lúpus, alzheimer, fibromialgia, leucemia)",
+      "ty": "Mês temático",
+      "cli": [
+        "Dra. Erika",
+        "Dr. Brenno",
+        "TODOS os médicos"
+      ],
+      "note": "Mês inteiro. Alzheimer puxa a Dra. Erika, fibromialgia puxa o Dr. Brenno."
+    },
+    {
+      "dm": "04/02",
+      "mes": "Fevereiro",
+      "cat": "sau",
+      "nome": "Dia Mundial do Câncer",
+      "ty": "Conscientização",
+      "cli": [
+        "TODOS os médicos",
+        "Dr. Daniel",
+        "Dr. Felipe",
+        "PROURO"
+      ],
+      "note": "Prevenção e exame na hora certa, sem alarmismo."
+    },
+    {
+      "dm": "15/02",
+      "mes": "Fevereiro",
+      "cat": "sau",
+      "nome": "Dia Internacional do Câncer Infantil",
+      "ty": "Conscientização",
+      "cli": [
+        "Dra. Ésia"
+      ],
+      "note": "Sinais de alerta que o pai pode observar. Tom cuidadoso."
+    },
+    {
+      "dm": "17/02",
+      "mes": "Fevereiro",
+      "cat": "fer",
+      "nome": "Carnaval (data móvel)",
+      "ty": "Feriado · comercial",
+      "cli": [
+        "Todos (comércio)",
+        "Alpha",
+        "Uzi",
+        "Espaço Soraia"
+      ],
+      "note": "⚠️ data MÓVEL, conferir o ano. Maquiagem e corpo puxam Uzi e Alpha."
+    },
+    {
+      "dm": "01/03",
+      "mes": "Março",
+      "cat": "sau",
+      "nome": "Março Lilás (câncer do colo do útero)",
+      "ty": "Mês temático",
+      "cli": [
+        "TODOS os médicos"
+      ],
+      "note": "Mês inteiro. Prevenção e exame preventivo."
+    },
+    {
+      "dm": "04/03",
+      "mes": "Março",
+      "cat": "sau",
+      "nome": "Dia Mundial da Obesidade",
+      "ty": "Conscientização",
+      "cli": [
+        "Dr. Felipe",
+        "Dra. Raquel",
+        "Alpha"
+      ],
+      "note": "Obesidade é doença, sem julgamento e sem antes e depois."
+    },
+    {
+      "dm": "08/03",
+      "mes": "Março",
+      "cat": "com",
+      "nome": "Dia Internacional da Mulher",
+      "ty": "Comercial forte",
+      "cli": [
+        "Todos (comércio)",
+        "Espaço Soraia",
+        "Uzi",
+        "Spa Nature",
+        "Vanessa Back"
+      ],
+      "note": "Cuidado com o tom: homenagem sem clichê de flor e bombom."
+    },
+    {
+      "dm": "15/03",
+      "mes": "Março",
+      "cat": "com",
+      "nome": "Dia do Consumidor",
+      "ty": "Comercial forte",
+      "cli": [
+        "Todos (comércio)",
+        "Carlotinha",
+        "Ótica"
+      ],
+      "note": "A Black Friday do primeiro semestre."
+    },
+    {
+      "dm": "21/03",
+      "mes": "Março",
+      "cat": "sau",
+      "nome": "Dia Internacional da Síndrome de Down",
+      "ty": "Conscientização",
+      "cli": [
+        "Dra. Ésia"
+      ],
+      "note": "Inclusão e desenvolvimento infantil."
+    },
+    {
+      "dm": "27/03",
+      "mes": "Março",
+      "cat": "sau",
+      "nome": "Dia Nacional de Combate ao Câncer Colorretal (Março Azul-Marinho)",
+      "ty": "Conscientização",
+      "cli": [
+        "Dr. Daniel",
+        "Dr. Felipe"
+      ],
+      "note": "A data mais importante do Dr. Daniel. Colonoscopia na idade certa."
+    },
+    {
+      "dm": "30/03",
+      "mes": "Março",
+      "cat": "sau",
+      "nome": "Dia Mundial do Transtorno Bipolar",
+      "ty": "Saúde mental",
+      "cli": [
+        "Dra. Enia"
+      ],
+      "note": "Desmistificar, sem romantizar diagnóstico."
+    },
+    {
+      "dm": "02/04",
+      "mes": "Abril",
+      "cat": "sau",
+      "nome": "Dia Mundial de Conscientização do Autismo (Abril Azul)",
+      "ty": "Mês temático",
+      "cli": [
+        "Dra. Ésia",
+        "Dra. Enia"
+      ],
+      "note": "Mês inteiro. Sinais precoces e acolhimento da família."
+    },
+    {
+      "dm": "06/04",
+      "mes": "Abril",
+      "cat": "sau",
+      "nome": "Dia Mundial da Atividade Física",
+      "ty": "Saúde e movimento",
+      "cli": [
+        "Alpha",
+        "Dra. Erika",
+        "Dr. Brenno"
+      ],
+      "note": "Movimento como tratamento, não estética."
+    },
+    {
+      "dm": "07/04",
+      "mes": "Abril",
+      "cat": "sau",
+      "nome": "Dia Mundial da Saúde",
+      "ty": "Conscientização",
+      "cli": [
+        "TODOS os médicos"
+      ],
+      "note": "Data guarda-chuva, serve pra todo cliente de saúde."
+    },
+    {
+      "dm": "22/04",
+      "mes": "Abril",
+      "cat": "fer",
+      "nome": "Descobrimento do Brasil",
+      "ty": "Feriado",
+      "cli": [
+        "Todos (comércio)"
+      ],
+      "note": "Institucional leve."
+    },
+    {
+      "dm": "01/05",
+      "mes": "Maio",
+      "cat": "fer",
+      "nome": "Dia do Trabalho",
+      "ty": "Feriado nacional",
+      "cli": [
+        "Todos (comércio)"
+      ],
+      "note": "Homenagem ao time, bom pra bastidor."
+    },
+    {
+      "dm": "01/05",
+      "mes": "Maio",
+      "cat": "sau",
+      "nome": "Maio Amarelo (segurança no trânsito)",
+      "ty": "Mês temático",
+      "cli": [
+        "Dr. Brenno"
+      ],
+      "note": "Mês inteiro. Trauma e acidente puxam o Dr. Brenno e a Carlotinha."
+    },
+    {
+      "dm": "07/05",
+      "mes": "Maio",
+      "cat": "sau",
+      "nome": "Dia Internacional de Luta contra a Endometriose",
+      "ty": "Conscientização",
+      "cli": [
+        "Dr. Felipe"
+      ],
+      "note": "O Dr. Felipe opera endometriose intestinal."
+    },
+    {
+      "dm": "10/05",
+      "mes": "Maio",
+      "cat": "com",
+      "nome": "Dia das Mães (2º domingo)",
+      "ty": "Comercial · o pico do 1º semestre",
+      "cli": [
+        "Todos (comércio)",
+        "Espaço Soraia",
+        "Uzi",
+        "Spa Nature",
+        "Vanessa Back",
+        "Ótica",
+        "Dra. Ésia"
+      ],
+      "note": "⚠️ data MÓVEL, é o 2º domingo de maio. Segunda maior data do varejo."
+    },
+    {
+      "dm": "18/05",
+      "mes": "Maio",
+      "cat": "sau",
+      "nome": "Dia Nacional da Luta Antimanicomial",
+      "ty": "Saúde mental",
+      "cli": [
+        "Dra. Enia"
+      ],
+      "note": "Cuidado em liberdade, tema forte pra Dra. Enia."
+    },
+    {
+      "dm": "25/05",
+      "mes": "Maio",
+      "cat": "sau",
+      "nome": "Dia Internacional da Tireoide",
+      "ty": "Conscientização",
+      "cli": [
+        "Dra. Raquel"
+      ],
+      "note": "A data principal da Dra. Raquel."
+    },
+    {
+      "dm": "26/05",
+      "mes": "Maio",
+      "cat": "sau",
+      "nome": "Dia Nacional de Combate ao Glaucoma",
+      "ty": "Saúde ocular",
+      "cli": [
+        "Hospital Jordão",
+        "Ótica"
+      ],
+      "note": "Glaucoma rouba a visão sem avisar, tema do Hospital Jordão."
+    },
+    {
+      "dm": "31/05",
+      "mes": "Maio",
+      "cat": "sau",
+      "nome": "Dia Mundial sem Tabaco",
+      "ty": "Conscientização",
+      "cli": [
+        "TODOS os médicos"
+      ],
+      "note": "Serve pra todos, cada um pelo ângulo do seu órgão."
+    },
+    {
+      "dm": "01/06",
+      "mes": "Junho",
+      "cat": "sau",
+      "nome": "Junho Vermelho (doação de sangue)",
+      "ty": "Mês temático",
+      "cli": [
+        "TODOS os médicos"
+      ],
+      "note": "Mês inteiro, alto valor social."
+    },
+    {
+      "dm": "05/06",
+      "mes": "Junho",
+      "cat": "pop",
+      "nome": "Dia Mundial do Meio Ambiente",
+      "ty": "Sustentabilidade",
+      "cli": [
+        "Exatta",
+        "Norte Capital",
+        "CCR"
+      ],
+      "note": "A data natural da Exatta."
+    },
+    {
+      "dm": "12/06",
+      "mes": "Junho",
+      "cat": "com",
+      "nome": "Dia dos Namorados",
+      "ty": "Comercial forte",
+      "cli": [
+        "Todos (comércio)",
+        "Espaço Soraia",
+        "Uzi",
+        "Spa Nature",
+        "Vanessa Back"
+      ],
+      "note": "Presente e autoestima."
+    },
+    {
+      "dm": "18/06",
+      "mes": "Junho",
+      "cat": "sau",
+      "nome": "Dia Mundial do Câncer de Rim",
+      "ty": "Conscientização",
+      "cli": [
+        "PROURO"
+      ],
+      "note": "Rim é do urologista, tema do PROURO."
+    },
+    {
+      "dm": "24/06",
+      "mes": "Junho",
+      "cat": "com",
+      "nome": "Festas Juninas",
+      "ty": "Sazonal · alto engajamento",
+      "cli": [
+        "Todos (comércio)",
+        "Alpha",
+        "CCR",
+        "Espaço Soraia"
+      ],
+      "note": "Comida típica abre gancho de digestão e glicemia."
+    },
+    {
+      "dm": "26/06",
+      "mes": "Junho",
+      "cat": "sau",
+      "nome": "Dia Nacional do Diabetes",
+      "ty": "Conscientização",
+      "cli": [
+        "Dra. Raquel",
+        "Dr. Felipe",
+        "Alpha"
+      ],
+      "note": "Versão nacional. A mundial é 14/11."
+    },
+    {
+      "dm": "01/07",
+      "mes": "Julho",
+      "cat": "sau",
+      "nome": "Julho Amarelo (hepatites virais)",
+      "ty": "Mês temático",
+      "cli": [
+        "Dr. Felipe",
+        "TODOS os médicos"
+      ],
+      "note": "Mês inteiro. Fígado puxa o Dr. Felipe."
+    },
+    {
+      "dm": "10/07",
+      "mes": "Julho",
+      "cat": "sau",
+      "nome": "Dia da Saúde Ocular",
+      "ty": "Saúde ocular",
+      "cli": [
+        "Hospital Jordão",
+        "Ótica"
+      ],
+      "note": "Consulta de rotina e tela o dia todo."
+    },
+    {
+      "dm": "13/07",
+      "mes": "Julho",
+      "cat": "com",
+      "nome": "Férias escolares",
+      "ty": "Sazonal",
+      "cli": [
+        "CCR",
+        "Alpha",
+        "Ótica",
+        "Todos (comércio)"
+      ],
+      "note": "Rotina da família muda, bom pra pediatria e escola."
+    },
+    {
+      "dm": "20/07",
+      "mes": "Julho",
+      "cat": "pop",
+      "nome": "Dia do Amigo",
+      "ty": "Pop · engajamento",
+      "cli": [
+        "Todos (comércio)",
+        "Alpha",
+        "Espaço Soraia"
+      ],
+      "note": "Marcação de amigo, alto alcance."
+    },
+    {
+      "dm": "27/07",
+      "mes": "Julho",
+      "cat": "med",
+      "nome": "Dia do Pediatra",
+      "ty": "Dia profissional",
+      "cli": [
+        "Dra. Ésia"
+      ],
+      "note": "Fundação da Sociedade Brasileira de Pediatria, 1910. A data da Dra. Ésia."
+    },
     {
       "dm": "01/08",
       "mes": "Agosto",
@@ -98,6 +565,17 @@
         "Dra. Enia"
       ],
       "note": "Opcional, homenagem aos psicólogos."
+    },
+    {
+      "dm": "29/08",
+      "mes": "Agosto",
+      "cat": "sau",
+      "nome": "Dia Nacional de Combate ao Fumo",
+      "ty": "Conscientização",
+      "cli": [
+        "TODOS os médicos"
+      ],
+      "note": "Cada especialidade pelo seu ângulo."
     },
     {
       "dm": "01/09",
@@ -190,16 +668,6 @@
       "dm": "21/09",
       "mes": "Setembro",
       "cat": "sau",
-      "nome": "Dia Mundial do Alzheimer",
-      "ty": "Conscientização",
-      "cli": [
-        "Dra. Erika"
-      ]
-    },
-    {
-      "dm": "21/09",
-      "mes": "Setembro",
-      "cat": "sau",
       "nome": "Dia da Árvore",
       "ty": "Sustentabilidade",
       "cli": [
@@ -208,13 +676,13 @@
       ]
     },
     {
-      "dm": "22/09",
+      "dm": "21/09",
       "mes": "Setembro",
-      "cat": "com",
-      "nome": "Dia do Contador",
-      "ty": "Dia profissional",
+      "cat": "sau",
+      "nome": "Dia Mundial do Alzheimer",
+      "ty": "Conscientização",
       "cli": [
-        "Números"
+        "Dra. Erika"
       ]
     },
     {
@@ -230,6 +698,16 @@
         "Ótica"
       ],
       "note": "Confirmar 22 ou 23/09."
+    },
+    {
+      "dm": "22/09",
+      "mes": "Setembro",
+      "cat": "com",
+      "nome": "Dia do Contador",
+      "ty": "Dia profissional",
+      "cli": [
+        "Números"
+      ]
     },
     {
       "dm": "23/09",
@@ -253,16 +731,15 @@
       ]
     },
     {
-      "dm": "27/09",
+      "dm": "25/09",
       "mes": "Setembro",
-      "cat": "sau",
-      "nome": "Dia Nacional do Idoso",
-      "ty": "Conscientização",
+      "cat": "med",
+      "nome": "Dia Internacional do Farmacêutico",
+      "ty": "Dia profissional",
       "cli": [
-        "Dra. Erika",
-        "Dr. Brenno"
+        "A Fórmula"
       ],
-      "note": "Erika = autonomia; Brenno = dor/artrose."
+      "note": "Versão internacional. A brasileira é 20/01."
     },
     {
       "dm": "27/09",
@@ -275,6 +752,18 @@
         "Espaço Soraia",
         "Alpha"
       ]
+    },
+    {
+      "dm": "27/09",
+      "mes": "Setembro",
+      "cat": "sau",
+      "nome": "Dia Nacional do Idoso",
+      "ty": "Conscientização",
+      "cli": [
+        "Dra. Erika",
+        "Dr. Brenno"
+      ],
+      "note": "Erika = autonomia; Brenno = dor/artrose."
     },
     {
       "dm": "29/09",
@@ -355,8 +844,8 @@
       "cli": [
         "Dr. Felipe",
         "Alpha",
-        "Spa Nature",
-        "Dra. Raquel"
+        "Dra. Raquel",
+        "Spa Nature"
       ]
     },
     {
@@ -471,6 +960,7 @@
       "ty": "Beleza",
       "cli": [
         "Spa Nature",
+        "Vanessa Back",
         "Uzi",
         "Espaço Soraia"
       ]
