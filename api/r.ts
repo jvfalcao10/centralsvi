@@ -68,7 +68,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 
   const slug = String(req.query.slug || '').trim().replace(/\/$/, '');
-  const host = req.headers.host || 'centralsvi.vercel.app';
+  const host = req.headers.host || 'central.svicompany.com.br';
   const pageUrl = `https://${host}/r/${slug}`;
 
   const admin = createAdminClient();

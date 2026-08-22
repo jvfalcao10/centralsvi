@@ -823,7 +823,7 @@ export default function Team() {
                 <Clock className="h-3.5 w-3.5" /> Como funciona:
               </p>
               <ol className="text-xs text-muted-foreground space-y-1 ml-5 list-decimal">
-                <li><strong>Envie o link completo abaixo</strong> (não use centralsvi.vercel.app/login direto — a pessoa cai em Entrar e não vai saber que precisa criar conta)</li>
+                <li><strong>Envie o link completo abaixo</strong> (não use central.svicompany.com.br/login direto — a pessoa cai em Entrar e não vai saber que precisa criar conta)</li>
                 <li>O link já abre na aba "Criar conta" com o email pré-preenchido</li>
                 <li>Após o cadastro, o sistema aplica o nível de acesso automaticamente</li>
               </ol>

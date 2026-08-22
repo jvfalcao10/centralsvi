@@ -22,7 +22,7 @@ const GROUPS: Group[] = [
     ['Câmera na Mão', 'camera.svicompany.com.br', 'público · /admin.html interno'],
   ]},
   { title: 'Centrais & Painéis internos', items: [
-    ['Central SVI (esta central)', 'centralsvi.vercel.app', 'interno'],
+    ['Central SVI (esta central)', 'central.svicompany.com.br', 'interno'],
     ['Datas Estratégicas (calendário)', '/content/datas', 'interno · fonte da Sofia'],
     ['Painel de Produção de Conteúdo', '/content/producao', 'interno'],
     ['Diretoria — command center', 'diretoria.svicompany.com.br', 'interno'],
