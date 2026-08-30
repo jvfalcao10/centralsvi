@@ -1,11 +1,45 @@
 {
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "datas-svi.svicompany.com.br"
+        }
+      ],
+      "destination": "https://central.svicompany.com.br/content/datas",
+      "permanent": false
+    }
+  ],
   "rewrites": [
-    { "source": "/api/aprovar-conteudo", "destination": "/api/r?__rota=aprovar-conteudo" },
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/interno/:file(.*\\.html)", "destination": "/interno/:file" },
-    { "source": "/r/trafego/:slug", "destination": "/index.html" },
-    { "source": "/aprovar/conteudo/:token", "destination": "/index.html" },
-    { "source": "/r/(.*)", "destination": "/api/r?slug=$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/api/aprovar-conteudo",
+      "destination": "/api/r?__rota=aprovar-conteudo"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/interno/:file(.*\\.html)",
+      "destination": "/interno/:file"
+    },
+    {
+      "source": "/r/trafego/:slug",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/aprovar/conteudo/:token",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/r/(.*)",
+      "destination": "/api/r?slug=$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }
