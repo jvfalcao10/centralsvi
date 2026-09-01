@@ -38,6 +38,7 @@ import TrafegoAnalises from "@/pages/TrafegoAnalises";
 import TrafegoAnaliseDetalhe from "@/pages/TrafegoAnaliseDetalhe";
 import TrafegoPlanoSemana from "@/pages/TrafegoPlanoSemana";
 import TrafegoBrief from "@/pages/TrafegoBrief";
+import FeedbackDia from "@/pages/FeedbackDia";
 import ReportsOverview from "@/pages/reports/Overview";
 import GoogleReports from "@/pages/reports/GoogleReports";
 import AnunciosPerformance from "@/pages/reports/AnunciosPerformance";
@@ -162,6 +163,9 @@ const App = () => (
               } />
               <Route path="/operacional/trafego/analises/:accountId" element={
                 <ProtectedRoute requiredRole="manager" allowTraffic><AppLayout><TrafegoAnaliseDetalhe /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/operacional/feedback" element={
+                <ProtectedRoute requiredRole="manager"><AppLayout><FeedbackDia /></AppLayout></ProtectedRoute>
               } />
               <Route path="/operacional/trafego/brief" element={
                 <ProtectedRoute requiredRole="manager" allowTraffic><AppLayout><TrafegoBrief /></AppLayout></ProtectedRoute>
