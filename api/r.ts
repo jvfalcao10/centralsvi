@@ -53,11 +53,39 @@ const CSS = `
 function esc(s: any): string {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
 }
+/** Número no padrão brasileiro: 1.234 e 4,8. O relatório é lido por dono de negócio no Brasil. */
+function fmtNum(v: any): string {
+  if (v == null || v === '') return '';
+  let n: number;
+  if (typeof v === 'number') {
+    n = v;
+  } else {
+    const t = String(v).trim();
+    // "1.234" ou "1.234.567" é milhar brasileiro; "4.8" é decimal vindo do JSON.
+    const milhar = /^-?\d{1,3}(\.\d{3})+$/.test(t);
+    n = Number(milhar ? t.replace(/\./g, '') : t.replace(',', '.'));
+  }
+  if (!Number.isFinite(n)) return String(v);
+  return n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+}
+/** Valor + unidade com espaço. Sem isso sai "555visualizacoes" colado. */
+function valorUnidade(v: any, unit: any): string {
+  const val = fmtNum(v);
+  const u = String(unit ?? '').trim();
+  if (!val) return '';
+  if (!u) return val;
+  return u === '%' ? `${val}%` : `${val} ${u}`;
+}
+/**
+ * Sem variação visível no print, NÃO afirmamos nada. Antes isso virava "estável",
+ * que é uma afirmação sobre um dado que a gente não tem: o cliente lia como
+ * "não mudou" quando na verdade era "não sabemos".
+ */
 function deltaHtml(pct: any): string {
-  if (pct == null || typeof pct !== 'number') return '<span class="svir-delta flat">estável</span>';
+  if (pct == null || typeof pct !== 'number' || !Number.isFinite(pct)) return '';
   const cls = pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat';
-  const arrow = pct > 0 ? '▲' : pct < 0 ? '▼' : '–';
-  return `<span class="svir-delta ${cls}">${arrow} ${pct > 0 ? '+' : ''}${pct}%</span>`;
+  const arrow = pct > 0 ? '▲' : pct < 0 ? '▼' : '=';
+  return `<span class="svir-delta ${cls}">${arrow} ${pct > 0 ? '+' : ''}${fmtNum(pct)}%</span>`;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -99,7 +127,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .filter((m) => typeof m.delta_pct === 'number' && m.delta_pct > 0)
     .sort((x, y) => y.delta_pct - x.delta_pct)
     .slice(0, 3);
-  const bullets = ogPick.map((m) => `${m.label} ${m.current ?? ''}${m.unit || ''} (+${m.delta_pct}%)`.trim());
+  const bullets = ogPick.map((m) => `${m.label} ${valorUnidade(m.current, m.unit)} (+${fmtNum(m.delta_pct)}%)`.replace(/ {2,}/g, ' ').trim());
 
   // Imagem de preview gerada na hora (arte preto+dourado com cliente, data e bullets)
   const ogImg = `https://${host}/api/oimg?client=${encodeURIComponent(data.client_name || '')}&period=${encodeURIComponent(data.period_label || '')}&b=${encodeURIComponent(bullets.join('|'))}`;
@@ -108,7 +136,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const metricsHtml = metrics.length
     ? `<div class="svir-h2">Visão geral</div><div class="svir-metrics">${metrics
-        .map((m) => `<div class="svir-metric"><div class="ml">${esc(m.label)}</div><div class="mv">${esc(m.current ?? '—')}${esc(m.unit || '')}</div><div style="margin-top:8px">${deltaHtml(m.delta_pct)}</div></div>`)
+        .map((m) => {
+          const d = deltaHtml(m.delta_pct);
+          return `<div class="svir-metric"><div class="ml">${esc(m.label)}</div><div class="mv">${esc(valorUnidade(m.current, m.unit) || 'n/d')}</div>${d ? `<div style="margin-top:8px">${d}</div>` : ''}</div>`;
+        })
         .join('')}</div>`
     : '';
 
@@ -118,7 +149,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           (m: any) =>
             `<div class="svir-module"><div class="svir-module-head"><span class="svir-module-title">${esc(m.titulo)}</span>${
               m.valor || m.delta_pct != null
-                ? `<span class="svir-module-num">${m.valor ? `<span class="n">${esc(m.valor)}</span>` : ''}${m.delta_pct != null ? deltaHtml(m.delta_pct) : ''}</span>`
+                ? `<span class="svir-module-num">${m.valor ? `<span class="n">${esc(fmtNum(m.valor) || m.valor)}</span>` : ''}${m.delta_pct != null ? deltaHtml(m.delta_pct) : ''}</span>`
                 : ''
             }</div>${m.image_url ? `<div class="svir-shot"><img src="${esc(m.image_url)}" alt="${esc(m.titulo)}" loading="lazy"></div>` : ''}${m.legenda ? `<p class="svir-cap">${esc(m.legenda)}</p>` : ''}</div>`,
         )
