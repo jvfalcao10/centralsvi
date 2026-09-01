@@ -26,7 +26,7 @@ const GROUPS: Group[] = [
     ['Datas Estratégicas (calendário)', '/content/datas', 'interno · fonte da Sofia'],
     ['Painel de Produção de Conteúdo', '/content/producao', 'interno'],
     ['Diretoria — command center', 'diretoria.svicompany.com.br', 'interno'],
-    ['Inteligência — central', 'inteligencia.svicompany.com.br', 'interno'],
+    ['Inteligência — cofre de referências', '/inteligencia', 'interno (menu da Central)'],
     ['Catálogo de ofertas com preço', 'ofertas.svicompany.com.br', 'interno'],
     ['Cofre de Senhas', '/senhas', 'João · Arthur · Sarah · Letícia'],
     ['Diagnóstico / Raio-X (isca)', 'diagnostico.svicompany.com.br', 'público'],
@@ -77,8 +77,6 @@ const GROUPS: Group[] = [
   ]},
   { title: 'Raio-X / Diagnóstico', items: [
     ['Raio-X SVI', 'raiox-svi.vercel.app', 'público'],
-    ['Raio-X (app)', 'raiox-svi-app.vercel.app', 'público'],
-    ['SVI Diagnóstico', 'svi-diagnostico.vercel.app', 'público'],
     ['Helmer Kids (diagnóstico)', 'helmerkids.vercel.app', 'público'],
   ]},
   { title: 'Autoridade & Institucional', items: [
@@ -93,7 +91,6 @@ const GROUPS: Group[] = [
     ['Spa Nature — Roteiros', 'spanature.svicompany.com.br', 'interno'],
     ['Conteúdos — Back', 'conteudos-back.vercel.app', 'interno'],
     ['Conteúdos — Lorena', 'conteudos-lorena.vercel.app', 'interno'],
-    ['Plano MJC', 'svi-plano-mjc.vercel.app', 'interno'],
   ]},
   { title: 'Sites de clientes', items: [
     ['Dr Daniel Peralba', 'drdanielperalba.site', 'público'],
@@ -108,8 +105,6 @@ const GROUPS: Group[] = [
     ['Norte Capital', 'site-norte-capital.vercel.app', 'público'],
     ['Exatta Solar', 'exattasolar.com.br', 'público'],
     ['MJC Pavers', 'www.mjcpavers.com', 'público'],
-    ['Igreja Paz e Reino', 'igrejapazereino.vercel.app', 'público'],
-    ['Carlotinha', 'carlotinha-site.vercel.app', 'público'],
   ]},
 ]
 

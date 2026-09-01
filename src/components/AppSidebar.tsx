@@ -4,7 +4,7 @@ import {
   LayoutDashboard, GitBranch, Users, CheckSquare, DollarSign, Crosshair, FileText,
   ClipboardCheck, Clock, UserCog, UserCheck, Kanban, BarChart3, Sun, Moon, LogOut,
   ChevronRight, ChevronDown, Briefcase, Sparkles, ShieldCheck, Settings, PieChart,
-  Activity, Compass, Gauge, Boxes, KeyRound, BookOpen,
+  Activity, Compass, Gauge, Boxes, KeyRound, BookOpen, Brain,
 } from 'lucide-react'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
@@ -59,6 +59,7 @@ const NAV: NavEntry[] = [
   { type: 'item', title: 'Processos', url: '/processos', icon: BookOpen, minRole: 'executor' },
   { type: 'item', title: 'Catálogo', url: '/catalogo', icon: Boxes, minRole: 'manager' },
   { type: 'item', title: 'Diretoria', url: '/diretoria', icon: Gauge, minRole: 'manager' },
+  { type: 'item', title: 'Inteligência', url: '/inteligencia', icon: Brain, minRole: 'executor' },
   { type: 'item', title: 'Documentos', url: '/documentos', icon: FileText, minRole: 'executor' },
   { type: 'item', title: 'Aprovações IA', url: '/content/aprovacoes', icon: Sparkles, minRole: 'executor' },
 
