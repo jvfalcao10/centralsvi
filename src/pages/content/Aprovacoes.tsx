@@ -124,7 +124,9 @@ export default function Aprovacoes() {
             <Sparkles className="h-5 w-5 text-primary" /> Aprovações de Conteúdo IA
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Planos gerados pela IA. O que você aprovar aqui, a Sofia envia pro grupo do cliente no dia 28.
+            Conteúdo gerado pela IA, esperando sua decisão. <strong>Plano do mês</strong> aprovado a Sofia
+            envia pro grupo do cliente no dia 28. <strong>Briefing</strong> é pauta interna: aprovar aqui
+            libera pra execução e nunca vai pro cliente.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => { load(); loadCounts() }} disabled={loading}>
@@ -158,9 +160,11 @@ export default function Aprovacoes() {
                 <div className="min-w-0">
                   <p className="font-medium truncate">{r.cliente}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {r.tipo === 'plano_mensal' ? 'Plano do mês' : 'Radar do dia'}
+                    {r.tipo === 'plano_mensal' ? 'Plano do mês'
+                      : r.tipo === 'briefing' ? 'Briefing do dia (interno)'
+                      : 'Radar do dia'}
                     {r.mes ? ` · ${r.mes}${r.ano ? ' ' + r.ano : ''}` : ''}
-                    {!r.chatid ? ' · ⚠️ sem grupo (só ClickUp)' : ''}
+                    {r.tipo !== 'briefing' && !r.chatid ? ' · ⚠️ sem grupo (não sai pro cliente)' : ''}
                   </p>
                 </div>
                 <Badge variant="outline" className={cn('shrink-0 capitalize', STATUS_BADGE[r.status])}>
