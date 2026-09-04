@@ -83,6 +83,9 @@ export default function Tarefas() {
   const qc = useQueryClient()
   const [sel, setSel] = useState<Selecao>({ tipo: 'visao', id: 'minhas' })
   const [modo, setModo] = useState<'lista' | 'quadro'>('lista')
+  // filtro de dono e independente da pasta: da pra abrir um cliente e ver so
+  // o que e seu, ou so o de uma pessoa. 'todos' nao filtra nada.
+  const [filtroDono, setFiltroDono] = useState<'todos' | string>('todos')
   const [busca, setBusca] = useState('')
   const [aberto, setAberto] = useState(false)
   const [editando, setEditando] = useState<Tarefa | null>(null)
@@ -157,6 +160,9 @@ export default function Tarefas() {
     if (sel.tipo === 'cliente') lista = lista.filter(t => t.cliente_id === sel.id)
     if (sel.tipo === 'pessoa') lista = lista.filter(t => t.dono_id === sel.id)
     if (sel.tipo === 'lista') lista = lista.filter(t => t.lista_id === sel.id)
+    if (filtroDono !== 'todos') {
+      lista = filtroDono === 'ninguem' ? lista.filter(t => !t.dono_id) : lista.filter(t => t.dono_id === filtroDono)
+    }
     const q = busca.trim().toLowerCase()
     if (q) lista = lista.filter(t =>
       t.titulo.toLowerCase().includes(q) ||
@@ -167,7 +173,7 @@ export default function Tarefas() {
       if (at !== bt) return at - bt
       return (a.prazo || '9999').localeCompare(b.prazo || '9999')
     })
-  }, [tarefas, sel, busca, user?.id])
+  }, [tarefas, sel, filtroDono, busca, user?.id])
 
   const tituloSelecao = (() => {
     if (sel.tipo === 'visao') return { minhas: 'Minhas tarefas', todas: 'Todas em aberto', atrasadas: 'Atrasadas', feitas: 'Feitas' }[sel.id]
@@ -380,7 +386,9 @@ export default function Tarefas() {
           <div className="min-w-0">
             <h1 className="text-2xl font-bold truncate">{tituloSelecao}</h1>
             <p className="text-sm text-muted-foreground">
-              {filtradas.length} tarefa(s){nAtrasadas > 0 && sel.tipo === 'visao' && sel.id !== 'feitas' ? ` · ${nAtrasadas} atrasada(s) no time` : ''}
+              {filtradas.length} tarefa(s)
+              {filtroDono !== 'todos' && ` de ${filtroDono === 'ninguem' ? 'ninguém' : filtroDono === user?.id ? 'você' : (pessoas.find(p => p.user_id === filtroDono)?.name.split(' ')[0] || '')}`}
+              {nAtrasadas > 0 && sel.tipo === 'visao' && sel.id !== 'feitas' ? ` · ${nAtrasadas} atrasada(s) no time` : ''}
             </p>
           </div>
           <div className="flex items-center gap-2 ml-auto">
@@ -398,9 +406,24 @@ export default function Tarefas() {
           </div>
         </div>
 
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar por título, cliente ou dono..." value={busca} onChange={e => setBusca(e.target.value)} className="pl-9" />
+        <div className="flex flex-wrap gap-2">
+          <div className="relative flex-1 min-w-44">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Buscar por título, cliente ou dono..." value={busca} onChange={e => setBusca(e.target.value)} className="pl-9" />
+          </div>
+          <Select value={filtroDono} onValueChange={setFiltroDono}>
+            <SelectTrigger className={`w-44 ${filtroDono !== 'todos' ? 'border-primary/40 text-primary' : ''}`}>
+              <SelectValue placeholder="Dono" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todo mundo</SelectItem>
+              {user?.id && <SelectItem value={user.id}>Só as minhas</SelectItem>}
+              {pessoas.filter(p => p.user_id !== user?.id).map(p => (
+                <SelectItem key={p.user_id} value={p.user_id}>{p.name}</SelectItem>
+              ))}
+              <SelectItem value="ninguem">Sem dono</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {isLoading ? (
