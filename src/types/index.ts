@@ -56,6 +56,19 @@ export interface Client {
 }
 
 /** Cliente está em permuta no mês pedido? ('2026-08') */
+/**
+ * Cliente medico ou clinica: pinta de azul nas telas e liga as travas de
+ * copy (CFM 2.336/2023). Casa por segmento ("Saude · ...") e, como rede de
+ * seguranca, pelo nome (CLINICA LIV vivia com segmento vazio).
+ */
+export function isClienteMedico(c: { segment?: string | null; name?: string | null }): boolean {
+  const norm = (v: string | null | undefined) =>
+    (v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const seg = norm(c.segment)
+  if (/saude|clinica|hospital|medic|odonto/.test(seg)) return true
+  return /\b(clinica|hospital)\b/.test(norm(c.name))
+}
+
 export function emPermutaNoMes(
   c: { permuta?: boolean; permuta_ate?: string | null },
   monthKey: string,

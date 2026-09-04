@@ -4,7 +4,7 @@ import { Switch } from '@/components/ui/switch'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
-import { Client, Delivery, Invoice, Interaction, STATUS_CONFIG, formatCurrency, formatDate } from '@/types'
+import { Client, Delivery, Invoice, Interaction, STATUS_CONFIG, formatCurrency, formatDate, isClienteMedico } from '@/types'
 import { useUsdRate, mrrBRL } from '@/hooks/useUsdRate'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -297,12 +297,17 @@ export default function Clients() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-primary/15 text-primary text-xs font-bold">
+                        <AvatarFallback className={`text-xs font-bold ${isClienteMedico(client) ? 'bg-info/15 text-info' : 'bg-primary/15 text-primary'}`}>
                           {client.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium text-sm">{client.name}</p>
+                        <p className="font-medium text-sm flex items-center gap-1.5">
+                          {client.name}
+                          {isClienteMedico(client) && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-info/10 text-info border-info/30">Saúde</Badge>
+                          )}
+                        </p>
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <Building2 className="h-3 w-3" />{client.company}
                         </p>
@@ -612,12 +617,17 @@ export default function Clients() {
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <Avatar className="h-9 w-9">
-                  <AvatarFallback className="bg-primary/15 text-primary font-bold">
+                  <AvatarFallback className={`font-bold ${selectedClient && isClienteMedico(selectedClient) ? 'bg-info/15 text-info' : 'bg-primary/15 text-primary'}`}>
                     {selectedClient?.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <DialogTitle>{selectedClient?.name}</DialogTitle>
+                  <DialogTitle className="flex items-center gap-2">
+                    {selectedClient?.name}
+                    {selectedClient && isClienteMedico(selectedClient) && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-info/10 text-info border-info/30">Saúde</Badge>
+                    )}
+                  </DialogTitle>
                   <p className="text-sm text-muted-foreground font-normal">{selectedClient?.company}</p>
                 </div>
               </div>
