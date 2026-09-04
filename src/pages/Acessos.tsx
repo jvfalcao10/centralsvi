@@ -23,6 +23,7 @@ const GROUPS: Group[] = [
   ]},
   { title: 'Centrais & Painéis internos', items: [
     ['Central SVI (esta central)', 'central.svicompany.com.br', 'interno'],
+    ['Central de Postagens (Instagram)', 'postagens.svicompany.com.br', 'mesma senha da Central'],
     ['Datas Estratégicas (calendário)', '/content/datas', 'interno · fonte da Sofia'],
     ['Painel de Produção de Conteúdo', '/content/producao', 'interno'],
     ['Diretoria — command center', 'diretoria.svicompany.com.br', 'interno'],

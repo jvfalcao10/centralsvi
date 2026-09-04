@@ -36,9 +36,15 @@ export function AppHeader() {
   useEffect(() => {
     async function loadAlerts() {
       const today = new Date().toISOString().split('T')[0]
-      const [{ data: clients }, { data: invoices }] = await Promise.all([
+      // Aprovacoes admin e Lista de Espera sairam do menu em 04/09 (paginas
+      // passivas, quase sempre vazias). O sino e o unico caminho ate elas,
+      // entao aqui NAO pode falhar silencioso.
+      const [{ data: clients }, { data: invoices }, { data: signups }, { data: waitlist }, { data: tarefas }] = await Promise.all([
         supabase.from('clients').select('name, status, health_score'),
         supabase.from('invoices').select('status, vencimento, clients(name)').select('id, status, vencimento'),
+        supabase.from('client_signup_requests').select('id, status'),
+        supabase.from('agencia_waitlist').select('id'),
+        supabase.from('tarefas').select('id, status, prazo'),
       ])
 
       const newAlerts: Alert[] = []
@@ -55,6 +61,12 @@ export function AppHeader() {
         const overdue = invoices.filter(i => i.status === 'atrasado' || (i.status === 'pendente' && i.vencimento < today)).length
         if (overdue > 0) newAlerts.push({ msg: `${overdue} fatura(s) vencida(s)`, level: 'red', to: '/financial' })
       }
+      const pendentes = (signups || []).filter((r: any) => r.status === 'pending' || r.status === 'pendente').length
+      if (pendentes > 0) newAlerts.push({ msg: `${pendentes} pedido(s) de acesso aguardando aprovação`, level: 'yellow', to: '/admin/approvals' })
+      if ((waitlist || []).length > 0) newAlerts.push({ msg: `${(waitlist || []).length} agência(s) na lista de espera`, level: 'yellow', to: '/lista-espera' })
+      const hoje = new Date().toISOString().split('T')[0]
+      const tarefasTarde = (tarefas || []).filter((t: any) => t.status !== 'feita' && t.prazo && t.prazo < hoje).length
+      if (tarefasTarde > 0) newAlerts.push({ msg: `${tarefasTarde} tarefa(s) atrasada(s)`, level: 'red', to: '/tarefas' })
       setAlerts(newAlerts)
     }
     loadAlerts()

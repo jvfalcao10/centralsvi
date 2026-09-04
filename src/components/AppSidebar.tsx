@@ -55,6 +55,7 @@ const NAV_TRAFFIC: NavEntry[] = [
 const NAV: NavEntry[] = [
   { type: 'item', title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard, minRole: 'manager' },
   { type: 'item', title: 'Acessos', url: '/acessos', icon: Compass, minRole: 'executor' },
+  { type: 'item', title: 'Tarefas', url: '/tarefas', icon: CheckSquare, minRole: 'executor' },
   { type: 'item', title: 'Senhas', url: '/senhas', icon: KeyRound, minRole: 'executor' },
   { type: 'item', title: 'Processos', url: '/processos', icon: BookOpen, minRole: 'executor' },
   { type: 'item', title: 'Catálogo', url: '/catalogo', icon: Boxes, minRole: 'manager' },
@@ -75,7 +76,7 @@ const NAV: NavEntry[] = [
       { title: 'Banco de Pautas', url: '/content/pautas', minRole: 'executor' },
       { title: 'Datas Estratégicas', url: '/content/datas', minRole: 'executor' },
       { title: 'Painel de Produção', url: '/content/producao', minRole: 'executor' },
-      { title: 'Radar de Tendências', url: '/content/radar', minRole: 'executor' },
+      { title: 'Central de Postagens ↗', url: 'https://postagens.svicompany.com.br', minRole: 'executor' },
     ],
   },
 
@@ -85,9 +86,7 @@ const NAV: NavEntry[] = [
     icon: Briefcase,
     minRole: 'seller',
     items: [
-      { title: 'Pipeline', url: '/pipeline', minRole: 'seller' },
       { title: 'Scripts', url: '/scripts', minRole: 'executor' },
-      { title: 'Lista de Espera', url: '/lista-espera', minRole: 'manager' },
     ],
   },
 
@@ -99,7 +98,6 @@ const NAV: NavEntry[] = [
     badgeKeys: ['deliveries', 'clients'],
     items: [
       { title: 'Clientes', url: '/clients', minRole: 'executor', badgeKey: 'clients' },
-      { title: 'Onboarding', url: '/onboarding', minRole: 'manager' },
     ],
   },
 
@@ -111,10 +109,8 @@ const NAV: NavEntry[] = [
     icon: PieChart,
     minRole: 'executor',
     items: [
-      { title: 'Performance Geral', url: '/reports/overview', minRole: 'manager' },
       { title: 'Performance de Anúncios', url: '/reports/anuncios', minRole: 'executor' },
       { title: 'Relatório Google', url: '/reports/google', minRole: 'executor' },
-      { title: 'Atividades', url: '/activity', minRole: 'executor' },
     ],
   },
 
@@ -125,7 +121,6 @@ const NAV: NavEntry[] = [
     minRole: 'manager',
     badgeKeys: ['approvals', 'team'],
     items: [
-      { title: 'Aprovações', url: '/admin/approvals', minRole: 'manager', badgeKey: 'approvals' },
       { title: 'Equipe', url: '/team', minRole: 'admin', badgeKey: 'team' },
     ],
   },
@@ -277,10 +272,16 @@ export function AppSidebar() {
                                 isActive={subActive}
                                 className={subActive ? 'bg-primary/15 text-primary font-medium' : ''}
                               >
-                                <Link to={sub.url} className="flex items-center gap-2">
-                                  <span className="flex-1">{sub.title}</span>
-                                  {subCount > 0 && <Badge count={subCount} />}
-                                </Link>
+                                {sub.url.startsWith('http') ? (
+                                  <a href={sub.url} target="_blank" rel="noreferrer" className="flex items-center gap-2">
+                                    <span className="flex-1">{sub.title}</span>
+                                  </a>
+                                ) : (
+                                  <Link to={sub.url} className="flex items-center gap-2">
+                                    <span className="flex-1">{sub.title}</span>
+                                    {subCount > 0 && <Badge count={subCount} />}
+                                  </Link>
+                                )}
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
                           )

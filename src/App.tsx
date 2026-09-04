@@ -29,6 +29,7 @@ import Catalogo from "@/pages/Catalogo";
 import Processos from "@/pages/Processos";
 import Diretoria from "@/pages/Diretoria";
 import Inteligencia from "@/pages/Inteligencia";
+import Tarefas from "@/pages/Tarefas";
 import Documentos from "@/pages/Documentos";
 import ActivityLog from "@/pages/ActivityLog";
 import Team from "@/pages/Team";
@@ -124,6 +125,9 @@ const App = () => (
               } />
               <Route path="/diretoria" element={
                 <ProtectedRoute requiredRole="manager"><AppLayout><Diretoria /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/tarefas" element={
+                <ProtectedRoute requiredRole="executor"><AppLayout><Tarefas /></AppLayout></ProtectedRoute>
               } />
               <Route path="/inteligencia" element={
                 <ProtectedRoute requiredRole="executor"><AppLayout><Inteligencia /></AppLayout></ProtectedRoute>
