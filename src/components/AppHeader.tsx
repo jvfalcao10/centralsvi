@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase'
 
 const PAGE_TITLES: Record<string, { title: string; breadcrumb: string[] }> = {
   '/dashboard': { title: 'Dashboard', breadcrumb: ['Home', 'Dashboard'] },
+  '/tarefas': { title: 'Tarefas', breadcrumb: ['Home', 'Tarefas'] },
   '/pipeline': { title: 'Pipeline CRM', breadcrumb: ['Home', 'Pipeline'] },
   '/clients': { title: 'Clientes', breadcrumb: ['Home', 'Clientes'] },
   '/financial': { title: 'Financeiro', breadcrumb: ['Home', 'Financeiro'] },
