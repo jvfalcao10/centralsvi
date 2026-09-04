@@ -88,10 +88,11 @@ export default function Tarefas() {
   const [filtroDono, setFiltroDono] = useState<'todos' | string>('todos')
   const [busca, setBusca] = useState('')
   const [aberto, setAberto] = useState(false)
-  const [editando, setEditando] = useState<Tarefa | null>(null)
   const [form, setForm] = useState<FormTarefa>(FORM_VAZIO)
   const [salvando, setSalvando] = useState(false)
   const [apagando, setApagando] = useState<Tarefa | null>(null)
+  const [detalhe, setDetalhe] = useState<Tarefa | null>(null)
+  const [comentario, setComentario] = useState('')
   const [novaLista, setNovaLista] = useState(false)
   const [nomeLista, setNomeLista] = useState('')
   const [arrastando, setArrastando] = useState<string | null>(null)
@@ -123,6 +124,16 @@ export default function Tarefas() {
     queryFn: async (): Promise<Lista[]> => {
       const { data } = await supabase.from('tarefa_listas').select('*').order('ordem')
       return (data || []) as Lista[]
+    },
+  })
+
+  const { data: comentarios = [] } = useQuery({
+    queryKey: ['tarefa-comentarios', detalhe?.id],
+    enabled: !!detalhe,
+    queryFn: async () => {
+      const { data } = await supabase.from('tarefa_comentarios').select('*')
+        .eq('tarefa_id', detalhe!.id).order('criado_em')
+      return data || []
     },
   })
 
@@ -183,7 +194,6 @@ export default function Tarefas() {
   })()
 
   function abrirNova() {
-    setEditando(null)
     // a tarefa nova herda o contexto de onde voce esta, igual criar dentro de uma lista no ClickUp
     setForm({
       ...FORM_VAZIO,
@@ -193,15 +203,7 @@ export default function Tarefas() {
     })
     setAberto(true)
   }
-  function abrirEdicao(t: Tarefa) {
-    setEditando(t)
-    setForm({
-      titulo: t.titulo, descricao: t.descricao || '',
-      cliente_id: t.cliente_id || '', dono_id: t.dono_id || '', lista_id: t.lista_id || '',
-      prazo: t.prazo || '', prioridade: t.prioridade,
-    })
-    setAberto(true)
-  }
+
 
   async function salvar() {
     if (!form.titulo.trim()) return toast.error('Dá um título pra tarefa')
@@ -221,14 +223,32 @@ export default function Tarefas() {
       prazo: form.prazo || null,
       prioridade: form.prioridade,
     }
-    const { error } = editando
-      ? await supabase.from('tarefas').update(payload).eq('id', editando.id)
-      : await supabase.from('tarefas').insert({ ...payload, criado_por: user?.id || null })
+    const { error } = await supabase.from('tarefas').insert({ ...payload, criado_por: user?.id || null })
     setSalvando(false)
     if (error) return toast.error(`Não salvou: ${error.message}`)
-    toast.success(editando ? 'Tarefa atualizada' : 'Tarefa criada')
-    setAberto(false); setEditando(null)
+    toast.success('Tarefa criada')
+    setAberto(false)
     qc.invalidateQueries({ queryKey: ['tarefas'] })
+  }
+
+  /** O card de detalhe salva campo a campo na hora, igual ClickUp: mudou, gravou. */
+  async function salvarCampo(id: string, patch: Partial<Tarefa>) {
+    const { error } = await supabase.from('tarefas').update(patch).eq('id', id)
+    if (error) return toast.error(`Não salvou: ${error.message}`)
+    setDetalhe(d => (d && d.id === id ? { ...d, ...patch } as Tarefa : d))
+    qc.invalidateQueries({ queryKey: ['tarefas'] })
+  }
+
+  async function comentar() {
+    if (!detalhe || !comentario.trim()) return
+    const { error } = await supabase.from('tarefa_comentarios').insert({
+      tarefa_id: detalhe.id, autor_id: user?.id || null,
+      autor_nome: (pessoas.find(p => p.user_id === user?.id)?.name) || null,
+      texto: comentario.trim(),
+    })
+    if (error) return toast.error(`Não comentou: ${error.message}`)
+    setComentario('')
+    qc.invalidateQueries({ queryKey: ['tarefa-comentarios', detalhe.id] })
   }
 
   async function moverStatus(id: string, status: Tarefa['status']) {
@@ -244,7 +264,7 @@ export default function Tarefas() {
   async function apagar() {
     if (!apagando) return
     const { error } = await supabase.from('tarefas').delete().eq('id', apagando.id)
-    setApagando(null)
+    setApagando(null); setDetalhe(null)
     if (error) return toast.error(`Não apagou: ${error.message}`)
     toast.success('Tarefa apagada')
     qc.invalidateQueries({ queryKey: ['tarefas'] })
@@ -274,6 +294,7 @@ export default function Tarefas() {
     return (
       <div key={t.id}
         draggable
+        onClick={() => setDetalhe(t)}
         onDragStart={() => setArrastando(t.id)}
         onDragEnd={() => setArrastando(null)}
         className={`group rounded-lg border border-border bg-card p-3 space-y-2 cursor-grab active:cursor-grabbing hover:border-primary/30 ${arrastando === t.id ? 'opacity-40' : ''}`}>
@@ -282,8 +303,8 @@ export default function Tarefas() {
             {t.prioridade === 'alta' && <span className="text-destructive mr-1">!</span>}{t.titulo}
           </p>
           <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => abrirEdicao(t)}><Pencil className="h-3 w-3" /></Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => setApagando(t)}><Trash2 className="h-3 w-3" /></Button>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={e => { e.stopPropagation(); setDetalhe(t) }}><Pencil className="h-3 w-3" /></Button>
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={e => { e.stopPropagation(); setApagando(t) }}><Trash2 className="h-3 w-3" /></Button>
           </div>
         </div>
         {(t.cliente_nome || t.lista_nome) && (
@@ -462,8 +483,9 @@ export default function Tarefas() {
               const cli = clientes.find(c => c.id === t.cliente_id)
               const medico = cli ? isClienteMedico(cli) : isClienteMedico({ name: t.cliente_nome, segment: null })
               return (
-                <div key={t.id} className={`flex items-center gap-3 px-3 py-2.5 hover:bg-muted/20 ${i > 0 ? 'border-t border-border' : ''}`}>
-                  <button onClick={() => avancarStatus(t)} title="Clique pra avançar o status" className="shrink-0">
+                <div key={t.id} onClick={() => setDetalhe(t)}
+                  className={`flex items-center gap-3 px-3 py-2.5 hover:bg-muted/20 cursor-pointer ${i > 0 ? 'border-t border-border' : ''}`}>
+                  <button onClick={e => { e.stopPropagation(); avancarStatus(t) }} title="Clique pra avançar o status" className="shrink-0">
                     <Badge variant="outline" className={`text-xs cursor-pointer ${st.cls}`}>
                       <st.Icon className="h-3 w-3 mr-1" />{st.label}
                     </Badge>
@@ -486,8 +508,8 @@ export default function Tarefas() {
                     ) : <span className="text-xs text-muted-foreground/50">sem prazo</span>}
                   </div>
                   <div className="flex gap-0.5 shrink-0">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => abrirEdicao(t)}><Pencil className="h-3.5 w-3.5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setApagando(t)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={e => { e.stopPropagation(); setDetalhe(t) }}><Pencil className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={e => { e.stopPropagation(); setApagando(t) }}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
               )
@@ -497,9 +519,9 @@ export default function Tarefas() {
       </div>
 
       {/* ===== nova/editar tarefa ===== */}
-      <Dialog open={aberto} onOpenChange={o => { setAberto(o); if (!o) setEditando(null) }}>
+      <Dialog open={aberto} onOpenChange={setAberto}>
         <DialogContent className="sm:max-w-[540px]">
-          <DialogHeader><DialogTitle>{editando ? 'Editar tarefa' : 'Nova tarefa'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Nova tarefa</DialogTitle></DialogHeader>
           <div className="grid gap-3 py-1">
             <div className="space-y-1.5">
               <Label htmlFor="tf-titulo">Título <span className="text-destructive">*</span></Label>
@@ -566,8 +588,155 @@ export default function Tarefas() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAberto(false)}>Cancelar</Button>
-            <Button onClick={salvar} disabled={salvando}>{salvando ? 'Salvando…' : editando ? 'Salvar' : 'Criar tarefa'}</Button>
+            <Button onClick={salvar} disabled={salvando}>{salvando ? 'Salvando…' : 'Criar tarefa'}</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ===== card da tarefa, igual ClickUp: tudo edita ali e salva na hora ===== */}
+      <Dialog open={!!detalhe} onOpenChange={o => { if (!o) { setDetalhe(null); setComentario('') } }}>
+        <DialogContent className="sm:max-w-[760px] max-h-[88vh] overflow-y-auto">
+          {detalhe && (
+            <div key={detalhe.id} className="grid md:grid-cols-[1fr_230px] gap-5">
+              {/* coluna principal */}
+              <div className="space-y-4 min-w-0">
+                <div className="space-y-1.5 pr-6">
+                  <Input
+                    defaultValue={detalhe.titulo}
+                    maxLength={160}
+                    className="text-base font-semibold border-transparent hover:border-border focus:border-border px-2 -mx-2"
+                    onBlur={e => { const v = e.target.value.trim(); if (v && v !== detalhe.titulo) salvarCampo(detalhe.id, { titulo: v }) }}
+                  />
+                  <p className="text-xs text-muted-foreground px-0.5">
+                    criada em {formatDate(detalhe.criado_em)}
+                    {detalhe.origem === 'clickup' && ' · veio do ClickUp'}
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">Descrição</Label>
+                  <Textarea
+                    defaultValue={detalhe.descricao || ''}
+                    rows={4}
+                    maxLength={4000}
+                    placeholder="Contexto, links, o que é 'pronto' nessa tarefa"
+                    className="resize-none"
+                    onBlur={e => { const v = e.target.value.trim(); if (v !== (detalhe.descricao || '')) salvarCampo(detalhe.id, { descricao: v }) }}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">Comentários</Label>
+                  <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                    {comentarios.length === 0 && <p className="text-xs text-muted-foreground/60">Nenhum comentário ainda.</p>}
+                    {comentarios.map((c: any) => (
+                      <div key={c.id} className="flex gap-2">
+                        <span className="h-6 w-6 rounded-full bg-primary/15 text-primary text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                          {iniciais(c.autor_nome)}
+                        </span>
+                        <div className="min-w-0 flex-1 rounded-lg bg-muted/40 px-3 py-2">
+                          <p className="text-xs font-medium">
+                            {c.autor_nome || 'Alguém'}
+                            <span className="text-muted-foreground font-normal ml-2">
+                              {new Date(c.criado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </p>
+                          <p className="text-sm whitespace-pre-wrap break-words">{c.texto}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      value={comentario}
+                      onChange={e => setComentario(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && comentar()}
+                      placeholder="Escreve um comentário e dá Enter..."
+                      maxLength={2000}
+                    />
+                    <Button size="sm" onClick={comentar} disabled={!comentario.trim()}>Enviar</Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* coluna de propriedades */}
+              <div className="space-y-3 md:border-l md:border-border md:pl-5">
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">Status</Label>
+                  <div className="flex rounded-lg border border-border overflow-hidden">
+                    {COLUNAS.map(st => (
+                      <button key={st} onClick={() => salvarCampo(detalhe.id, { status: st })}
+                        className={`flex-1 px-1 py-1.5 text-xs ${detalhe.status === st ? STATUS_UI[st].cls.replace('bg-muted ', 'bg-muted/60 ') + ' font-semibold' : 'text-muted-foreground hover:bg-muted/40'}`}>
+                        {STATUS_UI[st].label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">Dono</Label>
+                  <Select value={detalhe.dono_id || 'ninguem'}
+                    onValueChange={v => salvarCampo(detalhe.id, v === 'ninguem'
+                      ? { dono_id: null, dono_nome: null }
+                      : { dono_id: v, dono_nome: pessoas.find(p => p.user_id === v)?.name || null })}>
+                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ninguem">Sem dono</SelectItem>
+                      {pessoas.map(pe => <SelectItem key={pe.user_id} value={pe.user_id}>{pe.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">Cliente</Label>
+                  <Select value={detalhe.cliente_id || 'nenhum'}
+                    onValueChange={v => salvarCampo(detalhe.id, v === 'nenhum'
+                      ? { cliente_id: null, cliente_nome: null }
+                      : { cliente_id: v, cliente_nome: clientes.find(c => c.id === v)?.name || null })}>
+                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="nenhum">Sem cliente</SelectItem>
+                      {clientes.map(c => (
+                        <SelectItem key={c.id} value={c.id} className={isClienteMedico(c) ? 'text-info' : ''}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">Lista</Label>
+                  <Select value={detalhe.lista_id || 'nenhuma'}
+                    onValueChange={v => salvarCampo(detalhe.id, v === 'nenhuma'
+                      ? { lista_id: null, lista_nome: null }
+                      : { lista_id: v, lista_nome: listas.find(l => l.id === v)?.nome || null })}>
+                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="nenhuma">Sem lista</SelectItem>
+                      {listas.map(l => <SelectItem key={l.id} value={l.id}>{l.emoji} {l.nome}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">Prazo</Label>
+                  <Input type="date" className="h-8" defaultValue={detalhe.prazo || ''}
+                    onChange={e => salvarCampo(detalhe.id, { prazo: e.target.value || null })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">Prioridade</Label>
+                  <Select value={detalhe.prioridade}
+                    onValueChange={v => salvarCampo(detalhe.id, { prioridade: v as Tarefa['prioridade'] })}>
+                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="baixa">Baixa</SelectItem>
+                      <SelectItem value="normal">Normal</SelectItem>
+                      <SelectItem value="alta">Alta</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button variant="outline" size="sm" className="w-full text-destructive hover:text-destructive gap-1.5"
+                  onClick={() => setApagando(detalhe)}>
+                  <Trash2 className="h-3.5 w-3.5" /> Apagar tarefa
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
