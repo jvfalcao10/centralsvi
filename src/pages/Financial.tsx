@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { DollarSign, TrendingUp, TrendingDown, Percent, Plus, CheckCircle, Send, AlertCircle, Clock, Calendar, CalendarCheck, Pencil, Trash2, Undo2, ExternalLink, Repeat, Layers, Handshake } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
-import { Invoice, Expense, formatCurrency, formatDate, emPermutaNoMes } from '@/types'
+import { Invoice, Expense, formatCurrency, formatDate, emPermutaNoMes, isClienteMedico } from '@/types'
 import { monthKeyOf, monthKeyOfDate, monthLabel, buildMonthOptions, addMonths, getDueDate, firstBillingMonth, lastDayOfMonth } from '@/lib/months'
 import { useUsdRate, mrrBRL } from '@/hooks/useUsdRate'
 import { Badge } from '@/components/ui/badge'
@@ -104,7 +104,7 @@ function ClientBillingRow({
 
   return (
     <TableRow className="border-border hover:bg-muted/20">
-      <TableCell className="text-sm font-medium">{client.name}</TableCell>
+      <TableCell className={`text-sm font-medium ${isClienteMedico(client) ? 'text-info' : ''}`}>{client.name}</TableCell>
       <TableCell className="text-xs text-muted-foreground">{client.company || '—'}</TableCell>
       <TableCell>
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -238,7 +238,7 @@ export default function Financial() {
     const [{ data: inv }, { data: exp }, { data: clientsData }, { data: cobrancasData }] = await Promise.all([
       supabase.from('invoices').select('*, clients(name)').order('vencimento'),
       supabase.from('expenses').select('*').order('vencimento'),
-      supabase.from('clients').select('id, name, company, mrr, currency, status, dia_vencimento, instagram, inicio_contrato, permuta, permuta_ate, cobranca_inicio'),
+      supabase.from('clients').select('id, name, company, mrr, currency, status, dia_vencimento, instagram, inicio_contrato, permuta, permuta_ate, cobranca_inicio, segment'),
       supabase.from('cobrancas_manuais').select('*').eq('ativo', true).order('proximo_vencimento', { ascending: true, nullsFirst: false }),
     ])
     setInvoices(inv || [])

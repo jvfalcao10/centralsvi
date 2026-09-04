@@ -66,7 +66,7 @@ export function isClienteMedico(c: { segment?: string | null; name?: string | nu
     (v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   const seg = norm(c.segment)
   if (/saude|clinica|hospital|medic|odonto/.test(seg)) return true
-  return /\b(clinica|hospital)\b/.test(norm(c.name))
+  return /\b(clinica|hospital)\b/.test(norm(c.name)) || /^dra?[.\s]/.test(norm(c.name))
 }
 
 export function emPermutaNoMes(

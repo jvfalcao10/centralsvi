@@ -5,6 +5,7 @@ import {
   MapPin, Loader2, Upload, Sparkles, Link as LinkIcon, Copy, Check,
   Eye, EyeOff, Image as ImageIcon, X, TrendingUp, TrendingDown, Minus, MessageCircle, Trash2,
 } from 'lucide-react'
+import { isClienteMedico } from '@/types';
 import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -14,7 +15,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 
-type ClientRow = { id: string; name: string; slug: string | null }
+type ClientRow = { id: string; name: string; slug: string | null
+  segment?: string | null
+}
 type Metric = { key: string; label: string; current: number | null; previous: number | null; delta_pct: number | null; unit?: string }
 type Module = { titulo: string; valor: string; delta_pct: number | null; legenda: string; image_url: string }
 type Ponto = { tipo: 'gargalo' | 'oportunidade'; titulo: string; texto: string }
@@ -116,7 +119,7 @@ export default function GoogleReports() {
   const { data: clients, isLoading: loadingClients } = useQuery({
     queryKey: ['clients-min'],
     queryFn: async (): Promise<ClientRow[]> => {
-      const { data, error } = await supabase.from('clientes_operacional').select('id, name, slug').order('name')
+      const { data, error } = await supabase.from('clientes_operacional').select('id, name, slug, segment').order('name')
       if (error) throw error
       return data || []
     },
@@ -278,7 +281,7 @@ export default function GoogleReports() {
                 disabled={loadingClients}
               >
                 <option value="">{loadingClients ? 'Carregando...' : 'Selecione o cliente'}</option>
-                {clients?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {clients?.map((c) => <option key={c.id} value={c.id}>{isClienteMedico(c) ? `${c.name} · Saúde` : c.name}</option>)}
               </select>
             </div>
             <div className="space-y-1.5">

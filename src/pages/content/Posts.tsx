@@ -10,6 +10,7 @@ import {
   POST_STATUS_CONFIG,
   CONTENT_FORMAT_CONFIG,
   formatDate,
+  isClienteMedico,
 } from '@/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -51,6 +52,7 @@ interface StaffClient {
   id: string
   name: string
   company: string
+  segment?: string | null
 }
 
 const COLUMNS: { id: PostStatus; label: string; icon: typeof Lightbulb }[] = [
@@ -110,7 +112,7 @@ export default function Posts() {
       } else if (isStaff) {
         const { data } = await supabase
           .from('clientes_operacional')
-          .select('id, name, company')
+          .select('id, name, company, segment')
           .order('name')
         setStaffClients((data || []) as StaffClient[])
       }
@@ -336,7 +338,7 @@ export default function Posts() {
               <SelectTrigger className="w-56"><SelectValue placeholder="Selecionar cliente..." /></SelectTrigger>
               <SelectContent>
                 {staffClients.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.name} — {c.company}</SelectItem>
+                  <SelectItem key={c.id} value={c.id} className={isClienteMedico(c) ? 'text-info' : ''}>{c.name} — {c.company}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
