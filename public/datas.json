@@ -1,5 +1,5 @@
 {
-  "atualizado": "2026-08-20",
+  "atualizado": "2026-09-06",
   "faixas": {
     "Agosto": [
       "<b>Agosto Dourado</b> (mês do aleitamento materno) · leva da <b>Dra. Ésia</b> (pediatria). Semana Mundial do Aleitamento 01 a 07/08."
@@ -40,6 +40,17 @@
         "TODOS os médicos"
       ],
       "note": "Mês inteiro. Recomeço de ano é gatilho de ansiedade, tema forte pra Dra. Enia."
+    },
+    {
+      "dm": "12/01",
+      "mes": "Janeiro",
+      "cat": "com",
+      "nome": "Dia do Empresário da Contabilidade",
+      "ty": "Dia profissional",
+      "cli": [
+        "Números"
+      ],
+      "note": "Data do dono do escritório, não do contador funcionário. Ângulo Números: quem cuida do CNPJ dos outros também é empresário."
     },
     {
       "dm": "31/01",
@@ -126,10 +137,20 @@
       "ty": "Conscientização",
       "cli": [
         "Dr. Felipe",
-        "Dra. Raquel",
         "Alpha"
       ],
       "note": "Obesidade é doença, sem julgamento e sem antes e depois."
+    },
+    {
+      "dm": "05/03",
+      "mes": "Março",
+      "cat": "com",
+      "nome": "Dia Mundial da Eficiência Energética",
+      "ty": "Conscientização",
+      "cli": [
+        "Exatta"
+      ],
+      "note": "Ângulo Exatta: eficiência antes de painel. Conta de luz alta nem sempre é falta de solar, às vezes é desperdício. Gera confiança sem empurrar venda."
     },
     {
       "dm": "08/03",
@@ -158,6 +179,17 @@
         "Ótica"
       ],
       "note": "A Black Friday do primeiro semestre."
+    },
+    {
+      "dm": "20/03",
+      "mes": "Março",
+      "cat": "com",
+      "nome": "Dia Mundial da Agricultura",
+      "ty": "Conscientização",
+      "cli": [
+        "Norte Capital"
+      ],
+      "note": "Ângulo Norte Capital: a lavoura o produtor domina, o mercado não. Trava CVM: falar proteção e risco, nunca rentabilidade."
     },
     {
       "dm": "21/03",
@@ -241,6 +273,28 @@
       "note": "Institucional leve."
     },
     {
+      "dm": "24/04",
+      "mes": "Abril",
+      "cat": "com",
+      "nome": "Dia do Boi",
+      "ty": "Comercial",
+      "cli": [
+        "Norte Capital"
+      ],
+      "note": "A data mais forte do ano pro Araguaia: 8,2 mi de cabeças, 2º maior rebanho do Brasil. Ângulo Norte Capital: preço da arroba e trava de preço. Trava CVM."
+    },
+    {
+      "dm": "25/04",
+      "mes": "Abril",
+      "cat": "com",
+      "nome": "Dia da Contabilidade",
+      "ty": "Dia profissional",
+      "cli": [
+        "Números"
+      ],
+      "note": "Não confundir com 22/09 Dia do Contador. Esta é a da profissão, aquela é do profissional. Duas datas, dois ângulos, não repetir a peça."
+    },
+    {
       "dm": "01/05",
       "mes": "Maio",
       "cat": "fer",
@@ -261,6 +315,17 @@
         "Dr. Brenno"
       ],
       "note": "Mês inteiro. Trauma e acidente puxam o Dr. Brenno e a Carlotinha."
+    },
+    {
+      "dm": "03/05",
+      "mes": "Maio",
+      "cat": "com",
+      "nome": "Dia Internacional do Sol",
+      "ty": "Conscientização",
+      "cli": [
+        "Exatta"
+      ],
+      "note": "Ângulo Exatta: o insumo é de graça, o que se compra é o equipamento que captura. Boa data pra explicar geração sem falar de preço."
     },
     {
       "dm": "07/05",
@@ -302,17 +367,6 @@
       "note": "Cuidado em liberdade, tema forte pra Dra. Enia."
     },
     {
-      "dm": "25/05",
-      "mes": "Maio",
-      "cat": "sau",
-      "nome": "Dia Internacional da Tireoide",
-      "ty": "Conscientização",
-      "cli": [
-        "Dra. Raquel"
-      ],
-      "note": "A data principal da Dra. Raquel."
-    },
-    {
       "dm": "26/05",
       "mes": "Maio",
       "cat": "sau",
@@ -323,6 +377,17 @@
         "Ótica"
       ],
       "note": "Glaucoma rouba a visão sem avisar, tema do Hospital Jordão."
+    },
+    {
+      "dm": "29/05",
+      "mes": "Maio",
+      "cat": "com",
+      "nome": "Dia Mundial da Energia",
+      "ty": "Conscientização",
+      "cli": [
+        "Exatta"
+      ],
+      "note": "Ângulo Exatta: quanto da renda da família vai pra conta de luz todo mês. Cuidado com a trava da casa: nunca insinuar conta zerada ou 'sem pagar'."
     },
     {
       "dm": "31/05",
@@ -406,7 +471,6 @@
       "nome": "Dia Nacional do Diabetes",
       "ty": "Conscientização",
       "cli": [
-        "Dra. Raquel",
         "Dr. Felipe",
         "Alpha"
       ],
@@ -473,6 +537,17 @@
         "Dra. Ésia"
       ],
       "note": "Fundação da Sociedade Brasileira de Pediatria, 1910. A data da Dra. Ésia."
+    },
+    {
+      "dm": "28/07",
+      "mes": "Julho",
+      "cat": "com",
+      "nome": "Dia do Agricultor e do Produtor Rural",
+      "ty": "Dia profissional",
+      "cli": [
+        "Norte Capital"
+      ],
+      "note": "As duas datas caem no mesmo dia, uma peça só. Ângulo Norte Capital: homenagem a quem produz, com a virada pro risco de preço. Trava CVM."
     },
     {
       "dm": "01/08",
@@ -585,10 +660,9 @@
       "cli": [
         "PROURO",
         "Dr. Daniel",
-        "Dra. Raquel",
         "Dra. Enia"
       ],
-      "note": "Uma data, 4 ângulos: PROURO disfunção erétil · Daniel região íntima sem tabu · Raquel libido e hormônio · Enia ansiedade de desempenho."
+      "note": "Uma data, 3 ângulos: PROURO disfunção erétil · Daniel região íntima sem tabu · Enia ansiedade de desempenho."
     },
     {
       "dm": "05/09",
@@ -599,6 +673,19 @@
       "cli": [
         "Exatta"
       ]
+    },
+    {
+      "dm": "06/09",
+      "mes": "Setembro",
+      "cat": "sau",
+      "nome": "Dia do Sexo",
+      "ty": "Saúde · tabu",
+      "cli": [
+        "Dr. Daniel",
+        "PROURO",
+        "Dra. Enia"
+      ],
+      "note": "Data popular no Brasil (trocadilho 6/9), alto alcance e muito tabu. Para médico o enquadramento é SAÚDE ÍNTIMA, nunca a piada: CFM 2.336/2023 veda sensacionalismo. Ângulos: Daniel dor na relação e região íntima · PROURO disfunção erétil e libido masculina · Enia ansiedade de desempenho. Faz par com 04/09 Saúde Sexual: as duas na mesma semana, não repetir o mesmo conteúdo."
     },
     {
       "dm": "07/09",
@@ -753,8 +840,7 @@
         "Dra. Erika",
         "PROURO",
         "Alpha",
-        "Dr. Felipe",
-        "Dra. Raquel"
+        "Dr. Felipe"
       ]
     },
     {
@@ -803,6 +889,18 @@
       ]
     },
     {
+      "dm": "08/10",
+      "mes": "Outubro",
+      "cat": "sau",
+      "nome": "Dia Mundial da Visão (2ª quinta de outubro)",
+      "ty": "Conscientização",
+      "cli": [
+        "Hospital Jordão",
+        "Ótica"
+      ],
+      "note": "Data móvel: é sempre a 2ª quinta-feira de outubro, em 2026 cai em 08/10. Conferir e corrigir todo ano, igual ao Carnaval. Ângulo Jordão: cegueira evitável."
+    },
+    {
       "dm": "10/10",
       "mes": "Outubro",
       "cat": "sau",
@@ -822,7 +920,6 @@
       "cli": [
         "Dr. Felipe",
         "Alpha",
-        "Dra. Raquel",
         "Spa Nature"
       ]
     },
@@ -880,8 +977,7 @@
       "cli": [
         "Dr. Felipe",
         "Alpha",
-        "Dra. Ésia",
-        "Dra. Raquel"
+        "Dra. Ésia"
       ]
     },
     {
@@ -902,8 +998,7 @@
       "ty": "Saúde",
       "cli": [
         "Dr. Brenno",
-        "Dra. Erika",
-        "Dra. Raquel"
+        "Dra. Erika"
       ]
     },
     {
@@ -985,8 +1080,7 @@
       "cli": [
         "Dr. Felipe",
         "Dra. Erika",
-        "Alpha",
-        "Dra. Raquel"
+        "Alpha"
       ]
     },
     {
@@ -1018,8 +1112,10 @@
       "ty": "Comercial",
       "cli": [
         "PROURO",
+        "Dr. Daniel",
         "Alpha"
-      ]
+      ],
+      "note": "Daniel entra aqui desde o reposicionamento de 01/09/2026: saúde íntima masculina, não só próstata."
     },
     {
       "dm": "20/11",
@@ -1030,6 +1126,17 @@
       "cli": [
         "Todos (comércio)"
       ]
+    },
+    {
+      "dm": "20/11",
+      "mes": "Novembro",
+      "cat": "com",
+      "nome": "Dia do Técnico em Contabilidade",
+      "ty": "Dia profissional",
+      "cli": [
+        "Números"
+      ],
+      "note": "Cai junto com a Consciência Negra, então é peça de story, não de feed. Ângulo Números: homenagem ao time do escritório."
     },
     {
       "dm": "25/11",
