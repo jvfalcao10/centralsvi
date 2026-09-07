@@ -1,5 +1,5 @@
 {
-  "atualizado": "2026-09-06",
+  "atualizado": "2026-09-07",
   "faixas": {
     "Agosto": [
       "<b>Agosto Dourado</b> (mês do aleitamento materno) · leva da <b>Dra. Ésia</b> (pediatria). Semana Mundial do Aleitamento 01 a 07/08."
@@ -25,7 +25,7 @@
       "nome": "Confraternização Universal",
       "ty": "Feriado nacional",
       "cli": [
-        "Todos (comércio)"
+        "Todos (institucional)"
       ],
       "note": "Virada de ano, mensagem institucional."
     },
@@ -111,7 +111,7 @@
       "nome": "Carnaval (data móvel)",
       "ty": "Feriado · comercial",
       "cli": [
-        "Todos (comércio)",
+        "Todos (institucional)",
         "Alpha",
         "Uzi",
         "Espaço Soraia"
@@ -268,7 +268,7 @@
       "nome": "Descobrimento do Brasil",
       "ty": "Feriado",
       "cli": [
-        "Todos (comércio)"
+        "Todos (institucional)"
       ],
       "note": "Institucional leve."
     },
@@ -301,7 +301,7 @@
       "nome": "Dia do Trabalho",
       "ty": "Feriado nacional",
       "cli": [
-        "Todos (comércio)"
+        "Todos (institucional)"
       ],
       "note": "Homenagem ao time, bom pra bastidor."
     },
@@ -694,7 +694,7 @@
       "nome": "Independência do Brasil",
       "ty": "Feriado nacional",
       "cli": [
-        "Todos (comércio)",
+        "Todos (institucional)",
         "Carlotinha"
       ]
     },
@@ -1124,7 +1124,7 @@
       "nome": "Consciência Negra",
       "ty": "Feriado nacional",
       "cli": [
-        "Todos (comércio)"
+        "Todos (institucional)"
       ]
     },
     {
@@ -1205,7 +1205,7 @@
       "nome": "Natal",
       "ty": "Feriado · comercial forte",
       "cli": [
-        "Todos (comércio)"
+        "Todos (institucional)"
       ]
     },
     {

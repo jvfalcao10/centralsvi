@@ -98,7 +98,7 @@
       "cat": "fer",
       "ty": "Feriado nacional",
       "cli": [
-        "Todos (comércio)"
+        "Todos (institucional)"
       ],
       "note": "Virada de ano, mensagem institucional."
     },
@@ -177,7 +177,7 @@
       "cat": "fer",
       "ty": "Feriado · comercial",
       "cli": [
-        "Todos (comércio)",
+        "Todos (institucional)",
         "Alpha",
         "Uzi",
         "Espaço Soraia"
@@ -322,7 +322,7 @@
       "cat": "fer",
       "ty": "Feriado",
       "cli": [
-        "Todos (comércio)"
+        "Todos (institucional)"
       ],
       "note": "Institucional leve."
     },
@@ -352,7 +352,7 @@
       "cat": "fer",
       "ty": "Feriado nacional",
       "cli": [
-        "Todos (comércio)"
+        "Todos (institucional)"
       ],
       "note": "Homenagem ao time, bom pra bastidor."
     },
@@ -713,7 +713,7 @@
       "cat": "fer",
       "ty": "Feriado nacional",
       "cli": [
-        "Todos (comércio)",
+        "Todos (institucional)",
         "Carlotinha"
       ]
     },
@@ -1111,7 +1111,7 @@
       "cat": "fer",
       "ty": "Feriado nacional",
       "cli": [
-        "Todos (comércio)"
+        "Todos (institucional)"
       ]
     },
     {
@@ -1185,7 +1185,7 @@
       "cat": "fer",
       "ty": "Feriado · comercial forte",
       "cli": [
-        "Todos (comércio)"
+        "Todos (institucional)"
       ]
     },
     {
@@ -1215,7 +1215,7 @@
     "esp": "Toda data de nicho declara esp, nunca cliente pelo nome. Cliente novo entra só no bloco clientes acima.",
     "intima": "Dr. Daniel reposicionou em 01/09/2026 de proctologista para saude intima completa (hemorroida, ninfoplastia, preenchimento peniano, cirurgia ambulatorial). 'procto' o liga so as datas de cancer; 'intima' o liga as datas de saude sexual e intima. Ele fica nas duas.",
     "endocrino": "Dra. Raquel saiu em 01/09/2026. A especialidade fica declarada e vazia, igual farmacia. Se entrar endocrino novo, preencher aqui e reincluir 25/05 Dia Internacional da Tireoide, que foi removida por ficar sem cliente.",
-    "_guardaChuva": "Só o verificador de cobertura usa isto. 'Todos (comércio)' e 'TODOS os médicos' aparecem como um nome só na Central, o que é bom pra leitura, mas fazia a contagem por cliente mentir: GM Gás parecia ter 1 data no ano quando na verdade pega o calendário comercial inteiro. Aqui se declara que esp cada guarda-chuva cobre. Ótica cai nos dois porque está declarada em oftalmo e em otica, e isso é esperado."
+    "_guardaChuva": "Só o verificador de cobertura usa isto. 'Todos (comércio)' e 'TODOS os médicos' aparecem como um nome só na Central, o que é bom pra leitura, mas fazia a contagem por cliente mentir: GM Gás parecia ter 1 data no ano quando na verdade pega o calendário comercial inteiro. Aqui se declara que esp cada guarda-chuva cobre. Ótica cai nos dois porque está declarada em oftalmo e em otica, e isso é esperado. Rótulo 'Todos (institucional)' cobre TODA esp: é o de feriado nacional, quando todo cliente posta, médico incluído. Provado no 07/09/2026, quando 18 clientes publicaram enquanto o calendário só previa comércio."
   },
   "_guardaChuva": {
     "Todos (comércio)": [
@@ -1251,6 +1251,33 @@
       "digestiva",
       "mental",
       "endocrino"
+    ],
+    "Todos (institucional)": [
+      "procto",
+      "intima",
+      "pediatria",
+      "uro",
+      "oftalmo",
+      "orto",
+      "idoso",
+      "digestiva",
+      "mental",
+      "endocrino",
+      "estetica",
+      "farmacia",
+      "fitness",
+      "*med",
+      "maquiagem",
+      "moda",
+      "educacao",
+      "contabilidade",
+      "veiculos",
+      "solar",
+      "agro",
+      "gas",
+      "aviacao",
+      "otica",
+      "comercio"
     ]
   }
 }
