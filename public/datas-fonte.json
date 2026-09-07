@@ -240,7 +240,13 @@
     "Carlotinha",
     "Ótica"
    ],
-   "note": "A Black Friday do primeiro semestre."
+   "note": "A Black Friday do primeiro semestre. Serviço entra pelo lado do relacionamento, não da promoção.",
+   "esp": [
+    "contabilidade",
+    "solar",
+    "agro",
+    "aviacao"
+   ]
   },
   {
    "dm": "20/03",
@@ -744,7 +750,13 @@
    "cli": [
     "Todos (comércio)"
    ],
-   "note": "Peça de agradecimento em cada comércio."
+   "note": "Peça de agradecimento em cada comércio. Entram também os de serviço (Números, Exatta, Norte Capital, Aerojet): eles têm cliente igual, só não vendem no balcão. Fica de fora o varejo puro tipo Black Friday e Halloween.",
+   "esp": [
+    "contabilidade",
+    "solar",
+    "agro",
+    "aviacao"
+   ]
   },
   {
    "dm": "19/09",

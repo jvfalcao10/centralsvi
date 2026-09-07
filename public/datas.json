@@ -174,11 +174,15 @@
       "nome": "Dia do Consumidor",
       "ty": "Comercial forte",
       "cli": [
+        "Números",
+        "Exatta",
+        "Norte Capital",
+        "Aerojet",
         "Todos (comércio)",
         "Carlotinha",
         "Ótica"
       ],
-      "note": "A Black Friday do primeiro semestre."
+      "note": "A Black Friday do primeiro semestre. Serviço entra pelo lado do relacionamento, não da promoção."
     },
     {
       "dm": "20/03",
@@ -726,9 +730,13 @@
       "nome": "Dia do Cliente",
       "ty": "Comercial forte",
       "cli": [
+        "Números",
+        "Exatta",
+        "Norte Capital",
+        "Aerojet",
         "Todos (comércio)"
       ],
-      "note": "Peça de agradecimento em cada comércio."
+      "note": "Peça de agradecimento em cada comércio. Entram também os de serviço (Números, Exatta, Norte Capital, Aerojet): eles têm cliente igual, só não vendem no balcão. Fica de fora o varejo puro tipo Black Friday e Halloween."
     },
     {
       "dm": "19/09",
