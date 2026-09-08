@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useLocation, Link } from 'react-router-dom'
-import { Bell, ChevronRight, AlertTriangle, CheckCircle2, ArrowRight } from 'lucide-react'
+import { Bell, ChevronRight, AlertTriangle, CheckCircle2, ArrowRight, KeyRound } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { toast } from 'sonner'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -29,6 +34,22 @@ export function AppHeader() {
   const pageInfo = PAGE_TITLES[location.pathname] || { title: 'SVI', breadcrumb: ['Home'] }
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [openNotif, setOpenNotif] = useState(false)
+  const [trocandoSenha, setTrocandoSenha] = useState(false)
+  const [senha1, setSenha1] = useState('')
+  const [senha2, setSenha2] = useState('')
+  const [salvandoSenha, setSalvandoSenha] = useState(false)
+
+  // Troca a PROPRIA senha, logado, sem passar por e-mail.
+  async function alterarSenha() {
+    if (senha1.length < 8) return toast.error('Senha precisa de pelo menos 8 caracteres')
+    if (senha1 !== senha2) return toast.error('As duas senhas não batem')
+    setSalvandoSenha(true)
+    const { error } = await supabase.auth.updateUser({ password: senha1 })
+    setSalvandoSenha(false)
+    if (error) return toast.error(`Não trocou: ${error.message}`)
+    toast.success('Senha alterada. Já vale no próximo login.')
+    setTrocandoSenha(false); setSenha1(''); setSenha2('')
+  }
 
   const initials = profile?.name
     ? profile.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
@@ -139,11 +160,45 @@ export function AppHeader() {
         </PopoverContent>
       </Popover>
 
-      <Avatar className="h-8 w-8 cursor-pointer">
-        <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
-          {initials}
-        </AvatarFallback>
-      </Avatar>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Avatar className="h-8 w-8 cursor-pointer">
+            <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-56 p-2">
+          <p className="px-2 py-1.5 text-sm font-medium">{profile?.name || 'Você'}</p>
+          <button
+            onClick={() => setTrocandoSenha(true)}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground">
+            <KeyRound className="h-4 w-4" /> Alterar minha senha
+          </button>
+        </PopoverContent>
+      </Popover>
+
+      <Dialog open={trocandoSenha} onOpenChange={o => { setTrocandoSenha(o); if (!o) { setSenha1(''); setSenha2('') } }}>
+        <DialogContent className="sm:max-w-[380px]">
+          <DialogHeader><DialogTitle>Alterar minha senha</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-1">
+            <div className="space-y-1.5">
+              <Label htmlFor="ns-1">Nova senha</Label>
+              <Input id="ns-1" type="password" value={senha1} onChange={e => setSenha1(e.target.value)}
+                placeholder="mínimo 8 caracteres" autoComplete="new-password" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ns-2">Repete a nova senha</Label>
+              <Input id="ns-2" type="password" value={senha2} onChange={e => setSenha2(e.target.value)}
+                autoComplete="new-password" onKeyDown={e => e.key === 'Enter' && alterarSenha()} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTrocandoSenha(false)}>Cancelar</Button>
+            <Button onClick={alterarSenha} disabled={salvandoSenha}>{salvandoSenha ? 'Salvando…' : 'Alterar'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </header>
   )
 }
