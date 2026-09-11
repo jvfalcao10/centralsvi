@@ -4,7 +4,7 @@ import { Switch } from '@/components/ui/switch'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
-import { Client, Delivery, Invoice, Interaction, STATUS_CONFIG, formatCurrency, formatDate, isClienteMedico } from '@/types'
+import { Client, Delivery, Invoice, Interaction, STATUS_CONFIG, formatCurrency, formatDate, isClienteMedico, clienteAtivo } from '@/types'
 import { useUsdRate, mrrBRL } from '@/hooks/useUsdRate'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -244,7 +244,7 @@ export default function Clients() {
   const filtered = clients.filter(c => {
     // "Todos status" quer dizer toda a carteira VIVA. Ex-cliente so aparece
     // quando alguem pede de proposito, senao a lista mente sobre o tamanho da casa.
-    if (statusFilter === 'all' ? c.status === 'encerrado' : c.status !== statusFilter) return false
+    if (statusFilter === 'all' ? !clienteAtivo(c) : statusFilter === 'encerrado' ? clienteAtivo(c) : c.status !== statusFilter) return false
     if (search && !c.name.toLowerCase().includes(search.toLowerCase()) && !c.company.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })

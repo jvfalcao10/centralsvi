@@ -194,6 +194,17 @@ export const STATUS_CONFIG: Record<string, { label: string; className: string }>
   // Ex-cliente: some da lista de trabalho, mas continua no banco porque as
   // faturas dele alimentam o DRE dos meses em que ele pagou.
   encerrado: { label: 'Encerrado', className: 'bg-muted text-muted-foreground border-border' },
+  cancelado: { label: 'Encerrado', className: 'bg-muted text-muted-foreground border-border' },
+}
+
+/**
+ * Cliente fora da operacao. Dois nomes porque o banco tem os dois: 'cancelado'
+ * ja existia e 'encerrado' e o vocabulario do schema do produto. A tela aceita
+ * ambos em vez de apostar em qual foi gravado por ultimo.
+ */
+export const STATUS_FORA_DA_OPERACAO = ['encerrado', 'cancelado']
+export function clienteAtivo(c: { status: string }): boolean {
+  return !STATUS_FORA_DA_OPERACAO.includes(c.status)
 }
 
 export const PLANO_CONFIG: Record<string, { label: string; className: string }> = {
