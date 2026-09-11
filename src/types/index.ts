@@ -191,6 +191,9 @@ export const STATUS_CONFIG: Record<string, { label: string; className: string }>
   ativo: { label: 'Ativo', className: 'bg-green-500/20 text-green-400 border-green-500/30' },
   risco: { label: 'Em Risco', className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
   inadimplente: { label: 'Inadimplente', className: 'bg-red-500/20 text-red-400 border-red-500/30' },
+  // Ex-cliente: some da lista de trabalho, mas continua no banco porque as
+  // faturas dele alimentam o DRE dos meses em que ele pagou.
+  encerrado: { label: 'Encerrado', className: 'bg-muted text-muted-foreground border-border' },
 }
 
 export const PLANO_CONFIG: Record<string, { label: string; className: string }> = {

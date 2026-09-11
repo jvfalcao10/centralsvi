@@ -242,7 +242,9 @@ export default function Clients() {
   }
 
   const filtered = clients.filter(c => {
-    if (statusFilter !== 'all' && c.status !== statusFilter) return false
+    // "Todos status" quer dizer toda a carteira VIVA. Ex-cliente so aparece
+    // quando alguem pede de proposito, senao a lista mente sobre o tamanho da casa.
+    if (statusFilter === 'all' ? c.status === 'encerrado' : c.status !== statusFilter) return false
     if (search && !c.name.toLowerCase().includes(search.toLowerCase()) && !c.company.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
@@ -268,6 +270,7 @@ export default function Clients() {
             <SelectItem value="ativo">Ativo</SelectItem>
             <SelectItem value="risco">Em Risco</SelectItem>
             <SelectItem value="inadimplente">Inadimplente</SelectItem>
+            <SelectItem value="encerrado">Encerrados</SelectItem>
           </SelectContent>
         </Select>
         <Button size="sm" onClick={openNewClient} className="gap-2 ml-auto">
