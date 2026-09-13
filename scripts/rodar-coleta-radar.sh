@@ -10,16 +10,18 @@ set -euo pipefail
 
 ALVO="${RADAR_URL:-https://central.svicompany.com.br/api/radar-coletar}"
 
-# Diretório novo e arquivo que ainda não existe: o `vercel env pull` se comporta
-# diferente quando o destino já está criado, e vinha devolvendo arquivo vazio.
-PASTA="$(mktemp -d)"
-TMP="$PASTA/.env.producao"
-trap 'rm -rf "$PASTA"' EXIT
+# Destino em /tmp com nome próprio do processo: foi o único caminho onde o
+# `vercel env pull` gravou as variáveis do projeto. Em pasta do mktemp -d ele
+# escreve o arquivo, mas sem os segredos do projeto.
+PASTA="/tmp"
+TMP="/tmp/.env-radar-$$"
+rm -f "$TMP"
+trap 'rm -f "$TMP" "$TMP.log"' EXIT
 
 echo "Lendo a configuração de produção..."
 # Sem pipe aqui: `grep -q` fecha a saída assim que acha o texto, o processo
 # recebe SIGPIPE e morre no meio da escrita, deixando o arquivo pela metade.
-LOG="$PASTA/saida.log"
+LOG="$TMP.log"
 if ! vercel env pull "$TMP" --environment=production --yes >"$LOG" 2>&1; then
   echo "A leitura da configuração falhou:"
   sed -n '1,10p' "$LOG"
@@ -44,10 +46,15 @@ print(valor, end="")
 PY
 )"
 
-rm -rf "$PASTA"
+# Os nomes ficam em memória para o diagnóstico, e o arquivo some agora, antes
+# de qualquer chamada de rede.
+NOMES="$(grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' "$TMP" | tr -d '=' | sort -u | head -40 || true)"
+rm -f "$TMP" "$LOG"
 
 if [ -z "$SECRET" ]; then
   echo "Não achei CRON_SECRET na configuração de produção."
+  echo "Variáveis que vieram no arquivo (só os nomes):"
+  echo "$NOMES"
   exit 1
 fi
 echo "Segredo lido (${#SECRET} caracteres). Chamando a coleta..."
