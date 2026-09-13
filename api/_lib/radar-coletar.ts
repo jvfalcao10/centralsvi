@@ -136,10 +136,17 @@ async function guardarCapa(admin: any, externalId: string, origem: string | null
 }
 
 export async function handleRadarColetar(req: VercelRequest, res: VercelResponse) {
-  const segredo = process.env.CRON_SECRET || '';
-  const enviado = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-  if (!segredo || enviado !== segredo) {
-    return res.status(401).json({ ok: false, error: 'nao_autorizado' });
+  // Distingue os dois casos: sem segredo no servidor é configuração faltando,
+  // segredo diferente é chamada não autorizada. Nenhum dos dois devolve o valor.
+  const segredo = (process.env.CRON_SECRET || '').trim();
+  if (!segredo) {
+    return res.status(503).json({ ok: false, error: 'cron_secret_ausente' });
+  }
+  const enviado = (req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
+  if (enviado !== segredo) {
+    // Só o tamanho do que chegou, para separar "não mandou nada" de "mandou errado".
+    // Nada do segredo do servidor entra na resposta.
+    return res.status(401).json({ ok: false, error: 'nao_autorizado', recebido_tamanho: enviado.length });
   }
 
   const apifyToken = process.env.APIFY_TOKEN || '';
