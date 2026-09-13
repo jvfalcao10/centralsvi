@@ -157,14 +157,35 @@ export async function handleRadarColetar(req: VercelRequest, res: VercelResponse
   const admin = createAdminClient();
   const inicio = new Date().toISOString();
 
+  // Toda saída deixa rastro: sem isso, uma rodada que não fez nada fica
+  // indistinguível de uma rodada que falhou calada.
+  const registrar = async (dados: Record<string, unknown>) => {
+    await admin.from('radar_collections').insert({
+      source: 'instagram',
+      profiles_count: 0,
+      items_read: 0,
+      posts_new: 0,
+      highlights: 0,
+      cost_usd: 0,
+      started_at: inicio,
+      finished_at: new Date().toISOString(),
+      ...dados,
+    });
+  };
+
   // Só perfil que alguém vigia entra na conta: perfil órfão não gera custo.
-  const { data: vigiados } = await admin.from('radar_watchlist').select('profile_id');
+  const { data: vigiados, error: erroWatch } = await admin.from('radar_watchlist').select('profile_id');
+  if (erroWatch) {
+    await registrar({ ok: false, message: `watchlist: ${erroWatch.message}`.slice(0, 300) });
+    return res.status(502).json({ ok: false, error: 'watchlist_indisponivel', detalhe: erroWatch.message });
+  }
   const idsVigiados = [...new Set((vigiados || []).map((linha: any) => linha.profile_id))];
   if (!idsVigiados.length) {
+    await registrar({ ok: true, message: 'nenhum perfil vigiado' });
     return res.status(200).json({ ok: true, message: 'nenhum perfil vigiado', perfis: 0 });
   }
 
-  const { data: perfis } = await admin
+  const { data: perfis, error: erroPerfis } = await admin
     .from('radar_profiles')
     .select('id, handle, last_collected_at')
     .in('id', idsVigiados)
@@ -173,9 +194,20 @@ export async function handleRadarColetar(req: VercelRequest, res: VercelResponse
     .order('last_collected_at', { ascending: true, nullsFirst: true })
     .limit(PERFIS_POR_RODADA);
 
+  if (erroPerfis) {
+    await registrar({ ok: false, message: `perfis: ${erroPerfis.message}`.slice(0, 300) });
+    return res.status(502).json({ ok: false, error: 'perfis_indisponiveis', detalhe: erroPerfis.message });
+  }
+
   const lista = (perfis || []) as PerfilRow[];
   if (!lista.length) {
-    return res.status(200).json({ ok: true, message: 'nenhum perfil ativo', perfis: 0 });
+    await registrar({
+      ok: true,
+      message: `nenhum perfil ativo entre os ${idsVigiados.length} vigiados`,
+    });
+    return res.status(200).json({
+      ok: true, message: 'nenhum perfil ativo', perfis: 0, vigiados: idsVigiados.length,
+    });
   }
 
   // Perfil novo precisa de história para ter mediana; perfil conhecido só do que é novo.
@@ -197,6 +229,7 @@ export async function handleRadarColetar(req: VercelRequest, res: VercelResponse
     }
   } catch (e: any) {
     erro = String(e?.message || 'falha na coleta').slice(0, 300);
+    console.error('radar: falha ao coletar', erro);
   }
 
   const porHandle = new Map<string, PostNormalizado[]>();
@@ -300,6 +333,9 @@ export async function handleRadarColetar(req: VercelRequest, res: VercelResponse
     finished_at: new Date().toISOString(),
   });
 
+  console.log(
+    `radar: ${lista.length} perfis, ${brutos.length} itens lidos, ${novos} novos, ${destaques} destaques`,
+  );
   return res.status(erro ? 502 : 200).json({
     ok: !erro,
     perfis: lista.length,
