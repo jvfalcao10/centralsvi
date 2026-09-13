@@ -1,5 +1,5 @@
 import { useLocation, Link } from 'react-router-dom'
-import { LayoutDashboard, Kanban, Lightbulb, Calendar, TrendingUp, Users2, Sun, Moon, LogOut, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, Kanban, Lightbulb, Calendar, TrendingUp, Users2, Sun, Moon, LogOut, ChevronRight, Flame } from 'lucide-react'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
@@ -19,6 +19,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { title: 'Minha Área',    url: '/minha-area',      icon: LayoutDashboard },
   { title: 'Banco de Pautas', url: '/content/pautas',  icon: Lightbulb },
+  { title: 'Reels em alta', url: '/content/reels',    icon: Flame },
   { title: 'Radar',         url: '/content/radar',    icon: TrendingUp },
   { title: 'Referências',   url: '/content/monitor',  icon: Users2 },
 ]

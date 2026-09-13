@@ -22,6 +22,7 @@ const GROUPS: Group[] = [
     ['Câmera na Mão', 'camera.svicompany.com.br', 'público · /admin.html interno'],
   ]},
   { title: 'Centrais & Painéis internos', items: [
+    ['Mídias — artes prontas por cliente (Alpha, Felipe...)', 'midia.svicompany.com.br', 'público · 1080x1920 · baixar e postar'],
     ['Central SVI (esta central)', 'central.svicompany.com.br', 'interno'],
     ['Central de Postagens (Instagram)', 'postagens.svicompany.com.br', 'mesma senha da Central'],
     ['Datas Estratégicas (calendário)', '/content/datas', 'interno · fonte da Sofia'],
@@ -101,7 +102,6 @@ const GROUPS: Group[] = [
     ['Dra Erika Figueiredo', 'draerikafigueiredo.vercel.app', 'público'],
     ['Dra Esia Lopes', 'draesialopes.vercel.app', 'público'],
     ['Urologia Redenção', 'urologiaredencao.vercel.app', 'público'],
-    ['Hospital de Olhos Jordão', 'hospitaldeolhosjordao.vercel.app', 'público'],
     ['Uzi Makeup', 'uzimakeup.vercel.app', 'público'],
     ['Norte Capital', 'site-norte-capital.vercel.app', 'público'],
     ['Exatta Solar', 'exattasolar.com.br', 'público'],

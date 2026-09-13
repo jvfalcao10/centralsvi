@@ -81,7 +81,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     triggers,
   });
 
-  if (!result.ok) {
+  if (result.ok === false) {
     // Falha: marca thread como precisando atenção humana, sem responder
     await admin.from('painel_threads').update({ unread_for_svi: 1 }).eq('id', thread.id);
     return res.status(502).json({ error: result.error });

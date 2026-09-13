@@ -12,10 +12,6 @@
     "uro": [
       "PROURO"
     ],
-    "oftalmo": [
-      "Hospital Jordão",
-      "Ótica"
-    ],
     "orto": [
       "Dr. Brenno"
     ],
@@ -63,12 +59,6 @@
     ],
     "gas": [
       "GM Gás"
-    ],
-    "aviacao": [
-      "Aerojet"
-    ],
-    "otica": [
-      "Ótica"
     ],
     "comercio": [
       "Todos (comércio)"
@@ -131,7 +121,6 @@
       "cli": [
         "CCR",
         "Espaço Soraia",
-        "Ótica",
         "Todos (comércio)"
       ],
       "note": "Óculos e material escolar. Janeiro inteiro esquenta."
@@ -237,15 +226,13 @@
       "ty": "Comercial forte",
       "cli": [
         "Todos (comércio)",
-        "Carlotinha",
-        "Ótica"
+        "Carlotinha"
       ],
       "note": "A Black Friday do primeiro semestre. Serviço entra pelo lado do relacionamento, não da promoção.",
       "esp": [
         "contabilidade",
         "solar",
-        "agro",
-        "aviacao"
+        "agro"
       ]
     },
     {
@@ -403,7 +390,6 @@
         "Uzi",
         "Spa Nature",
         "Vanessa Back",
-        "Ótica",
         "Dra. Ésia"
       ],
       "note": "⚠️ data MÓVEL, é o 2º domingo de maio. Segunda maior data do varejo."
@@ -417,16 +403,6 @@
         "mental"
       ],
       "note": "Cuidado em liberdade, tema forte pra Dra. Enia."
-    },
-    {
-      "dm": "26/05",
-      "nome": "Dia Nacional de Combate ao Glaucoma",
-      "cat": "sau",
-      "ty": "Saúde ocular",
-      "esp": [
-        "oftalmo"
-      ],
-      "note": "Glaucoma rouba a visão sem avisar, tema do Hospital Jordão."
     },
     {
       "dm": "29/05",
@@ -531,16 +507,6 @@
       "note": "Mês inteiro. Fígado puxa o Dr. Felipe."
     },
     {
-      "dm": "10/07",
-      "nome": "Dia da Saúde Ocular",
-      "cat": "sau",
-      "ty": "Saúde ocular",
-      "esp": [
-        "oftalmo"
-      ],
-      "note": "Consulta de rotina e tela o dia todo."
-    },
-    {
       "dm": "13/07",
       "nome": "Férias escolares",
       "cat": "com",
@@ -548,7 +514,6 @@
       "cli": [
         "CCR",
         "Alpha",
-        "Ótica",
         "Todos (comércio)"
       ],
       "note": "Rotina da família muda, bom pra pediatria e escola."
@@ -645,8 +610,7 @@
       "cli": [
         "Uzi",
         "Espaço Soraia",
-        "Spa Nature",
-        "Ótica"
+        "Spa Nature"
       ]
     },
     {
@@ -750,12 +714,11 @@
       "cli": [
         "Todos (comércio)"
       ],
-      "note": "Peça de agradecimento em cada comércio. Entram também os de serviço (Números, Exatta, Norte Capital, Aerojet): eles têm cliente igual, só não vendem no balcão. Fica de fora o varejo puro tipo Black Friday e Halloween.",
+      "note": "Peça de agradecimento em cada comércio. Entram também os de serviço (Números, Exatta, Norte Capital): eles têm cliente igual, só não vendem no balcão. Fica de fora o varejo puro tipo Black Friday e Halloween.",
       "esp": [
         "contabilidade",
         "solar",
-        "agro",
-        "aviacao"
+        "agro"
       ]
     },
     {
@@ -803,8 +766,7 @@
       "cli": [
         "Espaço Soraia",
         "Uzi",
-        "Spa Nature",
-        "Ótica"
+        "Spa Nature"
       ],
       "note": "Confirmar 22 ou 23/09."
     },
@@ -844,7 +806,6 @@
       "cat": "pop",
       "ty": "Pop · engajamento",
       "cli": [
-        "Ótica",
         "Espaço Soraia",
         "Alpha"
       ]
@@ -892,25 +853,6 @@
         "Alpha",
         "Todos (comércio)"
       ]
-    },
-    {
-      "dm": "08/10",
-      "nome": "Dia Mundial da Visão",
-      "cat": "sau",
-      "ty": "Saúde ocular",
-      "esp": [
-        "oftalmo"
-      ]
-    },
-    {
-      "dm": "08/10",
-      "nome": "Dia Mundial da Visão (2ª quinta de outubro)",
-      "cat": "sau",
-      "ty": "Conscientização",
-      "esp": [
-        "oftalmo"
-      ],
-      "note": "Data móvel: é sempre a 2ª quinta-feira de outubro, em 2026 cai em 08/10. Conferir e corrigir todo ano, igual ao Carnaval. Ângulo Jordão: cegueira evitável."
     },
     {
       "dm": "10/10",
@@ -1176,19 +1118,8 @@
       "cat": "com",
       "ty": "Comercial",
       "cli": [
-        "Ótica",
         "Carlotinha",
         "Espaço Soraia"
-      ]
-    },
-    {
-      "dm": "13/12",
-      "nome": "Dia do Óptico",
-      "cat": "com",
-      "ty": "Óptica",
-      "esp": [
-        "otica",
-        "oftalmo"
       ]
     },
     {
@@ -1227,7 +1158,7 @@
     "esp": "Toda data de nicho declara esp, nunca cliente pelo nome. Cliente novo entra só no bloco clientes acima.",
     "intima": "Dr. Daniel reposicionou em 01/09/2026 de proctologista para saude intima completa (hemorroida, ninfoplastia, preenchimento peniano, cirurgia ambulatorial). 'procto' o liga so as datas de cancer; 'intima' o liga as datas de saude sexual e intima. Ele fica nas duas.",
     "endocrino": "Dra. Raquel saiu em 01/09/2026. A especialidade fica declarada e vazia, igual farmacia. Se entrar endocrino novo, preencher aqui e reincluir 25/05 Dia Internacional da Tireoide, que foi removida por ficar sem cliente.",
-    "_guardaChuva": "Só o verificador de cobertura usa isto. 'Todos (comércio)' e 'TODOS os médicos' aparecem como um nome só na Central, o que é bom pra leitura, mas fazia a contagem por cliente mentir: GM Gás parecia ter 1 data no ano quando na verdade pega o calendário comercial inteiro. Aqui se declara que esp cada guarda-chuva cobre. Ótica cai nos dois porque está declarada em oftalmo e em otica, e isso é esperado. Rótulo 'Todos (institucional)' cobre TODA esp: é o de feriado nacional, quando todo cliente posta, médico incluído. Provado no 07/09/2026, quando 18 clientes publicaram enquanto o calendário só previa comércio."
+    "_guardaChuva": "Só o verificador de cobertura usa isto. 'Todos (comércio)' e 'TODOS os médicos' aparecem como um nome só na Central, o que é bom pra leitura, mas fazia a contagem por cliente mentir: GM Gás parecia ter 1 data no ano quando na verdade pega o calendário comercial inteiro. Aqui se declara que esp cada guarda-chuva cobre. Rótulo 'Todos (institucional)' cobre TODA esp: é o de feriado nacional, quando todo cliente posta, médico incluído. Provado no 07/09/2026, quando 18 clientes publicaram enquanto o calendário só previa comércio."
   },
   "_guardaChuva": {
     "Todos (comércio)": [

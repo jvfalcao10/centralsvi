@@ -1,3 +1,7 @@
+import { Link } from 'react-router-dom'
+import { clientPath } from '@/lib/client-management'
+import { fetchAllRows } from '@/lib/data-access'
+import DataLoadError from '@/components/DataLoadError'
 import { useEffect, useState, useCallback } from 'react'
 import { Search, Eye, Building2, User, Plus, Pencil, Trash2, MessageSquare, Send, ExternalLink, Instagram, Handshake } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
@@ -57,10 +61,12 @@ type ClientForm = typeof EMPTY_FORM
 
 export default function Clients() {
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, can } = useAuth()
+  const financeAllowed = can('admin')
   const usdRate = useUsdRate()
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [clientDeliveries, setClientDeliveries] = useState<Delivery[]>([])
   const [clientInvoices, setClientInvoices] = useState<Invoice[]>([])
@@ -85,9 +91,11 @@ export default function Clients() {
   const [savingInteraction, setSavingInteraction] = useState(false)
 
   const fetchClients = useCallback(async () => {
-    const { data } = await supabase.from('clients').select('*').order('mrr', { ascending: false })
-    setClients(data || [])
-    setLoading(false)
+    setLoadError(false)
+    try {
+      const data = await fetchAllRows<Client>((from, to) => supabase.from('clients').select('*').order('mrr', { ascending: false }).order('id').range(from, to))
+      setClients(data)
+    } catch { setLoadError(true) } finally { setLoading(false) }
   }, [])
 
   useEffect(() => { fetchClients() }, [fetchClients])
@@ -202,7 +210,7 @@ export default function Clients() {
     setInteractionForm({ tipo: 'reuniao', descricao: '' })
     const [{ data: deliveries }, { data: invoices }, { data: interactions }] = await Promise.all([
       supabase.from('deliveries').select('*').eq('client_id', client.id).order('prazo'),
-      supabase.from('invoices').select('*').eq('client_id', client.id).order('vencimento', { ascending: false }),
+      financeAllowed ? supabase.from('invoices').select('*').eq('client_id', client.id).order('vencimento', { ascending: false }) : Promise.resolve({ data: [] }),
       supabase.from('interactions').select('*').eq('client_id', client.id).order('created_at', { ascending: false }),
     ])
     setClientDeliveries(deliveries || [])
@@ -255,6 +263,8 @@ export default function Clients() {
     </div>
   )
 
+  if (loadError) return <DataLoadError onRetry={() => { void fetchClients() }} />
+
   return (
     <div className="space-y-4 animate-fade-in">
       {/* Filters */}
@@ -306,7 +316,7 @@ export default function Clients() {
                       </Avatar>
                       <div>
                         <p className="font-medium text-sm flex items-center gap-1.5">
-                          {client.name}
+                          <Link to={clientPath(client.id)} className="hover:text-primary hover:underline underline-offset-4">{client.name}</Link>
                           {isClienteMedico(client) && (
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-info/10 text-info border-info/30">Saúde</Badge>
                           )}
@@ -374,6 +384,7 @@ export default function Clients() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
+                      <Button asChild variant="outline" size="sm" className="text-xs"><Link to={clientPath(client.id)}>Gestão</Link></Button>
                       <Button variant="ghost" size="sm" onClick={() => openClient(client)} className="gap-1 text-xs">
                         <Eye className="h-3 w-3" /> Ver
                       </Button>
@@ -652,7 +663,7 @@ export default function Clients() {
                   Histórico {clientInteractions.length > 0 && <span className="ml-1 bg-primary/20 text-primary text-xs rounded-full px-1.5">{clientInteractions.length}</span>}
                 </TabsTrigger>
                 <TabsTrigger value="deliveries" className="flex-1 text-xs">Entregas</TabsTrigger>
-                <TabsTrigger value="invoices" className="flex-1 text-xs">Faturas</TabsTrigger>
+                {financeAllowed && <TabsTrigger value="invoices" className="flex-1 text-xs">Faturas</TabsTrigger>}
                 <TabsTrigger value="notes" className="flex-1 text-xs">Notas</TabsTrigger>
               </TabsList>
 
@@ -792,7 +803,7 @@ export default function Clients() {
                 )}
               </TabsContent>
 
-              <TabsContent value="invoices" className="mt-4">
+              {financeAllowed && <TabsContent value="invoices" className="mt-4">
                 {clientInvoices.length === 0 ? (
                   <p className="text-center py-8 text-muted-foreground text-sm">Nenhuma fatura registrada</p>
                 ) : (
@@ -808,7 +819,7 @@ export default function Clients() {
                     ))}
                   </div>
                 )}
-              </TabsContent>
+              </TabsContent>}
 
               <TabsContent value="notes" className="mt-4 space-y-3">
                 <Textarea

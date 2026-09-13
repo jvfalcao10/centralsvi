@@ -18,14 +18,12 @@ const MEDICOS: Cli[] = [
   { n: 'Dr. Daniel Peralba', ni: 'Proctologia', q: '3 peças + vídeo', tag: 'med', h: 'Tabu com humor, sangue no papel, Dia do Médico (vídeos próprios rodando).' },
   { n: 'PROURO Urologia', ni: 'Saúde do homem', q: '5 peças', tag: 'med', h: 'Agosto Azul (tweet + carrossel), Dia dos Pais, Novembro Azul, Dia do Médico.' },
   { n: 'Dra. Enia Paula', ni: 'Saúde mental', q: 'perfil + leva', tag: 'med', h: 'Perfil reorganizado (capas + 28 stories com fotos), leva Setembro Amarelo, reapresentação, Dia do Médico.' },
-  { n: 'Hospital de Olhos Jordão', ni: 'Oftalmologia', q: '8 peças', tag: 'med', h: 'Sol e olhos, catarata é mito, glaucoma, olho seco de tela, exame da família, Dia da Visão, Dia dos Pais, Dia do Médico.' },
 ]
 
 const COMERCIO: Cli[] = [
   { n: 'Alpha Fitness', ni: 'Academia', q: 'página + 6+', tag: 'com', h: 'Página de roteiros (reativação, rápidos/descontraídos, Projeto Fim de Ano), 4 flyers, Dia do Cliente, Black Friday.' },
   { n: 'GM Gás', ni: 'Gás e água', q: 'página + flyers', tag: 'com', h: 'Página com 11 roteiros (bastidor, segurança, mito, oferta) + flyers datados, Dia do Cliente.' },
   { n: 'CCR · Colégio Christo Rei', ni: 'Escola / ENEM', q: 'página + 2', tag: 'com', h: '4 vídeos em 4 cenas + 2 carrosséis (5 estratégias ENEM, matrículas).' },
-  { n: 'Ótica Central', ni: 'Óptica', q: '6 + BF', tag: 'com', h: 'Sol/UV, criança não enxerga o quadro, dor de cabeça, vista cansada, luz azul, Dia do Cliente, Black Friday.' },
   { n: 'Números Contabilidade', ni: 'Contabilidade', q: '8 peças', tag: 'com', h: 'Imposto a mais, contador que só manda guia, MEI, Reforma Tributária, alerta golpe MEI, Dia do Contador, Dia do Cliente.' },
   { n: 'Pro Life', ni: 'Academia (treino acompanhado)', q: '5 peças', tag: 'com', h: 'Nunca treina sozinho, treina e não muda?, emagrecer é treinar certo, todas as idades, Dia do Prof. de Ed. Física.' },
   { n: 'Espaço Soraia', ni: 'Moda premium · 40 anos', q: '5 + 8 spotlights', tag: 'est', h: 'Marcas exclusivas, 40 anos, qualidade, Dia do Cliente, Outubro Rosa + spotlight das 8 marcas (Le Lis Blanc, Dudalina, A|X...).' },
@@ -35,6 +33,7 @@ const COMERCIO: Cli[] = [
 ]
 
 const SISTEMAS = [
+  { icon: '🖼️', t: 'Mídias prontas por cliente', d: 'Artes de datas em 1080x1920, uma pasta por cliente, com botão de baixar. É de lá que a Letícia posta.', link: 'https://midia.svicompany.com.br', linkLabel: 'midia.svicompany.com.br' },
   { icon: '🗓️', t: 'Calendário de datas', d: 'Todas as datas estratégicas (oficiais + pop) mapeadas por cliente, ago→dez.', link: '/content/datas', linkLabel: 'Datas Estratégicas' },
   { icon: '🤖', t: 'Sofia lembrando', d: 'Todo dia 8h a Sofia avisa o grupo SVI Geral das datas dos próximos 7 dias. Ninguém esquece.', link: '', linkLabel: 'n8n · ativo' },
   { icon: '🌿', t: 'Perfil da Dra. Enia', d: 'Reorganização completa + 7 capas + 28 stories com as fotos reais dela.', link: 'https://enia-perfil.svicompany.com.br', linkLabel: 'enia-perfil' },
@@ -65,9 +64,8 @@ export default function Producao() {
       {/* STATS */}
       <div className="flex flex-wrap gap-3">
         {[
-          ['18', 'clientes com leva'],
-          ['100+', 'peças produzidas'],
-          ['4', 'sistemas de pé'],
+          [String(MEDICOS.length + COMERCIO.length), 'clientes nesta referência'],
+          [String(SISTEMAS.length), 'atalhos disponíveis'],
           ['1', 'calendário + Sofia lembrando'],
         ].map(([n, l], i) => (
           <div key={i} className="rounded-xl border border-border bg-card px-5 py-3 min-w-[130px]">
@@ -109,10 +107,9 @@ export default function Producao() {
 
       {/* FORA DA RODADA */}
       <div className="rounded-xl border border-orange-500/30 bg-orange-500/5 p-4 text-sm text-orange-200/90">
-        <b className="text-orange-300">Fora da rodada (por decisão):</b> Exatta e Uzi (têm conteúdo
-        próprio) · Vanessa Back, Supermercado América e IPER (fora da operação). Black Friday, Singles
-        Day e Natal entraram como <b>brief pra definir a oferta real com cada cliente</b> (não se
-        inventa oferta).
+        <b className="text-orange-300">Referência desta leva:</b> os clientes listados aqui representam
+        o conteúdo registrado neste painel. Consulte a <a href="/clients" className="underline">carteira atual em Clientes</a> para
+        conferir contratos em operação. Ofertas de Black Friday, Singles Day e Natal dependem da definição com cada cliente.
       </div>
 
       <footer className="text-xs text-muted-foreground pt-2">

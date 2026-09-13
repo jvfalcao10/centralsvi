@@ -1,5 +1,5 @@
 {
-  "atualizado": "2026-09-07",
+  "atualizado": "2026-09-11",
   "faixas": {
     "Agosto": [
       "<b>Agosto Dourado</b> (mês do aleitamento materno) · leva da <b>Dra. Ésia</b> (pediatria). Semana Mundial do Aleitamento 01 a 07/08."
@@ -61,7 +61,6 @@
       "cli": [
         "CCR",
         "Espaço Soraia",
-        "Ótica",
         "Todos (comércio)"
       ],
       "note": "Óculos e material escolar. Janeiro inteiro esquenta."
@@ -177,10 +176,8 @@
         "Números",
         "Exatta",
         "Norte Capital",
-        "Aerojet",
         "Todos (comércio)",
-        "Carlotinha",
-        "Ótica"
+        "Carlotinha"
       ],
       "note": "A Black Friday do primeiro semestre. Serviço entra pelo lado do relacionamento, não da promoção."
     },
@@ -354,7 +351,6 @@
         "Uzi",
         "Spa Nature",
         "Vanessa Back",
-        "Ótica",
         "Dra. Ésia"
       ],
       "note": "⚠️ data MÓVEL, é o 2º domingo de maio. Segunda maior data do varejo."
@@ -369,18 +365,6 @@
         "Dra. Enia"
       ],
       "note": "Cuidado em liberdade, tema forte pra Dra. Enia."
-    },
-    {
-      "dm": "26/05",
-      "mes": "Maio",
-      "cat": "sau",
-      "nome": "Dia Nacional de Combate ao Glaucoma",
-      "ty": "Saúde ocular",
-      "cli": [
-        "Hospital Jordão",
-        "Ótica"
-      ],
-      "note": "Glaucoma rouba a visão sem avisar, tema do Hospital Jordão."
     },
     {
       "dm": "29/05",
@@ -493,18 +477,6 @@
       "note": "Mês inteiro. Fígado puxa o Dr. Felipe."
     },
     {
-      "dm": "10/07",
-      "mes": "Julho",
-      "cat": "sau",
-      "nome": "Dia da Saúde Ocular",
-      "ty": "Saúde ocular",
-      "cli": [
-        "Hospital Jordão",
-        "Ótica"
-      ],
-      "note": "Consulta de rotina e tela o dia todo."
-    },
-    {
       "dm": "13/07",
       "mes": "Julho",
       "cat": "com",
@@ -513,7 +485,6 @@
       "cli": [
         "CCR",
         "Alpha",
-        "Ótica",
         "Todos (comércio)"
       ],
       "note": "Rotina da família muda, bom pra pediatria e escola."
@@ -619,8 +590,7 @@
       "cli": [
         "Uzi",
         "Espaço Soraia",
-        "Spa Nature",
-        "Ótica"
+        "Spa Nature"
       ]
     },
     {
@@ -733,10 +703,9 @@
         "Números",
         "Exatta",
         "Norte Capital",
-        "Aerojet",
         "Todos (comércio)"
       ],
-      "note": "Peça de agradecimento em cada comércio. Entram também os de serviço (Números, Exatta, Norte Capital, Aerojet): eles têm cliente igual, só não vendem no balcão. Fica de fora o varejo puro tipo Black Friday e Halloween."
+      "note": "Peça de agradecimento em cada comércio. Entram também os de serviço (Números, Exatta, Norte Capital): eles têm cliente igual, só não vendem no balcão. Fica de fora o varejo puro tipo Black Friday e Halloween."
     },
     {
       "dm": "19/09",
@@ -778,8 +747,7 @@
       "cli": [
         "Espaço Soraia",
         "Uzi",
-        "Spa Nature",
-        "Ótica"
+        "Spa Nature"
       ],
       "note": "Confirmar 22 ou 23/09."
     },
@@ -821,7 +789,6 @@
       "nome": "Dia Mundial do Turismo",
       "ty": "Pop · engajamento",
       "cli": [
-        "Ótica",
         "Espaço Soraia",
         "Alpha"
       ]
@@ -884,29 +851,6 @@
         "Alpha",
         "Todos (comércio)"
       ]
-    },
-    {
-      "dm": "08/10",
-      "mes": "Outubro",
-      "cat": "sau",
-      "nome": "Dia Mundial da Visão",
-      "ty": "Saúde ocular",
-      "cli": [
-        "Hospital Jordão",
-        "Ótica"
-      ]
-    },
-    {
-      "dm": "08/10",
-      "mes": "Outubro",
-      "cat": "sau",
-      "nome": "Dia Mundial da Visão (2ª quinta de outubro)",
-      "ty": "Conscientização",
-      "cli": [
-        "Hospital Jordão",
-        "Ótica"
-      ],
-      "note": "Data móvel: é sempre a 2ª quinta-feira de outubro, em 2026 cai em 08/10. Conferir e corrigir todo ano, igual ao Carnaval. Ângulo Jordão: cegueira evitável."
     },
     {
       "dm": "10/10",
@@ -1190,20 +1134,8 @@
       "nome": "Cyber Monday",
       "ty": "Comercial",
       "cli": [
-        "Ótica",
         "Carlotinha",
         "Espaço Soraia"
-      ]
-    },
-    {
-      "dm": "13/12",
-      "mes": "Dezembro",
-      "cat": "com",
-      "nome": "Dia do Óptico",
-      "ty": "Óptica",
-      "cli": [
-        "Ótica",
-        "Hospital Jordão"
       ]
     },
     {

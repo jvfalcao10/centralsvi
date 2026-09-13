@@ -160,17 +160,6 @@ export default function Onboarding() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  // Calculate health score from onboarding progress
-  useEffect(() => {
-    if (selectedClient && client) {
-      const pct = Math.round(progressPct)
-      const newHealth = Math.min(100, Math.max(20, pct))
-      if (Math.abs(newHealth - client.health_score) > 5) {
-        supabase.from('clients').update({ health_score: newHealth }).eq('id', selectedClient)
-      }
-    }
-  }, [progressPct, selectedClient, client])
-
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />

@@ -1,9 +1,14 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
-import { DollarSign, TrendingUp, TrendingDown, Percent, Plus, CheckCircle, Send, AlertCircle, Clock, Calendar, CalendarCheck, Pencil, Trash2, Undo2, ExternalLink, Repeat, Layers, Handshake } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { clientPath } from '@/lib/client-management'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { DollarSign, TrendingUp, TrendingDown, Plus, CheckCircle, Send, AlertCircle, Clock, Calendar, CalendarCheck, Pencil, Trash2, Undo2, ExternalLink, Repeat, Layers, Handshake } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { fetchAllRows, confirmSaved, errorMessage } from '@/lib/data-access'
+import { formatAxisCurrency, contractTotals, expensesDueInMonth, receivedInMonth, isOpenInvoice, isOverdueInvoice, isBillableInMonth, localDateISO, monthlyInvoiceId } from '@/lib/management-metrics'
+import DataLoadError from '@/components/DataLoadError'
 import { useToast } from '@/hooks/use-toast'
 import { Invoice, Expense, formatCurrency, formatDate, emPermutaNoMes, isClienteMedico } from '@/types'
-import { monthKeyOf, monthKeyOfDate, monthLabel, buildMonthOptions, addMonths, getDueDate, firstBillingMonth, lastDayOfMonth } from '@/lib/months'
+import { monthKeyOf, monthKeyOfDate, monthLabel, buildMonthOptions, addMonths, getDueDate, lastDayOfMonth } from '@/lib/months'
 import { useUsdRate, mrrBRL } from '@/hooks/useUsdRate'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -213,19 +218,39 @@ const expenseCatClass: Record<string, string> = {
 
 export default function Financial() {
   const { toast } = useToast()
+  const [params, setParams] = useSearchParams()
+  const setParam = (key: string, value: string | null) => setParams(previous => {
+    const next = new URLSearchParams(previous)
+    if (value === null || value === 'all' && key === 'client') next.delete(key)
+    else next.set(key, value)
+    return next
+  }, { replace: true })
+  const queryMonth = (key: string) => {
+    const value = params.get(key) || params.get('month') || ''
+    return value === 'all' || /^\d{4}-(0[1-9]|1[0-2])$/.test(value) ? value : monthKeyOfDate(new Date())
+  }
+  const invoiceClientFilter = params.get('client') || 'all'
+  const invoiceReference = params.get('invoice')
+  const expenseReference = params.get('expense')
   const usdRate = useUsdRate()
   const [invoices, setInvoices] = useState<InvoiceWithClient[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [cobrancasManuais, setCobrancasManuais] = useState<CobrancaManual[]>([])
-  const [activeClientsMrr, setActiveClientsMrr] = useState<number | null>(null)
   const [activeClients, setActiveClients] = useState<ActiveClient[]>([])
   const [loading, setLoading] = useState(true)
+  const activeTab = ['overview', 'cobranca', 'manuais', 'receivable', 'payable', 'dre'].includes(params.get('tab') || '') ? params.get('tab')! : 'overview'
+  const setActiveTab = (value: string) => setParam('tab', value)
+  const [loadError, setLoadError] = useState(false)
+  const [mutating, setMutating] = useState(false)
+  const mutationInFlight = useRef(false)
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('all')
   const [expenseStatusFilter, setExpenseStatusFilter] = useState('all')
   const [expenseCatFilter, setExpenseCatFilter] = useState('all')
   // Filtros de mês: começam no mês corrente, com opção "Todos os meses".
-  const [invoiceMonthFilter, setInvoiceMonthFilter] = useState(() => monthKeyOfDate(new Date()))
-  const [expenseMonthFilter, setExpenseMonthFilter] = useState(() => monthKeyOfDate(new Date()))
+  const invoiceMonthFilter = queryMonth('invoiceMonth')
+  const setInvoiceMonthFilter = (value: string) => setParam('invoiceMonth', value)
+  const expenseMonthFilter = queryMonth('expenseMonth')
+  const setExpenseMonthFilter = (value: string) => setParam('expenseMonth', value)
   const [cobrancaMonth, setCobrancaMonth] = useState(() => monthKeyOfDate(new Date()))
   const [showNewExpense, setShowNewExpense] = useState(false)
   const [newExpense, setNewExpense] = useState({ categoria: 'operacional', descricao: '', valor: '', vencimento: '', recorrente: false, parcelado: false, parcelas: '2' })
@@ -234,232 +259,200 @@ export default function Financial() {
   const [editForm, setEditForm] = useState({ categoria: 'operacional', descricao: '', valor: '', vencimento: '', status: 'pendente', recorrente: false })
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null)
 
-  const fetchData = useCallback(async () => {
-    const [{ data: inv }, { data: exp }, { data: clientsData }, { data: cobrancasData }] = await Promise.all([
-      supabase.from('invoices').select('*, clients(name)').order('vencimento'),
-      supabase.from('expenses').select('*').order('vencimento'),
-      supabase.from('clients').select('id, name, company, mrr, currency, status, dia_vencimento, instagram, inicio_contrato, permuta, permuta_ate, cobranca_inicio, segment'),
-      supabase.from('cobrancas_manuais').select('*').eq('ativo', true).order('proximo_vencimento', { ascending: true, nullsFirst: false }),
-    ])
-    setInvoices(inv || [])
-    setExpenses(exp || [])
-    setCobrancasManuais((cobrancasData as CobrancaManual[]) || [])
-    if (clientsData) {
-      const active = clientsData.filter(c => c.status === 'ativo')
-      setActiveClients(active as ActiveClient[])
-      setActiveClientsMrr(active.reduce((s, c) => s + c.mrr, 0))
+  const fetchData = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true)
+    setLoadError(false)
+    try {
+      const [inv, exp, clientsData, cobrancasData] = await Promise.all([
+        fetchAllRows((from, to) => supabase.from('invoices').select('*, clients(name)').order('vencimento').order('id').range(from, to)),
+        fetchAllRows((from, to) => supabase.from('expenses').select('*').order('vencimento').order('id').range(from, to)),
+        fetchAllRows((from, to) => supabase.from('clients').select('id, name, company, mrr, currency, status, dia_vencimento, instagram, inicio_contrato, permuta, permuta_ate, cobranca_inicio, segment').order('id').range(from, to)),
+        fetchAllRows((from, to) => supabase.from('cobrancas_manuais').select('*').eq('ativo', true).order('proximo_vencimento', { ascending: true, nullsFirst: false }).order('id').range(from, to)),
+      ])
+      setInvoices(inv as InvoiceWithClient[])
+      setExpenses(exp as Expense[])
+      setCobrancasManuais(cobrancasData as CobrancaManual[])
+      setActiveClients(clientsData as ActiveClient[])
+    } catch {
+      setLoadError(true)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }, [])
 
-  const markCobrancaPaga = async (c: CobrancaManual) => {
-    if (c.recorrencia === 'avulso') {
-      // Avulso: marca como inativo (some da lista)
-      await supabase.from('cobrancas_manuais').update({ ativo: false, status: 'pago' }).eq('id', c.id)
-    } else {
-      // Recorrente: avança o proximo_vencimento pro próximo ciclo
-      let next: Date | null = null
-      if (c.recorrencia === 'mensal' && c.dia_mes) {
-        const d = new Date(c.proximo_vencimento || new Date())
-        d.setMonth(d.getMonth() + 1)
-        next = d
-      } else if (c.recorrencia === 'semanal') {
-        const d = new Date(c.proximo_vencimento || new Date())
-        d.setDate(d.getDate() + 7)
-        next = d
-      }
-      await supabase.from('cobrancas_manuais').update({
-        proximo_vencimento: next ? next.toISOString().split('T')[0] : c.proximo_vencimento,
-        status: 'ativo',
-      }).eq('id', c.id)
+  const performChange = async (action: () => Promise<unknown>, success: string, afterSave?: () => void) => {
+    if (mutationInFlight.current) return
+    mutationInFlight.current = true
+    setMutating(true)
+    try {
+      await action()
+      toast({ title: success })
+      afterSave?.()
+      // Atualiza os valores sem desmontar a aba, seus filtros e a lista em uso.
+      await fetchData(false)
+    } catch (error) {
+      toast({ title: 'Alteração não confirmada', description: errorMessage(error), variant: 'destructive' })
+    } finally {
+      mutationInFlight.current = false
+      setMutating(false)
     }
-    toast({ title: `${c.cliente_nome} marcada como recebida` })
-    fetchData()
   }
+
+  const markCobrancaPaga = (c: CobrancaManual) => performChange(async () => {
+    if (c.recorrencia === 'avulso') {
+      await confirmSaved(supabase.from('cobrancas_manuais').update({ ativo: false, status: 'pago' }).eq('id', c.id).eq('ativo', true).select('id'))
+    } else {
+      const currentDue = c.proximo_vencimento || localDateISO()
+      let next: string
+      if (c.recorrencia === 'mensal' && c.dia_mes) {
+        next = localDateISO(getDueDate(c.dia_mes, monthKeyOf(addMonths(currentDue, 1))))
+      } else if (c.recorrencia === 'semanal') {
+        const date = new Date(`${currentDue}T12:00:00`)
+        date.setDate(date.getDate() + 7)
+        next = localDateISO(date)
+      } else {
+        throw new Error('Confira a recorrência e o dia de vencimento desta cobrança.')
+      }
+      let update = supabase.from('cobrancas_manuais').update({ proximo_vencimento: next, status: 'ativo' }).eq('id', c.id)
+      update = c.proximo_vencimento ? update.eq('proximo_vencimento', c.proximo_vencimento) : update.is('proximo_vencimento', null)
+      await confirmSaved(update.select('id'))
+    }
+  }, c.recorrencia === 'avulso' ? `Cobrança de ${c.cliente_nome} resolvida` : `Próximo vencimento de ${c.cliente_nome} atualizado`)
 
   const deleteCobranca = async (c: CobrancaManual) => {
     if (!window.confirm(`Apagar a cobrança de ${c.cliente_nome}? Esta ação não pode ser desfeita.`)) return
-    await supabase.from('cobrancas_manuais').delete().eq('id', c.id)
-    toast({ title: `${c.cliente_nome} removida das cobranças` })
-    fetchData()
+    await performChange(() => confirmSaved(supabase.from('cobrancas_manuais').delete().eq('id', c.id).select('id')), `${c.cliente_nome} removida das cobranças`)
   }
 
-  useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => { void fetchData() }, [fetchData])
 
-  const markInvoicePaid = async (id: string) => {
-    await supabase.from('invoices').update({ status: 'pago', data_pagamento: new Date().toISOString().split('T')[0] }).eq('id', id)
-    toast({ title: 'Fatura marcada como paga!' })
-    fetchData()
-  }
-
-  const markExpensePaid = async (id: string) => {
-    await supabase.from('expenses').update({ status: 'pago' }).eq('id', id)
-    toast({ title: 'Despesa marcada como paga!' })
-    fetchData()
-  }
-
-  const markExpensePending = async (id: string) => {
-    await supabase.from('expenses').update({ status: 'pendente' }).eq('id', id)
-    toast({ title: 'Despesa marcada como pendente' })
-    fetchData()
-  }
+  const markInvoicePaid = (id: string) => performChange(
+    () => confirmSaved(supabase.from('invoices').update({ status: 'pago', data_pagamento: localDateISO() }).eq('id', id).in('status', ['pendente', 'atrasado']).select('id')),
+    'Pagamento da fatura confirmado',
+  )
+  const markExpensePaid = (id: string) => performChange(
+    () => confirmSaved(supabase.from('expenses').update({ status: 'pago' }).eq('id', id).neq('status', 'pago').select('id')),
+    'Despesa marcada como paga',
+  )
+  const markExpensePending = (id: string) => performChange(
+    () => confirmSaved(supabase.from('expenses').update({ status: 'pendente' }).eq('id', id).eq('status', 'pago').select('id')),
+    'Despesa marcada como pendente',
+  )
 
   const openEdit = (exp: Expense) => {
     setEditingExpense(exp)
-    setEditForm({
-      categoria: exp.categoria,
-      descricao: exp.descricao,
-      valor: String(exp.valor),
-      vencimento: exp.vencimento,
-      status: exp.status,
-      recorrente: exp.recorrente,
-    })
+    setEditForm({ categoria: exp.categoria, descricao: exp.descricao, valor: String(exp.valor), vencimento: exp.vencimento, status: exp.status, recorrente: exp.recorrente })
   }
 
   const saveEdit = async () => {
     if (!editingExpense) return
-    await supabase.from('expenses').update({
-      categoria: editForm.categoria,
-      descricao: editForm.descricao,
-      valor: parseFloat(editForm.valor),
-      vencimento: editForm.vencimento,
-      status: editForm.status,
-      recorrente: editForm.recorrente,
-    }).eq('id', editingExpense.id)
-    toast({ title: 'Despesa atualizada' })
-    setEditingExpense(null)
-    fetchData()
+    const valor = Number(editForm.valor)
+    if (!editForm.descricao.trim() || !editForm.vencimento || !Number.isFinite(valor) || valor <= 0) {
+      toast({ title: 'Confira a despesa', description: 'Informe descrição, vencimento e um valor maior que zero.', variant: 'destructive' })
+      return
+    }
+    await performChange(() => confirmSaved(supabase.from('expenses').update({
+      categoria: editForm.categoria, descricao: editForm.descricao.trim(), valor,
+      vencimento: editForm.vencimento, status: editForm.status, recorrente: editForm.recorrente,
+    }).eq('id', editingExpense.id).select('id')), 'Despesa atualizada', () => setEditingExpense(null))
   }
 
   const deleteExpense = async () => {
     if (!deleteTarget) return
-    await supabase.from('expenses').delete().eq('id', deleteTarget.id)
-    toast({ title: 'Despesa removida' })
-    setDeleteTarget(null)
-    fetchData()
+    await performChange(() => confirmSaved(supabase.from('expenses').delete().eq('id', deleteTarget.id).select('id')), 'Despesa removida', () => setDeleteTarget(null))
   }
 
   const resetNewExpense = () =>
     setNewExpense({ categoria: 'operacional', descricao: '', valor: '', vencimento: '', recorrente: false, parcelado: false, parcelas: '2' })
 
   const addExpense = async () => {
-    if (!newExpense.descricao || !newExpense.valor || !newExpense.vencimento) return
-    const valor = parseFloat(newExpense.valor)
-    const qtd = newExpense.parcelado
-      ? Math.max(2, Math.min(120, parseInt(newExpense.parcelas, 10) || 2))
-      : 1
-
-    if (qtd > 1) {
-      // Parcelada: cria as N linhas de uma vez, uma por mês. Nunca recorrente.
-      const rows = Array.from({ length: qtd }, (_, i) => ({
-        categoria: newExpense.categoria,
-        descricao: newExpense.descricao,
-        valor,
-        vencimento: addMonths(newExpense.vencimento, i),
-        status: 'pendente',
-        recorrente: false,
-        parcela_atual: i + 1,
-        parcelas_total: qtd,
-      }))
-      const { error } = await supabase.from('expenses').insert(rows)
-      if (error) {
-        toast({ title: 'Erro ao criar as parcelas', description: error.message, variant: 'destructive' })
-        return
-      }
-      toast({
-        title: `${qtd} parcelas criadas`,
-        description: `${formatCurrency(valor)} por mês, de ${formatDate(rows[0].vencimento)} até ${formatDate(rows[qtd - 1].vencimento)}.`,
-      })
-    } else {
-      const { error } = await supabase.from('expenses').insert({
-        categoria: newExpense.categoria,
-        descricao: newExpense.descricao,
-        valor,
-        vencimento: newExpense.vencimento,
-        status: 'pendente',
-        recorrente: newExpense.recorrente,
-      })
-      if (error) {
-        toast({ title: 'Erro ao adicionar despesa', description: error.message, variant: 'destructive' })
-        return
-      }
-      toast({ title: 'Despesa adicionada!' })
+    const valor = Number(newExpense.valor)
+    if (!newExpense.descricao.trim() || !newExpense.vencimento || !Number.isFinite(valor) || valor <= 0) {
+      toast({ title: 'Confira a despesa', description: 'Informe descrição, vencimento e um valor maior que zero.', variant: 'destructive' })
+      return
     }
-
-    setShowNewExpense(false)
-    resetNewExpense()
-    fetchData()
+    const qtd = newExpense.parcelado ? Math.max(2, Math.min(120, parseInt(newExpense.parcelas, 10) || 2)) : 1
+    const rows = Array.from({ length: qtd }, (_, i) => ({
+      categoria: newExpense.categoria, descricao: newExpense.descricao.trim(), valor,
+      vencimento: addMonths(newExpense.vencimento, i), status: 'pendente',
+      recorrente: qtd > 1 ? false : newExpense.recorrente,
+      parcela_atual: qtd > 1 ? i + 1 : null, parcelas_total: qtd > 1 ? qtd : null,
+    }))
+    await performChange(() => confirmSaved(supabase.from('expenses').insert(rows).select('id'), qtd),
+      qtd > 1 ? `${qtd} parcelas criadas` : 'Despesa adicionada',
+      () => { setShowNewExpense(false); resetNewExpense() })
   }
 
   const registerPayment = async (client: ActiveClient, monthKey: string) => {
-    if (!client.dia_vencimento) return
+    if (!client.dia_vencimento || mutationInFlight.current) return
     setRegisteringPayment(client.id)
-    const today = new Date().toISOString().split('T')[0]
-    const dueDate = getDueDate(client.dia_vencimento, monthKey).toISOString().split('T')[0]
-
-    // Desde a geracao automatica (todo dia 1), a fatura do mes ja existe como
-    // `pendente`. Registrar pagamento e dar BAIXA nela, nao criar outra, senao o
-    // mes fica com duas linhas e o total a receber conta dobrado.
-    const { data: emAberto } = await supabase
-      .from('invoices')
-      .select('id')
-      .eq('client_id', client.id)
-      .neq('status', 'pago')
-      .gte('vencimento', `${monthKey}-01`)
-      .lte('vencimento', lastDayOfMonth(monthKey))
-      .limit(1)
-
-    if (emAberto && emAberto.length > 0) {
-      await supabase.from('invoices')
-        .update({ status: 'pago', data_pagamento: today })
-        .eq('id', emAberto[0].id)
-    } else {
-      await supabase.from('invoices').insert({
-        client_id: client.id,
-        valor: mrrBRL(client.mrr, client.currency, usdRate),
-        status: 'pago',
-        vencimento: dueDate,
-        data_pagamento: today,
-      })
+    try {
+      await performChange(async () => {
+        const { data: existing, error } = await supabase.from('invoices').select('id, status')
+          .eq('client_id', client.id).in('status', ['pendente', 'atrasado', 'pago'])
+          .gte('vencimento', `${monthKey}-01`).lte('vencimento', lastDayOfMonth(monthKey))
+        if (error) throw new Error(error.message)
+        if (!existing) throw new Error('Não foi possível consultar a fatura deste mês.')
+        if (existing.length > 1) throw new Error('Há mais de uma fatura neste mês. Confira e dê baixa na fatura correta em Contas a Receber.')
+        if (existing[0]?.status === 'pago') throw new Error('Este mês já tem pagamento registrado. Atualize a tela para conferir.')
+        if (existing[0]) {
+          await confirmSaved(supabase.from('invoices').update({ status: 'pago', data_pagamento: localDateISO() })
+            .eq('id', existing[0].id).in('status', ['pendente', 'atrasado']).select('id'))
+        } else {
+          // O mesmo cliente/mês usa o mesmo ID nas tentativas de criação manual.
+          await confirmSaved(supabase.from('invoices').upsert({
+            id: await monthlyInvoiceId(client.id, monthKey),
+            client_id: client.id,
+            valor: mrrBRL(client.mrr, client.currency, usdRate),
+            status: 'pago',
+            vencimento: localDateISO(getDueDate(client.dia_vencimento!, monthKey)),
+            data_pagamento: localDateISO(),
+          }, { onConflict: 'id', ignoreDuplicates: true }).select('id'))
+        }
+      }, `Pagamento de ${client.name} confirmado`)
+    } finally {
+      setRegisteringPayment(null)
     }
-    toast({ title: `Pagamento de ${client.name} registrado em ${monthLabel(monthKey)}!` })
-    setRegisteringPayment(null)
-    fetchData()
   }
 
   const today = new Date()
-  const todayStr = today.toISOString().split('T')[0]
+  const todayStr = localDateISO(today)
   const in7Days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-  const in7DaysStr = in7Days.toISOString().split('T')[0]
+  const in7DaysStr = localDateISO(in7Days)
 
   const currentMonth = monthKeyOfDate(today)
 
   // Use USD-converted MRR sum for financial calculations
-  const mrr = activeClients.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0)
+  const contracts = contractTotals(activeClients, currentMonth, usdRate)
+  const operatingClients = activeClients.filter(c => contracts.active.includes(c))
+  const mrr = contracts.total
 
   // Permuta não vira dinheiro. Fica no MRR contratado (é contrato ativo), mas sai
   // da Receita do mês, senão o lucro e a margem contam caixa que nunca entrou.
-  const clientesEmPermuta = activeClients.filter(c => emPermutaNoMes(c, currentMonth))
+  const clientesEmPermuta = operatingClients.filter(c => emPermutaNoMes(c, currentMonth))
   const mrrEmPermuta = clientesEmPermuta.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0)
-  const totalReceivable = invoices.filter(i => i.status !== 'pago').reduce((s, i) => s + i.valor, 0)
-  const overdueInvoices = invoices.filter(i => i.status === 'atrasado' || (i.status === 'pendente' && i.vencimento < todayStr))
-  const dueSoonInvoices = invoices.filter(i => i.status === 'pendente' && i.vencimento >= todayStr && i.vencimento <= in7DaysStr)
+  const overdueInvoices = invoices.filter(i => isOverdueInvoice(i, todayStr))
 
-  // Receita Mês = MRR recorrente do mês (base do P&L). NÃO somar faturas pagas: cada fatura JÁ é a mensalidade realizada do cliente — somar MRR + faturas conta a recorrência 2x, e as faturas incluem meses anteriores.
+  // Estimativa contratada do mês. Recebimentos são calculados separadamente pela data de pagamento.
   const totalRevenue = mrr - mrrEmPermuta
-  const totalExpensesVal = expenses.reduce((s, e) => s + e.valor, 0)
+  const currentExpenses = expensesDueInMonth(expenses, currentMonth)
+  const totalExpensesVal = currentExpenses.reduce((s, e) => s + Number(e.valor), 0)
+  const receivedCurrentMonth = receivedInMonth(invoices, currentMonth)
+  const paymentsWithoutDate = invoices.filter(i => i.status === 'pago' && !i.data_pagamento).length
   const netProfit = totalRevenue - totalExpensesVal
-  const margin = totalRevenue > 0 ? (netProfit / totalRevenue * 100).toFixed(1) : '0.0'
 
   const expenseMonthOptions = buildMonthOptions(expenses.map(e => e.vencimento), currentMonth)
   const invoiceMonthOptions = buildMonthOptions(invoices.map(i => i.vencimento), currentMonth)
 
-  const filteredInvoices = invoices.filter(i => {
+  const clientInvoices = invoices.filter(i => invoiceClientFilter === 'all' || i.client_id === invoiceClientFilter)
+  const filteredInvoices = clientInvoices.filter(i => {
+    if (invoiceReference && i.id !== invoiceReference) return false
     if (invoiceStatusFilter !== 'all' && i.status !== invoiceStatusFilter) return false
     if (invoiceMonthFilter !== 'all' && monthKeyOf(i.vencimento) !== invoiceMonthFilter) return false
     return true
   })
   const filteredExpenses = expenses.filter(e => {
+    if (expenseReference && e.id !== expenseReference) return false
     if (expenseStatusFilter !== 'all' && e.status !== expenseStatusFilter) return false
     if (expenseCatFilter !== 'all' && e.categoria !== expenseCatFilter) return false
     if (expenseMonthFilter !== 'all' && monthKeyOf(e.vencimento) !== expenseMonthFilter) return false
@@ -477,7 +470,7 @@ export default function Financial() {
   const monthExpensesPaid = monthExpenses.filter(e => e.status === 'pago').reduce((s, e) => s + e.valor, 0)
   const monthExpensesOpen = monthExpensesTotal - monthExpensesPaid
 
-  // ---- DRE real, mês a mês ----
+  // Faturas e despesas agrupadas por vencimento, sem inferir recebimento.
   // Antes isto era um array fixo no código com números inventados. Com dado real
   // no banco, número inventado é pior que número nenhum: a pessoa acredita.
   const dreMensal = useMemo(() => {
@@ -517,37 +510,38 @@ export default function Financial() {
 
   // Clientes fora da geração automática de fatura: a conversão de moeda depende
   // da cotação do dia, que só o app tem. Esses continuam sendo registrados a mão.
-  const clientesForaDaGeracao = activeClients.filter(c => c.currency !== 'BRL' && c.dia_vencimento !== null)
+  const clientesForaDaGeracao = operatingClients.filter(c => c.currency !== 'BRL' && c.dia_vencimento !== null)
 
-  const costosDirectos = expenses.filter(e => e.categoria === 'pessoal').reduce((s, e) => s + e.valor, 0)
-  const fixedExpenses = expenses.filter(e => e.categoria !== 'pessoal').reduce((s, e) => s + e.valor, 0)
-  const grossMargin = mrr - costosDirectos
+  const costosDirectos = currentExpenses.filter(e => e.categoria === 'pessoal').reduce((s, e) => s + e.valor, 0)
+  const fixedExpenses = currentExpenses.filter(e => e.categoria !== 'pessoal').reduce((s, e) => s + e.valor, 0)
+  const grossMargin = totalRevenue - costosDirectos
   const netProfitDRE = grossMargin - fixedExpenses
 
   // --- Billing module grouping ---
   // Quem está em permuta não é cobrado, então sai das seções por vencimento e
   // aparece na própria seção. Sem isso ele viraria "vence hoje" e depois "vencido".
   const todayDay = today.getDate()
-  const clientsWithDue = activeClients.filter(c => c.dia_vencimento !== null && !emPermutaNoMes(c, currentMonth))
-  const clientsNoDue = activeClients.filter(c => c.dia_vencimento === null && !emPermutaNoMes(c, currentMonth))
+  const clientsWithDue = operatingClients.filter(c => isBillableInMonth(c, currentMonth) && !invoices.some(i =>
+    i.client_id === c.id && i.status === 'pago' && monthKeyOf(i.vencimento) === currentMonth))
+  const clientsNoDue = operatingClients.filter(c => c.dia_vencimento === null && !emPermutaNoMes(c, currentMonth))
 
   const clientsToday = clientsWithDue.filter(c => c.dia_vencimento === todayDay)
   const clientsThisWeek = clientsWithDue.filter(c => {
     if (!c.dia_vencimento) return false
     const d = getDueDate(c.dia_vencimento)
-    const dStr = d.toISOString().split('T')[0]
+    const dStr = localDateISO(d)
     return dStr > todayStr && dStr <= in7DaysStr
   })
   const clientsThisMonth = clientsWithDue.filter(c => {
     if (!c.dia_vencimento) return false
     const d = getDueDate(c.dia_vencimento)
-    const dStr = d.toISOString().split('T')[0]
+    const dStr = localDateISO(d)
     return dStr > in7DaysStr
   })
   const clientsOverdue = clientsWithDue.filter(c => {
     if (!c.dia_vencimento) return false
     const d = getDueDate(c.dia_vencimento)
-    const dStr = d.toISOString().split('T')[0]
+    const dStr = localDateISO(d)
     return dStr < todayStr
   })
 
@@ -555,7 +549,7 @@ export default function Financial() {
     { label: 'Vence hoje', value: clientsToday.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0), count: clientsToday.length, color: 'text-danger' },
     { label: 'Esta semana', value: clientsThisWeek.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0), count: clientsThisWeek.length, color: 'text-warning' },
     { label: 'Este mês', value: clientsThisMonth.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0), count: clientsThisMonth.length, color: 'text-primary' },
-    { label: 'Já vencidos', value: clientsOverdue.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0), count: clientsOverdue.length, color: 'text-muted-foreground' },
+    { label: 'Faturas vencidas em aberto', value: overdueInvoices.reduce((s, i) => s + Number(i.valor), 0), count: overdueInvoices.length, color: 'text-danger' },
   ]
 
   // --- Cobrança por mês ---
@@ -576,26 +570,17 @@ export default function Financial() {
   // fechou no próprio dia do vencimento apareceria devendo o mês em que entrou.
   // Permuta no mês consultado sai da conta de cobrança e vai pra lista própria.
   // Isso é por MÊS: a Carlotinha é permuta em agosto e cobrável em setembro.
-  const clientesPermutaNoMes = activeClients.filter(c =>
+  const clientesPermutaNoMes = operatingClients.filter(c =>
     c.dia_vencimento !== null && emPermutaNoMes(c, cobrancaMonth)
   )
-  const clientsInMonth = activeClients.filter(c =>
-    c.dia_vencimento !== null &&
-    !emPermutaNoMes(c, cobrancaMonth) &&
-    // Data explicita de inicio de cobranca manda sobre a regra deduzida.
-    (c.cobranca_inicio
-      ? monthKeyOf(c.cobranca_inicio) <= cobrancaMonth
-      : (!c.inicio_contrato || firstBillingMonth(c.inicio_contrato, c.dia_vencimento) <= cobrancaMonth))
-  )
+  const clientsInMonth = operatingClients.filter(c => isBillableInMonth(c, cobrancaMonth))
   const hasPaidInMonth = (clientId: string) => invoices.some(inv =>
     inv.client_id === clientId && inv.status === 'pago' && inv.vencimento.startsWith(cobrancaMonth)
   )
   const monthClientsPaid = clientsInMonth.filter(c => hasPaidInMonth(c.id))
   const monthClientsUnpaid = clientsInMonth.filter(c => !hasPaidInMonth(c.id))
 
-  const monthReceived = invoices
-    .filter(i => i.status === 'pago' && i.vencimento.startsWith(cobrancaMonth))
-    .reduce((s, i) => s + i.valor, 0)
+  const monthReceived = receivedInMonth(invoices, cobrancaMonth)
   const monthMissing = monthClientsUnpaid.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0)
 
   const billingRowDeps = {
@@ -608,16 +593,21 @@ export default function Financial() {
     </div>
   )
 
+  if (loadError) return <DataLoadError onRetry={() => { void fetchData() }} />
+
   return (
-    <div className="space-y-4 animate-fade-in">
-      <Tabs defaultValue="overview">
-        <TabsList className="bg-muted">
+    <div className="space-y-4 animate-fade-in" aria-busy={mutating}>
+      {mutating && <p role="status" className="text-sm text-muted-foreground">Confirmando alteração...</p>}
+      {paymentsWithoutDate > 0 && <p role="alert" className="text-sm text-warning">{paymentsWithoutDate} fatura(s) paga(s) sem data de recebimento. Complete os registros para conferir os totais de caixa.</p>}
+      <div className="flex flex-wrap justify-end gap-2"><Button asChild variant="outline" size="sm"><Link to="/financial/previsao">Previsão de entradas e saídas</Link></Button><Button asChild variant="outline" size="sm"><Link to="/financial/conferencia">Conferência financeira</Link></Button></div>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="bg-muted max-w-full h-auto flex-wrap justify-start">
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
           <TabsTrigger value="cobranca">Cobrança</TabsTrigger>
           <TabsTrigger value="manuais">Cobranças Manuais</TabsTrigger>
           <TabsTrigger value="receivable">Contas a Receber</TabsTrigger>
           <TabsTrigger value="payable">Contas a Pagar</TabsTrigger>
-          <TabsTrigger value="dre">DRE</TabsTrigger>
+          <TabsTrigger value="dre">Resultado previsto</TabsTrigger>
         </TabsList>
 
         {/* OVERVIEW */}
@@ -625,18 +615,18 @@ export default function Financial() {
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
             {[
               {
-                label: 'MRR (Clientes Ativos)', value: formatCurrency(mrr), icon: DollarSign, color: 'text-primary',
+                label: 'MRR contratado', value: formatCurrency(mrr), icon: DollarSign, color: 'text-primary',
                 // Explica a diferença entre este card e a Receita. Sem isso, dois
                 // números diferentes lado a lado parecem erro.
                 hint: mrrEmPermuta > 0 ? `Inclui ${formatCurrency(mrrEmPermuta)} em permuta` : null,
               },
               {
-                label: 'Receita Mês', value: formatCurrency(totalRevenue), icon: TrendingUp, color: 'text-success',
+                label: 'Recorrência sem permuta', value: formatCurrency(totalRevenue), icon: TrendingUp, color: 'text-success',
                 hint: mrrEmPermuta > 0 ? `Sem ${formatCurrency(mrrEmPermuta)} de permuta` : null,
               },
-              { label: 'Despesas Mês', value: formatCurrency(totalExpensesVal), icon: TrendingDown, color: 'text-danger', hint: null },
-              { label: 'Lucro Líquido', value: formatCurrency(netProfit), icon: DollarSign, color: netProfit > 0 ? 'text-success' : 'text-danger', hint: null },
-              { label: 'Margem', value: `${margin}%`, icon: Percent, color: 'text-info', hint: null },
+              { label: 'Despesas do mês', value: formatCurrency(totalExpensesVal), icon: TrendingDown, color: 'text-danger', hint: `Vencimento em ${monthLabel(currentMonth)}` },
+              { label: 'Saldo previsto do mês', value: formatCurrency(netProfit), icon: DollarSign, color: netProfit > 0 ? 'text-success' : 'text-danger', hint: 'Recorrência sem permuta menos despesas do mês' },
+              { label: 'Recebido no mês', value: formatCurrency(receivedCurrentMonth), icon: CheckCircle, color: 'text-info', hint: 'Pela data de pagamento registrada' },
             ].map(kpi => {
               const Icon = kpi.icon
               return (
@@ -656,15 +646,15 @@ export default function Financial() {
 
           <Card className="border-border bg-card">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Projeção de 6 meses</CardTitle>
-              <p className="text-xs text-muted-foreground">MRR contratado (sem permuta) contra a despesa já lançada em cada mês, incluindo parcela de cartão que continua correndo.</p>
+              <CardTitle className="text-sm">Projeção parcial de 6 meses</CardTitle>
+              <p className="text-xs text-muted-foreground">Recorrência contratada sem permuta e despesas já registradas. Confira os custos recorrentes futuros antes de usar a sobra para decidir novos gastos.</p>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={projecao}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="mes" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} />
+                  <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={formatAxisCurrency} />
                   <Tooltip content={<CustomTooltip />} />
                   <Line type="monotone" dataKey="receita" name="Receita" stroke="#4ABE7C" strokeWidth={2} dot={{ fill: '#4ABE7C', r: 3 }} />
                   <Line type="monotone" dataKey="custo" name="Custo" stroke="#E0726A" strokeWidth={2} dot={{ fill: '#E0726A', r: 3 }} />
@@ -894,9 +884,9 @@ export default function Financial() {
                               size="sm"
                               className="h-7 text-xs gap-1 text-success hover:text-success"
                               onClick={() => markCobrancaPaga(c)}
-                              title={c.recorrencia === 'avulso' ? 'Marcar como resolvido' : 'Recebido — avança próximo vencimento'}
+                              title={c.recorrencia === 'avulso' ? 'Marcar como resolvido' : 'Avançar para o próximo vencimento'}
                             >
-                              <CheckCircle className="h-3.5 w-3.5" /> {c.recorrencia === 'avulso' ? 'Resolvido' : 'Recebido'}
+                              <CheckCircle className="h-3.5 w-3.5" /> {c.recorrencia === 'avulso' ? 'Resolvido' : 'Avançar vencimento'}
                             </Button>
                             <Button
                               variant="ghost"
@@ -920,6 +910,8 @@ export default function Financial() {
 
         {/* RECEIVABLE */}
         <TabsContent value="receivable" className="space-y-4 mt-4">
+          <div className="flex flex-wrap items-center gap-3"><Select value={invoiceClientFilter} onValueChange={value => { setParams(previous => { const next = new URLSearchParams(previous); if (value === 'all') next.delete('client'); else next.set('client', value); next.delete('invoice'); return next }, { replace: true }) }}><SelectTrigger aria-label="Cliente das faturas" className="w-full sm:w-72"><SelectValue placeholder="Cliente" /></SelectTrigger><SelectContent><SelectItem value="all">Todos os clientes</SelectItem>{activeClients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select>{invoiceClientFilter !== 'all' && <Link className="text-sm text-primary" to={clientPath(invoiceClientFilter)}>Abrir gestão do cliente</Link>}</div>
+          {invoiceReference && <p className="text-sm text-muted-foreground">Fatura selecionada na conferência. <Button variant="link" size="sm" onClick={() => setParam('invoice', null)}>Mostrar todas</Button></p>}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <Card className="border-primary/30 bg-card"><CardContent className="p-4">
               <p className="text-xs text-muted-foreground">
@@ -930,15 +922,15 @@ export default function Financial() {
             </CardContent></Card>
             <Card className="border-border bg-card"><CardContent className="p-4">
               <p className="text-xs text-muted-foreground">Total a Receber</p>
-              <p className="text-lg font-bold text-success">{formatCurrency(totalReceivable)}</p>
+              <p className="text-lg font-bold text-success">{formatCurrency(clientInvoices.filter(isOpenInvoice).reduce((sum, i) => sum + Number(i.valor), 0))}</p>
             </CardContent></Card>
             <Card className="border-border bg-card"><CardContent className="p-4">
               <p className="text-xs text-muted-foreground">Vencidas</p>
-              <p className="text-lg font-bold text-danger">{formatCurrency(overdueInvoices.reduce((s, i) => s + i.valor, 0))}</p>
+              <p className="text-lg font-bold text-danger">{formatCurrency(clientInvoices.filter(i => isOverdueInvoice(i, todayStr)).reduce((s, i) => s + Number(i.valor), 0))}</p>
             </CardContent></Card>
             <Card className="border-border bg-card"><CardContent className="p-4">
               <p className="text-xs text-muted-foreground">Vencendo em 7 dias</p>
-              <p className="text-lg font-bold text-warning">{formatCurrency(dueSoonInvoices.reduce((s, i) => s + i.valor, 0))}</p>
+              <p className="text-lg font-bold text-warning">{formatCurrency(clientInvoices.filter(i => i.status === 'pendente' && i.vencimento >= todayStr && i.vencimento <= in7DaysStr).reduce((s, i) => s + Number(i.valor), 0))}</p>
             </CardContent></Card>
           </div>
 
@@ -993,7 +985,7 @@ export default function Financial() {
               <TableBody>
                 {filteredInvoices.map(inv => (
                   <TableRow key={inv.id} className="border-border hover:bg-muted/20">
-                    <TableCell className="text-sm font-medium">{inv.clients?.name || '—'}</TableCell>
+                    <TableCell className="text-sm font-medium"><Link className="hover:text-primary underline-offset-4 hover:underline" to={clientPath(inv.client_id)}>{inv.clients?.name || 'Cliente'}</Link></TableCell>
                     <TableCell className="font-bold text-success text-sm">{formatCurrency(inv.valor)}</TableCell>
                     <TableCell className={`text-sm ${inv.status === 'atrasado' ? 'text-danger font-medium' : 'text-muted-foreground'}`}>{formatDate(inv.vencimento)}</TableCell>
                     <TableCell>
@@ -1025,6 +1017,7 @@ export default function Financial() {
 
         {/* PAYABLE */}
         <TabsContent value="payable" className="space-y-4 mt-4">
+          {expenseReference && <p className="text-sm text-muted-foreground">Despesa selecionada na conferência. <Button variant="link" size="sm" onClick={() => setParam('expense', null)}>Mostrar todas</Button></p>}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Card className="border-border bg-card"><CardContent className="p-4">
               <p className="text-xs text-muted-foreground">
@@ -1155,15 +1148,15 @@ export default function Financial() {
         <TabsContent value="dre" className="space-y-4 mt-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card className="border-border bg-card">
-              <CardHeader><CardTitle className="text-sm">DRE — {new Date().toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">Resultado previsto: {new Date().toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}</CardTitle></CardHeader>
               <CardContent>
                 <div className="space-y-3 text-sm">
                   {[
-                    { label: 'Receita Total (MRR)', value: mrr, bold: false, type: 'income' },
+                    { label: 'Recorrência contratada sem permuta', value: totalRevenue, bold: false, type: 'income' },
                     { label: '(-) Custos Diretos (Pessoal)', value: -costosDirectos, bold: false, type: 'expense' },
                     { label: '(=) Margem Bruta', value: grossMargin, bold: true, type: grossMargin > 0 ? 'income' : 'expense' },
-                    { label: '(-) Despesas Fixas', value: -fixedExpenses, bold: false, type: 'expense' },
-                    { label: '(=) Lucro Líquido', value: netProfitDRE, bold: true, type: netProfitDRE > 0 ? 'income' : 'expense' },
+                    { label: '(-) Outras despesas do mês', value: -fixedExpenses, bold: false, type: 'expense' },
+                    { label: '(=) Saldo previsto', value: netProfitDRE, bold: true, type: netProfitDRE > 0 ? 'income' : 'expense' },
                   ].map((row, i) => (
                     <div key={i}>
                       {(i === 2 || i === 4) && <div className="border-t border-border my-2" />}
@@ -1178,8 +1171,8 @@ export default function Financial() {
                   <div className="border-t border-border pt-3">
                     <div className="flex justify-between font-bold">
                       <span>Margem %</span>
-                      <span className={netProfitDRE / mrr > 0 ? 'text-success' : 'text-danger'}>
-                        {mrr > 0 ? (netProfitDRE / mrr * 100).toFixed(1) : 0}%
+                      <span className={netProfitDRE / totalRevenue > 0 ? 'text-success' : 'text-danger'}>
+                        {totalRevenue > 0 ? (netProfitDRE / totalRevenue * 100).toFixed(1) : 0}%
                       </span>
                     </div>
                   </div>
@@ -1188,15 +1181,15 @@ export default function Financial() {
             </Card>
 
             <Card className="border-border bg-card">
-              <CardHeader><CardTitle className="text-sm">Comparativo Mensal</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">Faturas e despesas por vencimento</CardTitle></CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow className="border-border">
                       <TableHead className="text-xs">Mês</TableHead>
-                      <TableHead className="text-xs">Receita</TableHead>
+                      <TableHead className="text-xs">Faturado</TableHead>
                       <TableHead className="text-xs">Despesas</TableHead>
-                      <TableHead className="text-xs">Lucro</TableHead>
+                      <TableHead className="text-xs">Saldo previsto</TableHead>
                       <TableHead className="text-xs text-right">Margem</TableHead>
                     </TableRow>
                   </TableHeader>

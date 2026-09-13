@@ -1,10 +1,8 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { useLocation, Link } from 'react-router-dom'
 import {
-  LayoutDashboard, GitBranch, Users, CheckSquare, DollarSign, Crosshair, FileText,
-  ClipboardCheck, Clock, UserCog, UserCheck, Kanban, BarChart3, Sun, Moon, LogOut,
-  ChevronRight, ChevronDown, Briefcase, Sparkles, ShieldCheck, Settings, PieChart,
-  Activity, Compass, Gauge, Boxes, KeyRound, BookOpen, Brain,
+  LayoutDashboard, Users, ClipboardCheck, Briefcase, DollarSign, PieChart,
+  Compass, ShieldCheck, Activity, Sun, Moon, LogOut, ChevronDown, ExternalLink,
 } from 'lucide-react'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
@@ -13,320 +11,135 @@ import {
 } from '@/components/ui/sidebar'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { useAuth, UserRole } from '@/contexts/AuthContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useNavBadges } from '@/hooks/useNavBadges'
+import {
+  findActiveNavigation, getVisibleNavigation, navigationBadgeCount,
+  type NavigationArea, type NavigationIcon,
+} from '@/lib/navigation'
 import logoBranca from '@/assets/logo-branca.png'
 import logoSvi from '@/assets/logo-svi.png'
 
-interface SubItem {
-  title: string
-  url: string
-  minRole: UserRole
-  badgeKey?: 'approvals' | 'team' | 'deliveries' | 'invoices' | 'clients'
+const ICONS: Record<NavigationIcon, typeof LayoutDashboard> = {
+  home: LayoutDashboard, clients: Users, operations: ClipboardCheck, commercial: Briefcase,
+  financial: DollarSign, results: PieChart, resources: Compass, admin: ShieldCheck, traffic: Activity,
 }
-
-interface NavGroup {
-  type: 'group'
-  title: string
-  icon: any
-  minRole: UserRole
-  items: SubItem[]
-  badgeKeys?: ('approvals' | 'team' | 'deliveries' | 'invoices' | 'clients')[]
-}
-
-interface NavSingle {
-  type: 'item'
-  title: string
-  url: string
-  icon: any
-  minRole: UserRole
-  badgeKey?: 'approvals' | 'team' | 'deliveries' | 'invoices' | 'clients'
-}
-
-type NavEntry = NavGroup | NavSingle
-
-/** Menu reduzido para role 'traffic' (gestor de tráfego, escopo restrito). */
-const NAV_TRAFFIC: NavEntry[] = [
-  { type: 'item', title: 'Tráfego', url: '/operacional/trafego', icon: Activity, minRole: 'executor' },
-  { type: 'item', title: 'Análises', url: '/operacional/trafego/analises', icon: Activity, minRole: 'executor' },
-]
-
-const NAV: NavEntry[] = [
-  { type: 'item', title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard, minRole: 'manager' },
-  { type: 'item', title: 'Acessos', url: '/acessos', icon: Compass, minRole: 'executor' },
-  { type: 'item', title: 'Tarefas', url: '/tarefas', icon: CheckSquare, minRole: 'executor' },
-  { type: 'item', title: 'Senhas', url: '/senhas', icon: KeyRound, minRole: 'executor' },
-  { type: 'item', title: 'Processos', url: '/processos', icon: BookOpen, minRole: 'executor' },
-  { type: 'item', title: 'Catálogo', url: '/catalogo', icon: Boxes, minRole: 'manager' },
-  { type: 'item', title: 'Diretoria', url: '/diretoria', icon: Gauge, minRole: 'manager' },
-  { type: 'item', title: 'Inteligência', url: '/inteligencia', icon: Brain, minRole: 'executor' },
-  { type: 'item', title: 'Documentos', url: '/documentos', icon: FileText, minRole: 'executor' },
-  { type: 'item', title: 'Aprovações IA', url: '/content/aprovacoes', icon: Sparkles, minRole: 'executor' },
-
-  {
-    type: 'group',
-    title: 'Conteúdo',
-    icon: FileText,
-    minRole: 'executor',
-    items: [
-      // O kanban e o banco de pautas existiam sem entrada no menu desde julho.
-      // Ninguém achava, por isso as duas tabelas estavam zeradas.
-      { title: 'Pipeline de Conteúdo', url: '/content/posts', minRole: 'executor' },
-      { title: 'Banco de Pautas', url: '/content/pautas', minRole: 'executor' },
-      { title: 'Datas Estratégicas', url: '/content/datas', minRole: 'executor' },
-      { title: 'Painel de Produção', url: '/content/producao', minRole: 'executor' },
-      { title: 'Central de Postagens ↗', url: 'https://postagens.svicompany.com.br', minRole: 'executor' },
-    ],
-  },
-
-  {
-    type: 'group',
-    title: 'Comercial',
-    icon: Briefcase,
-    minRole: 'seller',
-    items: [
-      { title: 'Scripts', url: '/scripts', minRole: 'executor' },
-    ],
-  },
-
-  {
-    type: 'group',
-    title: 'Operacional',
-    icon: ClipboardCheck,
-    minRole: 'executor',
-    badgeKeys: ['deliveries', 'clients'],
-    items: [
-      { title: 'Clientes', url: '/clients', minRole: 'executor', badgeKey: 'clients' },
-    ],
-  },
-
-  { type: 'item', title: 'Financeiro', url: '/financial', icon: DollarSign, minRole: 'admin', badgeKey: 'invoices' },
-
-  {
-    type: 'group',
-    title: 'Relatórios',
-    icon: PieChart,
-    minRole: 'executor',
-    items: [
-      { title: 'Performance de Anúncios', url: '/reports/anuncios', minRole: 'executor' },
-      { title: 'Relatório Google', url: '/reports/google', minRole: 'executor' },
-    ],
-  },
-
-  {
-    type: 'group',
-    title: 'Gestão Admin',
-    icon: ShieldCheck,
-    minRole: 'manager',
-    badgeKeys: ['approvals', 'team'],
-    items: [
-      { title: 'Equipe', url: '/team', minRole: 'admin', badgeKey: 'team' },
-    ],
-  },
-]
 
 function Badge({ count }: { count: number }) {
   if (count <= 0) return null
-  return (
-    <span className="ml-auto min-w-[20px] h-5 flex items-center justify-center text-[10px] font-bold rounded-full px-1.5 bg-primary/20 text-primary border border-primary/30">
-      {count > 99 ? '99+' : count}
-    </span>
-  )
+  return <span aria-label={`${count} pendências`} className="ml-auto min-w-5 h-5 flex items-center justify-center text-[10px] font-semibold tabular-nums rounded-full px-1.5 bg-primary/15 text-primary">
+    {count > 99 ? '99+' : count}
+  </span>
 }
 
 export function AppSidebar() {
-  const { state } = useSidebar()
-  const collapsed = state === 'collapsed'
+  const { state, setOpen, isMobile, setOpenMobile } = useSidebar()
+  const collapsed = state === 'collapsed' && !isMobile
   const location = useLocation()
-  const { profile, role, signOut, can, isTraffic } = useAuth()
+  const { profile, role, signOut, can, isTraffic, isClient } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const badges = useNavBadges()
+  const navigation = getVisibleNavigation({ can, isTraffic, isClient })
+  const active = findActiveNavigation(location.pathname, [...navigation.main, ...navigation.footer])
+  const activeAreaId = active && !active.area.direct ? active.area.id : null
+  const [openAreaId, setOpenAreaId] = useState<string | null>(activeAreaId)
 
-  const isActive = (url: string) => location.pathname === url
-  const isInGroup = (group: NavGroup) => group.items.some(i => isActive(i.url))
-  const navEntries = isTraffic ? NAV_TRAFFIC : NAV
-  // Role 'traffic' não passa no can() padrão (não está na hierarquia), então não filtramos por can() pra ela.
-  const canEntry = (minRole: UserRole) => isTraffic || can(minRole)
+  useEffect(() => { setOpenAreaId(activeAreaId) }, [location.pathname, activeAreaId])
 
-  // Auto-expand groups whose route is active
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
-  useEffect(() => {
-    const next: Record<string, boolean> = {}
-    navEntries.forEach(entry => {
-      if (entry.type === 'group') {
-        next[entry.title] = isInGroup(entry) || openGroups[entry.title] === true
-      }
-    })
-    setOpenGroups(prev => ({ ...prev, ...next }))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, isTraffic])
+  const toggleArea = (id: string) => {
+    if (collapsed) {
+      setOpen(true)
+      setOpenAreaId(id)
+    } else setOpenAreaId(previous => previous === id ? null : id)
+  }
+  const closeMobileMenu = () => { if (isMobile) setOpenMobile(false) }
 
-  const toggleGroup = (title: string) =>
-    setOpenGroups(prev => ({ ...prev, [title]: !prev[title] }))
+  const renderArea = (area: NavigationArea) => {
+    const Icon = ICONS[area.icon]
+    const areaActive = active?.area.id === area.id
+    const count = navigationBadgeCount(area, badges)
+    if (area.direct) {
+      const item = area.items[0]
+      return <SidebarMenuItem key={area.id}>
+        <SidebarMenuButton asChild tooltip={area.title} isActive={areaActive}
+          className={`h-9 transition-colors ${areaActive ? 'bg-primary/15 text-primary font-medium' : 'text-muted-foreground hover:text-foreground'}`}>
+          <Link to={item.url} aria-label={area.title} aria-current={areaActive ? 'page' : undefined} onClick={closeMobileMenu}>
+            <Icon className="h-4 w-4 shrink-0" />
+            {!collapsed && <><span>{area.title}</span><Badge count={count} /></>}
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    }
 
-  const groupBadgeCount = (group: NavGroup): number =>
-    (group.badgeKeys || []).reduce((sum, k) => sum + (badges[k] || 0), 0)
+    const open = !collapsed && openAreaId === area.id
+    return <SidebarMenuItem key={area.id}>
+      <Collapsible open={open} onOpenChange={() => toggleArea(area.id)}>
+        <CollapsibleTrigger asChild>
+          <SidebarMenuButton aria-label={area.title} tooltip={area.title} isActive={areaActive}
+            className={`h-9 transition-colors ${areaActive ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:text-foreground'}`}>
+            <Icon className="h-4 w-4 shrink-0" />
+            {!collapsed && <>
+              <span>{area.title}</span><Badge count={count} />
+              <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${count ? '' : 'ml-auto'} ${open ? '' : '-rotate-90'}`} />
+            </>}
+          </SidebarMenuButton>
+        </CollapsibleTrigger>
+        {!collapsed && <CollapsibleContent>
+          <SidebarMenuSub className="my-1 gap-0.5">
+            {area.items.map((item, index) => {
+              const itemActive = active?.item.url === item.url
+              const itemCount = item.badgeKey ? badges[item.badgeKey] : 0
+              const external = item.url.startsWith('http')
+              const label = <><span className="min-w-0 flex-1 truncate">{item.title}</span>{external ? <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" /> : <Badge count={itemCount} />}</>
+              return <Fragment key={item.url}>
+                {item.section && area.items[index - 1]?.section !== item.section && <li className="px-2 pb-1 pt-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/70">{item.section}</li>}
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton asChild size="sm" isActive={itemActive} title={item.title}
+                    className={`h-8 ${itemActive ? 'bg-primary/15 text-primary font-medium' : 'text-muted-foreground hover:text-foreground'}`}>
+                    {external
+                      ? <a href={item.url} target="_blank" rel="noreferrer" onClick={closeMobileMenu}>{label}</a>
+                      : <Link to={item.url} aria-current={itemActive ? 'page' : undefined} onClick={closeMobileMenu}>{label}</Link>}
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              </Fragment>
+            })}
+          </SidebarMenuSub>
+        </CollapsibleContent>}
+      </Collapsible>
+    </SidebarMenuItem>
+  }
 
-  const initials = profile?.name
-    ? profile.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
-    : 'SV'
+  const initials = profile?.name ? profile.name.split(' ').map(name => name[0]).slice(0, 2).join('').toUpperCase() : 'SV'
 
-  return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      <SidebarHeader className="p-4">
-        <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
-          {collapsed ? (
-            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-              <span className="text-primary font-bold text-xs">S</span>
-            </div>
-          ) : (
-            <img
-              src={theme === 'dark' ? logoBranca : logoSvi}
-              alt="SVI"
-              className="h-8 object-contain"
-            />
-          )}
-        </div>
-        {!collapsed && (
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1.5 pl-1">
-            Sistema de Vendas Inteligente
-          </p>
-        )}
-      </SidebarHeader>
+  return <Sidebar collapsible="icon" className="border-r border-sidebar-border">
+    <SidebarHeader className="px-4 pb-5 pt-5">
+      <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
+        {collapsed
+          ? <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center"><span className="text-primary font-bold text-xs">S</span></div>
+          : <img src={theme === 'dark' ? logoBranca : logoSvi} alt="SVI" className="h-8 object-contain" />}
+      </div>
+      {!collapsed && <p className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground mt-1 pl-1">Central da operação</p>}
+    </SidebarHeader>
 
-      <SidebarContent className="px-2">
-        <SidebarMenu>
-          {navEntries.map(entry => {
-            if (!canEntry(entry.minRole)) return null
+    <SidebarContent className="px-2">
+      <nav aria-label="Navegação principal"><SidebarMenu className="gap-1">{navigation.main.map(renderArea)}</SidebarMenu></nav>
+    </SidebarContent>
 
-            if (entry.type === 'item') {
-              const active = isActive(entry.url)
-              const count = entry.badgeKey ? badges[entry.badgeKey] : 0
-              return (
-                <SidebarMenuItem key={entry.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={active}
-                    tooltip={entry.title}
-                    className={`transition-all duration-150 ${active
-                      ? 'bg-primary/15 text-primary font-medium border border-primary/20'
-                      : 'hover:bg-accent hover:text-accent-foreground'
-                    }`}
-                  >
-                    <Link to={entry.url} className="flex items-center gap-3">
-                      <entry.icon className="h-4 w-4 shrink-0" />
-                      {!collapsed && <span>{entry.title}</span>}
-                      {!collapsed && count > 0 && <Badge count={count} />}
-                      {!collapsed && active && count === 0 && (
-                        <ChevronRight className="h-3 w-3 ml-auto text-primary" />
-                      )}
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )
-            }
-
-            // Group
-            const groupActive = isInGroup(entry)
-            const open = openGroups[entry.title] ?? groupActive
-            const count = groupBadgeCount(entry)
-
-            return (
-              <SidebarMenuItem key={entry.title}>
-                <Collapsible open={!collapsed && open} onOpenChange={() => toggleGroup(entry.title)}>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton
-                      tooltip={entry.title}
-                      isActive={groupActive}
-                      className={`transition-all duration-150 ${groupActive
-                        ? 'bg-primary/10 text-primary font-medium'
-                        : 'hover:bg-accent hover:text-accent-foreground'
-                      }`}
-                    >
-                      <entry.icon className="h-4 w-4 shrink-0" />
-                      {!collapsed && (
-                        <>
-                          <span>{entry.title}</span>
-                          {count > 0 ? (
-                            <Badge count={count} />
-                          ) : (
-                            <ChevronDown
-                              className={`h-3.5 w-3.5 ml-auto transition-transform shrink-0 ${open ? 'rotate-0' : '-rotate-90'}`}
-                            />
-                          )}
-                        </>
-                      )}
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  {!collapsed && (
-                    <CollapsibleContent>
-                      <SidebarMenuSub>
-                        {entry.items.filter(s => can(s.minRole)).map(sub => {
-                          const subActive = isActive(sub.url)
-                          const subCount = sub.badgeKey ? badges[sub.badgeKey] : 0
-                          return (
-                            <SidebarMenuSubItem key={sub.title}>
-                              <SidebarMenuSubButton
-                                asChild
-                                isActive={subActive}
-                                className={subActive ? 'bg-primary/15 text-primary font-medium' : ''}
-                              >
-                                {sub.url.startsWith('http') ? (
-                                  <a href={sub.url} target="_blank" rel="noreferrer" className="flex items-center gap-2">
-                                    <span className="flex-1">{sub.title}</span>
-                                  </a>
-                                ) : (
-                                  <Link to={sub.url} className="flex items-center gap-2">
-                                    <span className="flex-1">{sub.title}</span>
-                                    {subCount > 0 && <Badge count={subCount} />}
-                                  </Link>
-                                )}
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          )
-                        })}
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
-                  )}
-                </Collapsible>
-              </SidebarMenuItem>
-            )
-          })}
-        </SidebarMenu>
-      </SidebarContent>
-
-      <SidebarFooter className="p-3 space-y-2">
-        {/* Theme toggle */}
-        <button
-          onClick={toggleTheme}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-sm ${collapsed ? 'justify-center' : ''}`}
-          title="Alternar tema"
-        >
-          {theme === 'dark' ? <Sun className="h-4 w-4 shrink-0" /> : <Moon className="h-4 w-4 shrink-0" />}
-          {!collapsed && <span>{theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>}
-        </button>
-
-        {/* User info */}
-        <div className={`flex items-center gap-2 px-2 py-2 rounded-lg bg-accent/50 ${collapsed ? 'justify-center' : ''}`}>
-          <Avatar className="h-7 w-7 shrink-0">
-            <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium truncate">{profile?.name || 'Usuário'}</p>
-              <p className="text-xs text-muted-foreground truncate capitalize">{role || 'usuário'}</p>
-            </div>
-          )}
-          {!collapsed && (
-            <button onClick={signOut} title="Sair" className="text-muted-foreground hover:text-destructive transition-colors">
-              <LogOut className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      </SidebarFooter>
-    </Sidebar>
-  )
+    <SidebarFooter className="p-2.5 space-y-1 border-t border-sidebar-border">
+      {navigation.footer.length > 0 && <nav aria-label="Administração"><SidebarMenu>{navigation.footer.map(renderArea)}</SidebarMenu></nav>}
+      <button onClick={toggleTheme} aria-label="Alternar tema" title="Alternar tema"
+        className={`w-full flex items-center gap-3 px-2 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent text-xs ${collapsed ? 'justify-center' : ''}`}>
+        {theme === 'dark' ? <Sun className="h-4 w-4 shrink-0" /> : <Moon className="h-4 w-4 shrink-0" />}
+        {!collapsed && <span>{theme === 'dark' ? 'Modo claro' : 'Modo escuro'}</span>}
+      </button>
+      <div className={`flex items-center gap-2 px-2 py-2 rounded-lg bg-accent/40 ${collapsed ? 'justify-center' : ''}`}>
+        <Avatar className="h-7 w-7 shrink-0"><AvatarFallback className="bg-primary/15 text-primary text-xs font-bold">{initials}</AvatarFallback></Avatar>
+        {!collapsed && <>
+          <div className="flex-1 min-w-0"><p className="text-xs font-medium truncate">{profile?.name || 'Usuário'}</p><p className="text-[10px] text-muted-foreground capitalize">{role || 'usuário'}</p></div>
+          <button onClick={signOut} title="Sair" aria-label="Sair" className="text-muted-foreground hover:text-destructive"><LogOut className="h-4 w-4" /></button>
+        </>}
+      </div>
+    </SidebarFooter>
+  </Sidebar>
 }

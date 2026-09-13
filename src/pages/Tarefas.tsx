@@ -1,9 +1,13 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type SetStateAction } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import { clientPath } from '@/lib/client-management'
 import { supabase } from '@/lib/supabase'
+import { fetchAllRows, confirmSaved, errorMessage } from '@/lib/data-access'
+import { validateTaskAssignment } from '@/lib/management-metrics'
+import DataLoadError from '@/components/DataLoadError'
 import { useAuth } from '@/contexts/AuthContext'
-import { isClienteMedico, formatDate } from '@/types'
+import { isClienteMedico, formatDate, formatTimestamp } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -79,9 +83,21 @@ function PessoaChip({ nome, mini }: { nome: string | null; mini?: boolean }) {
 }
 
 export default function Tarefas() {
-  const { user, isAdmin } = useAuth() as any
+  const { user, role } = useAuth()
+  const isAdmin = role === 'admin'
   const qc = useQueryClient()
-  const [sel, setSel] = useState<Selecao>({ tipo: 'visao', id: 'minhas' })
+  const [params, setParams] = useSearchParams()
+  const view = params.get('view')
+  const sel: Selecao = params.get('client') ? { tipo: 'cliente', id: params.get('client')! }
+    : params.get('person') ? { tipo: 'pessoa', id: params.get('person')! }
+    : params.get('list') ? { tipo: 'lista', id: params.get('list')! }
+    : { tipo: 'visao', id: view === 'todas' || view === 'atrasadas' || view === 'feitas' ? view : 'minhas' }
+  const setSel = (value: Selecao) => setParams(previous => {
+    const next = new URLSearchParams(previous)
+    for (const key of ['client', 'person', 'list', 'view', 'task']) next.delete(key)
+    next.set(({ cliente: 'client', pessoa: 'person', lista: 'list', visao: 'view' })[value.tipo], value.id)
+    return next
+  })
   const [modo, setModo] = useState<'lista' | 'quadro'>('lista')
   // filtro de dono e independente da pasta: da pra abrir um cliente e ver so
   // o que e seu, ou so o de uma pessoa. 'todos' nao filtra nada.
@@ -91,20 +107,30 @@ export default function Tarefas() {
   const [form, setForm] = useState<FormTarefa>(FORM_VAZIO)
   const [salvando, setSalvando] = useState(false)
   const [apagando, setApagando] = useState<Tarefa | null>(null)
-  const [detalhe, setDetalhe] = useState<Tarefa | null>(null)
+  const [detalhe, setDetalheState] = useState<Tarefa | null>(null)
+  const setDetalhe = (task: SetStateAction<Tarefa | null>) => {
+    setDetalheState(task)
+    if (params.has('task')) setParams(previous => { const next = new URLSearchParams(previous); next.delete('task'); return next }, { replace: true })
+  }
   const [comentario, setComentario] = useState('')
   const [novaLista, setNovaLista] = useState(false)
   const [nomeLista, setNomeLista] = useState('')
   const [arrastando, setArrastando] = useState<string | null>(null)
 
-  const { data: tarefas = [], isLoading } = useQuery({
+  const { data: tarefas = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['tarefas'],
     queryFn: async (): Promise<Tarefa[]> => {
-      const { data, error } = await supabase.from('tarefas').select('*').order('criado_em', { ascending: false })
-      if (error) throw error
-      return (data || []) as Tarefa[]
+      return fetchAllRows<Tarefa>((from, to) => supabase.from('tarefas').select('*').order('criado_em', { ascending: false }).order('id').range(from, to))
     },
   })
+  const requestedTask = params.get('task')
+  const requestedClient = params.get('client')
+  useEffect(() => {
+    if (!requestedTask) return
+    const task = tarefas.find(t => t.id === requestedTask && (!requestedClient || t.cliente_id === requestedClient))
+    if (task) setDetalheState(task)
+  }, [requestedTask, requestedClient, tarefas])
+
   const { data: clientes = [] } = useQuery({
     queryKey: ['tarefas-clientes'],
     queryFn: async (): Promise<ClienteMin[]> => {
@@ -206,7 +232,10 @@ export default function Tarefas() {
 
 
   async function salvar() {
+    if (salvando) return
     if (!form.titulo.trim()) return toast.error('Dá um título pra tarefa')
+    const assignmentError = validateTaskAssignment(form)
+    if (assignmentError) return toast.error(assignmentError)
     setSalvando(true)
     const cliente = clientes.find(c => c.id === form.cliente_id)
     const dono = pessoas.find(p => p.user_id === form.dono_id)
@@ -223,20 +252,33 @@ export default function Tarefas() {
       prazo: form.prazo || null,
       prioridade: form.prioridade,
     }
-    const { error } = await supabase.from('tarefas').insert({ ...payload, criado_por: user?.id || null })
-    setSalvando(false)
-    if (error) return toast.error(`Não salvou: ${error.message}`)
-    toast.success('Tarefa criada')
-    setAberto(false)
-    qc.invalidateQueries({ queryKey: ['tarefas'] })
+    try {
+      await confirmSaved(supabase.from('tarefas').insert({ ...payload, criado_por: user?.id || null }).select('id'))
+      toast.success('Tarefa criada')
+      setAberto(false)
+      void qc.invalidateQueries({ queryKey: ['tarefas'] })
+    } catch (error) {
+      toast.error(`Não salvou: ${errorMessage(error)}`)
+    } finally {
+      setSalvando(false)
+    }
   }
 
-  /** O card de detalhe salva campo a campo na hora, igual ClickUp: mudou, gravou. */
+  /** Valida os campos alterados sem impedir a correção gradual de cards antigos. */
   async function salvarCampo(id: string, patch: Partial<Tarefa>) {
-    const { error } = await supabase.from('tarefas').update(patch).eq('id', id)
-    if (error) return toast.error(`Não salvou: ${error.message}`)
-    setDetalhe(d => (d && d.id === id ? { ...d, ...patch } as Tarefa : d))
-    qc.invalidateQueries({ queryKey: ['tarefas'] })
+    if ('dono_id' in patch && !patch.dono_id) return toast.error('A tarefa precisa de um responsável')
+    if ('prazo' in patch) {
+      const error = validateTaskAssignment({ dono_id: 'validacao-prazo', prazo: patch.prazo })
+      if (error) return toast.error(error)
+    }
+    if ('titulo' in patch && !patch.titulo?.trim()) return toast.error('A tarefa precisa de um título')
+    try {
+      await confirmSaved(supabase.from('tarefas').update(patch).eq('id', id).select('id'))
+      setDetalhe(d => (d && d.id === id ? { ...d, ...patch } as Tarefa : d))
+      void qc.invalidateQueries({ queryKey: ['tarefas'] })
+    } catch (error) {
+      toast.error(`Não salvou: ${errorMessage(error)}`)
+    }
   }
 
   async function comentar() {
@@ -252,6 +294,9 @@ export default function Tarefas() {
   }
 
   async function moverStatus(id: string, status: Tarefa['status']) {
+    const tarefa = tarefas.find(t => t.id === id)
+    const assignmentError = validateTaskAssignment(tarefa || {})
+    if (assignmentError) return toast.error(assignmentError)
     const { error } = await supabase.from('tarefas').update({ status }).eq('id', id)
     if (error) return toast.error(`Não mudou: ${error.message}`)
     qc.invalidateQueries({ queryKey: ['tarefas'] })
@@ -321,6 +366,8 @@ export default function Tarefas() {
       </div>
     )
   }
+
+  if (isError) return <DataLoadError onRetry={() => { void refetch() }} />
 
   return (
     <div className="flex gap-4 animate-fade-in min-h-[calc(100vh-8rem)]">
@@ -406,6 +453,7 @@ export default function Tarefas() {
         <div className="flex flex-wrap items-center gap-3">
           <div className="min-w-0">
             <h1 className="text-2xl font-bold truncate">{tituloSelecao}</h1>
+            {sel.tipo === 'cliente' && <Link className="text-xs text-primary" to={clientPath(sel.id)}>Gestão do cliente</Link>}
             <p className="text-sm text-muted-foreground">
               {filtradas.length} tarefa(s)
               {filtroDono !== 'todos' && ` de ${filtroDono === 'ninguem' ? 'ninguém' : filtroDono === user?.id ? 'você' : (pessoas.find(p => p.user_id === filtroDono)?.name.split(' ')[0] || '')}`}
@@ -442,7 +490,7 @@ export default function Tarefas() {
               {pessoas.filter(p => p.user_id !== user?.id).map(p => (
                 <SelectItem key={p.user_id} value={p.user_id}>{p.name}</SelectItem>
               ))}
-              <SelectItem value="ninguem">Sem dono</SelectItem>
+              <SelectItem value="ninguem" disabled>Escolha um responsável</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -562,7 +610,7 @@ export default function Tarefas() {
                 <Select value={form.dono_id || 'ninguem'} onValueChange={v => setForm(f => ({ ...f, dono_id: v === 'ninguem' ? '' : v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ninguem">Sem dono</SelectItem>
+                    <SelectItem value="ninguem" disabled>Escolha um responsável</SelectItem>
                     {pessoas.map(p => (
                       <SelectItem key={p.user_id} value={p.user_id}>{p.name}{p.user_id === user?.id ? ' (você)' : ''}</SelectItem>
                     ))}
@@ -571,7 +619,7 @@ export default function Tarefas() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="tf-prazo">Prazo</Label>
-                <Input id="tf-prazo" type="date" value={form.prazo} onChange={e => setForm(f => ({ ...f, prazo: e.target.value }))} />
+                <Input id="tf-prazo" required type="date" value={form.prazo} onChange={e => setForm(f => ({ ...f, prazo: e.target.value }))} />
               </div>
               <div className="space-y-1.5">
                 <Label>Prioridade</Label>
@@ -596,6 +644,7 @@ export default function Tarefas() {
       {/* ===== card da tarefa, igual ClickUp: tudo edita ali e salva na hora ===== */}
       <Dialog open={!!detalhe} onOpenChange={o => { if (!o) { setDetalhe(null); setComentario('') } }}>
         <DialogContent className="sm:max-w-[760px] max-h-[88vh] overflow-y-auto">
+          <DialogTitle className="sr-only">Detalhes da tarefa</DialogTitle>
           {detalhe && (
             <div key={detalhe.id} className="grid md:grid-cols-[1fr_230px] gap-5">
               {/* coluna principal */}
@@ -608,7 +657,7 @@ export default function Tarefas() {
                     onBlur={e => { const v = e.target.value.trim(); if (v && v !== detalhe.titulo) salvarCampo(detalhe.id, { titulo: v }) }}
                   />
                   <p className="text-xs text-muted-foreground px-0.5">
-                    criada em {formatDate(detalhe.criado_em)}
+                    criada em {formatTimestamp(detalhe.criado_em)}
                     {detalhe.origem === 'clickup' && ' · veio do ClickUp'}
                   </p>
                 </div>
@@ -680,7 +729,7 @@ export default function Tarefas() {
                       : { dono_id: v, dono_nome: pessoas.find(p => p.user_id === v)?.name || null })}>
                     <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ninguem">Sem dono</SelectItem>
+                      <SelectItem value="ninguem" disabled>Escolha um responsável</SelectItem>
                       {pessoas.map(pe => <SelectItem key={pe.user_id} value={pe.user_id}>{pe.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -715,7 +764,7 @@ export default function Tarefas() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs uppercase tracking-wide text-muted-foreground">Prazo</Label>
-                  <Input type="date" className="h-8" defaultValue={detalhe.prazo || ''}
+                  <Input type="date" required className="h-8" value={detalhe.prazo || ''}
                     onChange={e => salvarCampo(detalhe.id, { prazo: e.target.value || null })} />
                 </div>
                 <div className="space-y-1.5">

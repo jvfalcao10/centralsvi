@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import {
   DollarSign, TrendingDown, Users, Target, AlertTriangle,
-  TrendingUp, ArrowUp, ArrowDown, RefreshCw
+  TrendingUp, RefreshCw
 } from 'lucide-react'
-import { useUsdRateInfo, mrrBRL } from '@/hooks/useUsdRate'
+import { useUsdRateInfo } from '@/hooks/useUsdRate'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -12,10 +12,14 @@ import {
   Tooltip, ResponsiveContainer
 } from 'recharts'
 import { formatCurrency } from '@/types'
+import { formatAxisCurrency, contractTotals, expensesDueInMonth, localDateISO, isOverdueInvoice, type InvoiceMetric } from '@/lib/management-metrics'
+import { monthKeyOfDate } from '@/lib/months'
+import { fetchAllRows } from '@/lib/data-access'
+import DataLoadError from '@/components/DataLoadError'
 
 
 interface KPICard {
-  label: string; value: string; change: number; icon: React.ElementType; prefix?: string
+  label: string; value: string; description: string; icon: React.ElementType; prefix?: string
 }
 
 function CustomTooltip({ active, payload, label }: any) {
@@ -36,98 +40,84 @@ function CustomTooltip({ active, payload, label }: any) {
 
 export default function Dashboard() {
   const { rate: usdRate, updatedAt: usdUpdatedAt, isEstimate: usdIsEstimate } = useUsdRateInfo()
-  const [clients, setClients] = useState<{ status: string; mrr: number; currency: string }[]>([])
+  const [clients, setClients] = useState<{ status: string; mrr: number; currency: string; permuta: boolean; permuta_ate: string | null }[]>([])
   const [leads, setLeads] = useState<{ stage: string }[]>([])
-  const [expenses, setExpenses] = useState<{ valor: number; vencimento: string | null; recorrente: boolean }[]>([])
-  const [faturas, setFaturas] = useState<{ vencimento: string | null; valor: number }[]>([])
+  const [expenses, setExpenses] = useState<{ valor: number; vencimento: string }[]>([])
+  const [faturas, setFaturas] = useState<InvoiceMetric[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [alerts, setAlerts] = useState<{ msg: string; level: 'green' | 'yellow' | 'red' }[]>([])
 
-  useEffect(() => {
-    async function load() {
-      const [
-        { data: clientsData },
-        { data: leadsData },
-        { data: deliveries },
-        { data: invoices },
-        { data: expensesData },
-      ] = await Promise.all([
-        supabase.from('clients').select('status, mrr, currency'),
-        supabase.from('leads').select('stage'),
-        supabase.from('deliveries').select('status, prazo'),
-        supabase.from('invoices').select('status, vencimento, valor'),
-        supabase.from('expenses').select('valor, vencimento, recorrente'),
+  const load = useCallback(async () => {
+    setLoading(true)
+    setLoadError(false)
+    try {
+      const [clientsData, leadsData, deliveries, invoices, expensesData] = await Promise.all([
+        fetchAllRows((from, to) => supabase.from('clients').select('id, status, mrr, currency, permuta, permuta_ate').order('id').range(from, to)),
+        fetchAllRows((from, to) => supabase.from('leads').select('id, stage').order('id').range(from, to)),
+        fetchAllRows((from, to) => supabase.from('deliveries').select('id, status, prazo').order('id').range(from, to)),
+        fetchAllRows((from, to) => supabase.from('invoices').select('id, status, vencimento, valor, data_pagamento').order('id').range(from, to)),
+        fetchAllRows((from, to) => supabase.from('expenses').select('id, valor, vencimento').order('id').range(from, to)),
       ])
-
-      if (clientsData) setClients(clientsData)
-      if (leadsData) setLeads(leadsData)
-      if (expensesData) setExpenses(expensesData)
-
+      setClients(clientsData)
+      setLeads(leadsData)
+      setExpenses(expensesData)
+      setFaturas(invoices)
       const newAlerts: { msg: string; level: 'green' | 'yellow' | 'red' }[] = []
-      if (clientsData) {
-        const atRisk = clientsData.filter(c => c.status === 'risco').length
-        const defaulters = clientsData.filter(c => c.status === 'inadimplente').length
-        if (atRisk > 0) newAlerts.push({ msg: `${atRisk} cliente(s) em risco de churn`, level: 'yellow' })
-        if (defaulters > 0) newAlerts.push({ msg: `${defaulters} cliente(s) inadimplente(s)`, level: 'red' })
-      }
-      setFaturas((invoices || []) as { vencimento: string | null; valor: number }[])
-      if (invoices) {
-        const today = new Date().toISOString().split('T')[0]
-        const overdueInvoices = invoices.filter(i => i.status === 'atrasado' || (i.status === 'pendente' && i.vencimento < today)).length
-        if (overdueInvoices > 0) newAlerts.push({ msg: `${overdueInvoices} fatura(s) vencida(s)`, level: 'red' })
-      }
-      if (deliveries) {
-        const today = new Date().toISOString().split('T')[0]
-        const late = deliveries.filter(d => d.status !== 'entregue' && d.prazo < today).length
-        if (late > 0) newAlerts.push({ msg: `${late} entrega(s) atrasada(s)`, level: 'yellow' })
-      }
-      if (newAlerts.length === 0) newAlerts.push({ msg: 'Tudo certo! Nenhum alerta no momento.', level: 'green' })
+      const atRisk = clientsData.filter(c => c.status === 'risco').length
+      const defaulters = clientsData.filter(c => c.status === 'inadimplente').length
+      if (atRisk > 0) newAlerts.push({ msg: `${atRisk} cliente(s) em risco de saída`, level: 'yellow' })
+      if (defaulters > 0) newAlerts.push({ msg: `${defaulters} cliente(s) inadimplente(s)`, level: 'red' })
+      const today = localDateISO()
+      const overdue = invoices.filter(i => isOverdueInvoice(i, today)).length
+      if (overdue > 0) newAlerts.push({ msg: `${overdue} fatura(s) vencida(s)`, level: 'red' })
+      const missingPaymentDates = invoices.filter(i => i.status === 'pago' && !i.data_pagamento).length
+      if (missingPaymentDates > 0) newAlerts.push({ msg: `${missingPaymentDates} fatura(s) paga(s) sem data de recebimento. Confira os registros para completar o histórico de caixa.`, level: 'yellow' })
+      const late = deliveries.filter(d => !['entregue', 'cancelado', 'cancelada'].includes(d.status) && d.prazo && d.prazo < today).length
+      if (late > 0) newAlerts.push({ msg: `${late} entrega(s) atrasada(s)`, level: 'yellow' })
+      if (newAlerts.length === 0) newAlerts.push({ msg: 'Nenhum alerta nos dados consultados.', level: 'green' })
       setAlerts(newAlerts)
+    } catch {
+      setLoadError(true)
+      setAlerts([])
+    } finally {
       setLoading(false)
     }
-    load()
   }, [])
+  useEffect(() => { void load() }, [load])
 
-  const activeClients = clients.filter(c => c.status === 'ativo').length
-  const totalMRR = clients.reduce((sum, c) => sum + mrrBRL(c.mrr, c.currency, usdRate), 0)
-  // Despesa mensal = recorrentes (custo fixo do mês) + avulsas que vencem no mês corrente.
-  // Antes somava despesas de TODOS os meses juntos (inflava o número).
-  const _mesAtual = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}` })()
-  const totalExpenses = expenses.reduce((sum, e) =>
-    (e.recorrente || (e.vencimento && e.vencimento.startsWith(_mesAtual))) ? sum + e.valor : sum, 0)
-  const riskClients = clients.filter(c => c.status === 'risco' || c.status === 'inadimplente').length
-  const churnRate = clients.length > 0 ? ((riskClients / clients.length) * 100).toFixed(1) : '0.0'
-
-  // Real conversion rate: fechado leads / total non-perdido leads
-  const totalLeads = leads.filter(l => l.stage !== 'perdido').length
+  const currentMonth = monthKeyOfDate(new Date())
+  const contracts = contractTotals(clients, currentMonth, usdRate)
+  const activeClients = contracts.active.length
+  const totalMRR = contracts.total
+  const totalExpenses = expensesDueInMonth(expenses, currentMonth).reduce((sum, e) => sum + Number(e.valor), 0)
+  const riskClients = contracts.active.filter(c => c.status === 'risco' || c.status === 'inadimplente').length
+  const riskRate = activeClients > 0 ? ((riskClients / activeClients) * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '0,0'
   const closedLeads = leads.filter(l => l.stage === 'fechado').length
-  const conversionRate = totalLeads > 0 ? ((closedLeads / totalLeads) * 100).toFixed(1) : '0.0'
-
-  // Revenue data using real MRR
+  const lostLeads = leads.filter(l => l.stage === 'perdido').length
+  const decidedLeads = closedLeads + lostLeads
+  const conversionRate = decidedLeads > 0 ? `${((closedLeads / decidedLeads) * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%` : 'Sem dados'
   const revenueData = [
-    { name: 'Receita', valor: totalMRR },
+    { name: 'Contratado', valor: contracts.monetary },
     { name: 'Despesas', valor: totalExpenses },
   ]
 
-  // Receita realizada por mes, do banco. Antes eram 6 pontos inventados no
-  // codigo com so o ultimo trocado pelo MRR real — grafico bonito e falso.
-  const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
   const mrrChartData = (() => {
     const porMes = new Map<string, number>()
-    for (const i of faturas) {
-      if (!i.vencimento) continue
-      const k = i.vencimento.slice(0, 7)
-      porMes.set(k, (porMes.get(k) || 0) + Number(i.valor || 0))
+    for (const invoice of faturas) {
+      if (invoice.status !== 'pago' || !invoice.data_pagamento) continue
+      const month = invoice.data_pagamento.slice(0, 7)
+      porMes.set(month, (porMes.get(month) || 0) + Number(invoice.valor))
     }
     return Array.from(porMes.entries()).sort().slice(-6)
-      .map(([k, v]) => ({ month: MESES[Number(k.slice(5, 7)) - 1], mrr: v }))
+      .map(([month, value]) => ({ month: `${month.slice(5, 7)}/${month.slice(2, 4)}`, mrr: value }))
   })()
 
   const kpis: KPICard[] = [
-    { label: 'MRR Atual', value: formatCurrency(totalMRR), change: 5.4, icon: DollarSign },
-    { label: 'Churn Mensal', value: `${churnRate}%`, change: -1.2, icon: TrendingDown },
-    { label: 'Clientes Ativos', value: String(activeClients), change: 2.1, icon: Users },
-    { label: 'Taxa de Conversão', value: `${conversionRate}%`, change: totalLeads > 0 ? 3.8 : 0, icon: Target },
+    { label: 'MRR contratado', value: formatCurrency(totalMRR), description: 'Contratos em operação, incluindo permuta', icon: DollarSign },
+    { label: 'Clientes em risco', value: `${riskRate}%`, description: `${riskClients} em risco ou inadimplentes entre ${activeClients} em operação`, icon: TrendingDown },
+    { label: 'Clientes em operação', value: String(activeClients), description: 'Ativos, em risco e inadimplentes', icon: Users },
+    { label: 'Taxa de fechamento', value: conversionRate, description: 'Ganhos ÷ (ganhos + perdidos), todo o histórico', icon: Target },
   ]
 
   const alertBadgeClass = {
@@ -142,6 +132,8 @@ export default function Dashboard() {
     </div>
   )
 
+  if (loadError) return <DataLoadError onRetry={load} />
+
   const safeUsdRate = Number.isFinite(usdRate) && usdRate > 0 ? usdRate : 5.0
   const usdFormatted = safeUsdRate.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   const usdTime = usdUpdatedAt
@@ -154,8 +146,6 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
         {kpis.map((kpi, i) => {
           const Icon = kpi.icon
-          const isPositive = kpi.change > 0
-          const isGood = kpi.label !== 'Churn Mensal' ? isPositive : !isPositive
           return (
             <div
               key={kpi.label}
@@ -172,13 +162,9 @@ export default function Dashboard() {
                 </div>
                 <div className="flex items-end gap-2">
                   <span className="text-2xl font-bold tracking-tight text-foreground lg:text-3xl">{kpi.value}</span>
-                  {kpi.change !== 0 && (
-                    <span className={`mb-1 flex items-center gap-1 text-xs font-medium ${isGood ? 'text-success' : 'text-danger'}`}>
-                      {isPositive ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-                      {Math.abs(kpi.change)}%
-                    </span>
-                  )}
+
                 </div>
+                <p className="mt-2 text-xs text-muted-foreground">{kpi.description}</p>
               </div>
             </div>
           )
@@ -214,7 +200,7 @@ export default function Dashboard() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-success" />
-              Receita por mês (últimos 6)
+              Recebimentos por mês (últimos 6 com registro)
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -222,9 +208,9 @@ export default function Dashboard() {
               <LineChart data={mrrChartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="month" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} />
+                <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={formatAxisCurrency} />
                 <Tooltip content={<CustomTooltip />} />
-                <Line type="monotone" dataKey="mrr" name="Receita" stroke="#10b981" strokeWidth={2.5} dot={{ fill: '#10b981', r: 4 }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="mrr" name="Recebido" stroke="#10b981" strokeWidth={2.5} dot={{ fill: '#10b981', r: 4 }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -234,7 +220,7 @@ export default function Dashboard() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-info" />
-              Receita vs Despesas (mês atual)
+              Contratado sem permuta vs despesas do mês
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -242,7 +228,7 @@ export default function Dashboard() {
               <BarChart data={revenueData} barCategoryGap="40%">
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} />
+                <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={formatAxisCurrency} />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="valor" name="Valor" radius={[6, 6, 0, 0]} fill="url(#barGradient)" />
                 <defs>
@@ -254,7 +240,7 @@ export default function Dashboard() {
               </BarChart>
             </ResponsiveContainer>
             <div className="flex gap-4 mt-2 justify-center text-xs text-muted-foreground">
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-success inline-block" /> Receita</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-success inline-block" /> Contratado</span>
               <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-danger inline-block" /> Despesas</span>
             </div>
           </CardContent>

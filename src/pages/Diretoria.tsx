@@ -4,8 +4,11 @@ import {
   RefreshCw, Handshake, CircleSlash, Clock,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { fetchAllRows } from '@/lib/data-access'
+import { isOperatingClient, isBillableInMonth, receivedInMonth } from '@/lib/management-metrics'
+import DataLoadError from '@/components/DataLoadError'
 import { formatCurrency, emPermutaNoMes } from '@/types'
-import { monthKeyOfDate, monthLabel, firstBillingMonth } from '@/lib/months'
+import { monthKeyOfDate, monthLabel } from '@/lib/months'
 import { useUsdRate, mrrBRL } from '@/hooks/useUsdRate'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -31,11 +34,12 @@ type Cliente = {
   status: string
   dia_vencimento: number | null
   inicio_contrato: string | null
+  cobranca_inicio: string | null
   permuta: boolean
   permuta_ate: string | null
 }
 
-type Fatura = { client_id: string; valor: number; vencimento: string; status: string }
+type Fatura = { client_id: string; valor: number; vencimento: string; status: string; data_pagamento: string | null }
 
 type Relatorio = {
   account_id: string
@@ -57,26 +61,33 @@ export default function Diretoria() {
   const [faturas, setFaturas] = useState<Fatura[]>([])
   const [relatorios, setRelatorios] = useState<Relatorio[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null)
 
   const buscar = useCallback(async () => {
     setLoading(true)
     const desde = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)
-    const [{ data: cli }, { data: inv }, { data: rel }] = await Promise.all([
-      supabase.from('clients')
-        .select('id, name, mrr, currency, status, dia_vencimento, inicio_contrato, permuta, permuta_ate')
-        .eq('status', 'ativo'),
-      supabase.from('invoices').select('client_id, valor, vencimento, status'),
-      supabase.from('weekly_traffic_reports')
-        .select('account_id, account_name, cliente_label, period_end, spend_cents, conv_count, leads_count, cpmsg_cents, status')
-        .gte('period_end', desde)
-        .order('period_end', { ascending: false }),
-    ])
-    setClientes((cli || []) as Cliente[])
-    setFaturas((inv || []) as Fatura[])
-    setRelatorios((rel || []) as Relatorio[])
-    setAtualizadoEm(new Date())
-    setLoading(false)
+    setLoadError(false)
+    try {
+      const [cli, inv, rel] = await Promise.all([
+        fetchAllRows((from, to) => supabase.from('clients')
+          .select('id, name, mrr, currency, status, dia_vencimento, inicio_contrato, cobranca_inicio, permuta, permuta_ate')
+          .order('id').range(from, to)),
+        fetchAllRows((from, to) => supabase.from('invoices').select('id, client_id, valor, vencimento, status, data_pagamento').order('id').range(from, to)),
+        fetchAllRows((from, to) => supabase.from('weekly_traffic_reports')
+          .select('id, account_id, account_name, cliente_label, period_end, spend_cents, conv_count, leads_count, cpmsg_cents, status')
+          .gte('period_end', desde).order('period_end', { ascending: false }).order('id').range(from, to)),
+      ])
+      setClientes(cli.filter(isOperatingClient) as Cliente[])
+      setFaturas(inv as Fatura[])
+      setRelatorios(rel as Relatorio[])
+      setAtualizadoEm(new Date())
+    } catch {
+      setLoadError(true)
+      setAtualizadoEm(null)
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => { buscar() }, [buscar])
@@ -94,13 +105,10 @@ export default function Diretoria() {
     faturas.some(f => f.client_id === id && f.status === 'pago' && f.vencimento.startsWith(mesAtual))
 
   const devendo = pagantes.filter(c =>
-    c.dia_vencimento !== null &&
-    (!c.inicio_contrato || firstBillingMonth(c.inicio_contrato, c.dia_vencimento) <= mesAtual) &&
+    isBillableInMonth(c, mesAtual) &&
     !pagouNoMes(c.id)
   )
-  const recebidoMes = faturas
-    .filter(f => f.status === 'pago' && f.vencimento.startsWith(mesAtual))
-    .reduce((s, f) => s + f.valor, 0)
+  const recebidoMes = receivedInMonth(faturas, mesAtual)
   const emAberto = devendo.reduce((s, c) => s + mrrBRL(c.mrr, c.currency, usdRate), 0)
 
   // ---- Tráfego (últimos 30 dias) ----
@@ -174,6 +182,8 @@ export default function Diretoria() {
     </div>
   )
 
+  if (loadError) return <DataLoadError onRetry={buscar} />
+
   return (
     <div className="space-y-5 animate-fade-in">
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -182,7 +192,7 @@ export default function Diretoria() {
             <Gauge className="h-6 w-6 text-primary" /> Diretoria
           </h1>
           <p className="text-sm text-muted-foreground">
-            Raio-X da operação, lido ao vivo do banco
+            Situação da operação
             {atualizadoEm && ` · atualizado ${atualizadoEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
           </p>
         </div>

@@ -132,8 +132,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   await admin
     .from('notifications')
     .insert([])
-    .then(() => null)
-    .catch(() => null);
+    .then(() => null, () => null);
 
   // Notification real:
   const { data: members } = await admin

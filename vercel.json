@@ -25,6 +25,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/radar-coletar",
+      "destination": "/api/r?__rota=radar-coletar"
+    },
+    {
       "source": "/api/aprovar-conteudo",
       "destination": "/api/r?__rota=aprovar-conteudo"
     },
@@ -51,6 +55,12 @@
     {
       "source": "/(.*)",
       "destination": "/index.html"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/radar-coletar",
+      "schedule": "0 12 * * *"
     }
   ]
 }

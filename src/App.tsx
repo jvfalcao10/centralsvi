@@ -19,6 +19,10 @@ import ResetPassword from "@/pages/ResetPassword";
 import Dashboard from "@/pages/Dashboard";
 import Pipeline from "@/pages/Pipeline";
 import Clients from "@/pages/Clients";
+import ClientManagement from "@/pages/ClientManagement";
+import FinancialReview from "@/pages/FinancialReview";
+import Workload from "@/pages/Workload";
+import CashPlanning from "@/pages/CashPlanning";
 import Financial from "@/pages/Financial";
 import Scripts from "@/pages/Scripts";
 import ListaEspera from "@/pages/ListaEspera";
@@ -26,6 +30,7 @@ import Onboarding from "@/pages/Onboarding";
 import Acessos from "@/pages/Acessos";
 import Senhas from "@/pages/Senhas";
 import Catalogo from "@/pages/Catalogo";
+import Trackeamento from "@/pages/Trackeamento";
 import Processos from "@/pages/Processos";
 import Diretoria from "@/pages/Diretoria";
 import Inteligencia from "@/pages/Inteligencia";
@@ -52,8 +57,10 @@ import Posts from "@/pages/content/Posts";
 import Pautas from "@/pages/content/Pautas";
 import Aprovacoes from "@/pages/content/Aprovacoes";
 import Radar from "@/pages/content/Radar";
+import RadarReels from "@/pages/content/RadarReels";
 import Datas from "@/pages/content/Datas";
 import Producao from "@/pages/content/Producao";
+import Organizador from "@/pages/content/Organizador";
 
 // Painel cliente (svi.ai)
 import PainelLayout from "@/components/PainelLayout";
@@ -102,6 +109,8 @@ const App = () => (
               <Route path="/pending-approval" element={<PendingApproval />} />
 
               {/* Staff-only */}
+              <Route path="/operacional/carga" element={<ProtectedRoute requiredRole="manager"><AppLayout><Workload /></AppLayout></ProtectedRoute>} />
+              <Route path="/financial/previsao" element={<ProtectedRoute requiredRole="admin"><AppLayout><CashPlanning /></AppLayout></ProtectedRoute>} />
               <Route path="/dashboard" element={
                 <ProtectedRoute requiredRole="manager"><AppLayout><Dashboard /></AppLayout></ProtectedRoute>
               } />
@@ -110,6 +119,12 @@ const App = () => (
               } />
               <Route path="/clients" element={
                 <ProtectedRoute requiredRole="executor"><AppLayout><Clients /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/clients/:clientId" element={
+                <ProtectedRoute requiredRole="executor"><AppLayout><ClientManagement /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/financial/conferencia" element={
+                <ProtectedRoute requiredRole="admin"><AppLayout><FinancialReview /></AppLayout></ProtectedRoute>
               } />
               <Route path="/acessos" element={
                 <ProtectedRoute requiredRole="executor"><AppLayout><Acessos /></AppLayout></ProtectedRoute>
@@ -122,6 +137,9 @@ const App = () => (
               } />
               <Route path="/catalogo" element={
                 <ProtectedRoute requiredRole="manager"><AppLayout><Catalogo /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/trackeamento" element={
+                <ProtectedRoute requiredRole="manager"><AppLayout><Trackeamento /></AppLayout></ProtectedRoute>
               } />
               <Route path="/diretoria" element={
                 <ProtectedRoute requiredRole="manager"><AppLayout><Diretoria /></AppLayout></ProtectedRoute>
@@ -216,9 +234,19 @@ const App = () => (
                   <AutoLayout><Producao /></AutoLayout>
                 </ProtectedRoute>
               } />
+              <Route path="/content/organizador" element={
+                <ProtectedRoute requiredRole="executor">
+                  <AutoLayout><Organizador /></AutoLayout>
+                </ProtectedRoute>
+              } />
               <Route path="/content/radar" element={
                 <ProtectedRoute requiredRole="executor" allowClient>
                   <AutoLayout><Radar /></AutoLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/content/reels" element={
+                <ProtectedRoute requiredRole="executor" allowClient>
+                  <AutoLayout><RadarReels /></AutoLayout>
                 </ProtectedRoute>
               } />
 

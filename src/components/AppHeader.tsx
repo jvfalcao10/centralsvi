@@ -12,14 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
-
-const PAGE_TITLES: Record<string, { title: string; breadcrumb: string[] }> = {
-  '/dashboard': { title: 'Dashboard', breadcrumb: ['Home', 'Dashboard'] },
-  '/tarefas': { title: 'Tarefas', breadcrumb: ['Home', 'Tarefas'] },
-  '/pipeline': { title: 'Pipeline CRM', breadcrumb: ['Home', 'Pipeline'] },
-  '/clients': { title: 'Clientes', breadcrumb: ['Home', 'Clientes'] },
-  '/financial': { title: 'Financeiro', breadcrumb: ['Home', 'Financeiro'] },
-}
+import { getNavigationBreadcrumb } from '@/lib/navigation'
 
 interface Alert {
   msg: string
@@ -30,8 +23,8 @@ interface Alert {
 
 export function AppHeader() {
   const location = useLocation()
-  const { profile } = useAuth()
-  const pageInfo = PAGE_TITLES[location.pathname] || { title: 'SVI', breadcrumb: ['Home'] }
+  const { profile, isTraffic } = useAuth()
+  const breadcrumb = getNavigationBreadcrumb(location.pathname, isTraffic)
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [openNotif, setOpenNotif] = useState(false)
   const [trocandoSenha, setTrocandoSenha] = useState(false)
@@ -99,11 +92,11 @@ export function AppHeader() {
       <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
 
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1 text-sm text-muted-foreground">
-        {pageInfo.breadcrumb.map((crumb, i) => (
-          <span key={crumb} className="flex items-center gap-1">
-            {i > 0 && <ChevronRight className="h-3 w-3" />}
-            <span className={i === pageInfo.breadcrumb.length - 1 ? 'text-foreground font-medium' : ''}>
+      <nav aria-label="Caminho da página" className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
+        {breadcrumb.map((crumb, i) => (
+          <span key={`${i}-${crumb}`} className={`min-w-0 items-center gap-1 ${i < breadcrumb.length - 1 ? 'hidden sm:flex shrink-0' : 'flex'}`}>
+            {i > 0 && <ChevronRight className="hidden sm:block h-3 w-3 shrink-0" />}
+            <span aria-current={i === breadcrumb.length - 1 ? 'page' : undefined} className={i === breadcrumb.length - 1 ? 'truncate text-foreground font-medium' : ''}>
               {crumb}
             </span>
           </span>
