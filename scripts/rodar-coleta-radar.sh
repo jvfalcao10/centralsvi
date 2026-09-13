@@ -9,11 +9,22 @@
 set -euo pipefail
 
 ALVO="${RADAR_URL:-https://central.svicompany.com.br/api/radar-coletar}"
-TMP="$(mktemp -t envprod.XXXXXX)"
-trap 'rm -f "$TMP"' EXIT
+
+# Diretório novo e arquivo que ainda não existe: o `vercel env pull` se comporta
+# diferente quando o destino já está criado, e vinha devolvendo arquivo vazio.
+PASTA="$(mktemp -d)"
+TMP="$PASTA/.env.producao"
+trap 'rm -rf "$PASTA"' EXIT
 
 echo "Lendo a configuração de produção..."
-vercel env pull "$TMP" --environment=production --yes >/dev/null 2>&1
+if ! vercel env pull "$TMP" --environment=production --yes 2>&1 | grep -qi "created\|downloading"; then
+  echo "O comando de leitura da configuração não confirmou a escrita do arquivo."
+fi
+
+if [ ! -s "$TMP" ]; then
+  echo "A configuração de produção veio vazia. Confira se o projeto certo está ligado a esta pasta."
+  exit 1
+fi
 
 # O arquivo tem valores com várias linhas (mensagem de commit, por exemplo),
 # então o parse é feito em Python e não pelo shell.
@@ -28,7 +39,7 @@ print(valor, end="")
 PY
 )"
 
-rm -f "$TMP"
+rm -rf "$PASTA"
 
 if [ -z "$SECRET" ]; then
   echo "Não achei CRON_SECRET na configuração de produção."
