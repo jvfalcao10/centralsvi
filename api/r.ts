@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createAdminClient } from './_lib/supabase.js';
 import { handleAprovarConteudo } from './_lib/aprovar-conteudo.js';
 import { handleRadarColetar } from './_lib/radar-coletar.js';
+import { handleRadarTrends } from './_lib/radar-trends.js';
 
 const CSS = `
 *{box-sizing:border-box;margin:0;padding:0}
@@ -98,6 +99,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Coleta diaria do Radar, chamada pelo cron.
   if (req.query.__rota === 'radar-coletar') {
     return handleRadarColetar(req, res);
+  }
+
+  // Tendencias do nicho de cada cliente, tambem pelo cron.
+  if (req.query.__rota === 'radar-trends') {
+    return handleRadarTrends(req, res);
   }
 
 

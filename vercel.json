@@ -25,6 +25,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/radar-trends",
+      "destination": "/api/r?__rota=radar-trends"
+    },
+    {
       "source": "/api/radar-coletar",
       "destination": "/api/r?__rota=radar-coletar"
     },
@@ -58,6 +62,10 @@
     }
   ],
   "crons": [
+    {
+      "path": "/api/radar-trends",
+      "schedule": "0 10 * * *"
+    },
     {
       "path": "/api/radar-coletar",
       "schedule": "0 12 * * *"
