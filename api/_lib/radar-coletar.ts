@@ -103,6 +103,15 @@ async function chamarApify(handles: string[], limite: number, token: string): Pr
     },
   );
   if (!resposta.ok) {
+    // 401 e 403 são quase sempre token errado, então vale dizer isso com todas
+    // as letras e informar o tamanho do que está configurado, para comparar com
+    // o token de origem sem expor nenhum dos dois.
+    if (resposta.status === 401 || resposta.status === 403) {
+      throw new Error(
+        `coletor recusou o token (HTTP ${resposta.status}); ` +
+        `o token configurado aqui tem ${token.length} caracteres`,
+      );
+    }
     // A mensagem do fornecedor pode conter a consulta e não sobe para o cliente.
     throw new Error(`coletor devolveu HTTP ${resposta.status}`);
   }
