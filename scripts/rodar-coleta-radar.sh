@@ -17,8 +17,13 @@ TMP="$PASTA/.env.producao"
 trap 'rm -rf "$PASTA"' EXIT
 
 echo "Lendo a configuração de produção..."
-if ! vercel env pull "$TMP" --environment=production --yes 2>&1 | grep -qi "created\|downloading"; then
-  echo "O comando de leitura da configuração não confirmou a escrita do arquivo."
+# Sem pipe aqui: `grep -q` fecha a saída assim que acha o texto, o processo
+# recebe SIGPIPE e morre no meio da escrita, deixando o arquivo pela metade.
+LOG="$PASTA/saida.log"
+if ! vercel env pull "$TMP" --environment=production --yes >"$LOG" 2>&1; then
+  echo "A leitura da configuração falhou:"
+  sed -n '1,10p' "$LOG"
+  exit 1
 fi
 
 if [ ! -s "$TMP" ]; then
