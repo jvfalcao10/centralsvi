@@ -81,6 +81,12 @@ const GROUPS: Group[] = [
     ['Raio-X SVI', 'raiox-svi.vercel.app', 'público'],
     ['Helmer Kids (diagnóstico)', 'helmerkids.vercel.app', 'público'],
   ]},
+  { title: 'Conteúdo João (@joaofalcao.svi)', items: [
+    ['Tudo do João (hub)', 'conteudojoao.svicompany.com.br/tudo.html'],
+    ['Banco de peças', 'conteudojoao.svicompany.com.br'],
+    ['Tweets do dia', 'conteudojoao.svicompany.com.br/tweets/'],
+    ['Estratégia completa', 'conteudojoao.svicompany.com.br/estrategia.html'],
+  ]},
   { title: 'Autoridade & Institucional', items: [
     ['SVI Company (site)', 'svicompany.com.br', 'público'],
     ['SVI Autoridade (Topo)', 'topo.svicompany.com.br', 'público'],
