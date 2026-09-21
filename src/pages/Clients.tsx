@@ -84,6 +84,9 @@ export default function Clients() {
 
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<Client | null>(null)
+  // Apagar cliente leva as faturas dele junto (cascade). Antes de deixar apagar,
+  // a tela precisa dizer o que vai sumir: divida em aberto e historico pago.
+  const [deleteInfo, setDeleteInfo] = useState<{ abertas: number; valorAberto: number; pagas: number } | null>(null)
   const [deleting, setDeleting] = useState(false)
 
   // Log interaction
@@ -190,6 +193,19 @@ export default function Clients() {
     }
   }
 
+  const mirarExclusao = async (client: Client) => {
+    setDeleteTarget(client)
+    setDeleteInfo(null)
+    const { data } = await supabase.from('invoices').select('valor, status').eq('client_id', client.id)
+    const faturas = data || []
+    const abertas = faturas.filter(f => ['pendente', 'atrasado'].includes(f.status))
+    setDeleteInfo({
+      abertas: abertas.length,
+      valorAberto: abertas.reduce((soma, f) => soma + Number(f.valor), 0),
+      pagas: faturas.filter(f => f.status === 'pago').length,
+    })
+  }
+
   const handleDeleteClient = async () => {
     if (!deleteTarget) return
     setDeleting(true)
@@ -199,7 +215,7 @@ export default function Clients() {
       toast({ title: 'Erro ao excluir cliente', description: error.message, variant: 'destructive' })
     } else {
       toast({ title: 'Cliente excluído', description: `${deleteTarget.name} foi removido.`, variant: 'destructive' })
-      setDeleteTarget(null)
+      setDeleteTarget(null); setDeleteInfo(null)
       if (selectedClient?.id === deleteTarget.id) setSelectedClient(null)
       fetchClients()
     }
@@ -394,7 +410,7 @@ export default function Clients() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={e => { e.stopPropagation(); setDeleteTarget(client) }}
+                        onClick={e => { e.stopPropagation(); mirarExclusao(client) }}
                         className="gap-1 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
                         <Trash2 className="h-3 w-3" />
@@ -589,7 +605,7 @@ export default function Clients() {
 
           <DialogFooter className="gap-2 pt-2">
             {editingClient && (
-              <Button variant="destructive" onClick={() => { setShowForm(false); setDeleteTarget(editingClient) }} disabled={saving} className="mr-auto">
+              <Button variant="destructive" onClick={() => { setShowForm(false); if (editingClient) mirarExclusao(editingClient) }} disabled={saving} className="mr-auto">
                 <Trash2 className="h-4 w-4" />
               </Button>
             )}
@@ -606,19 +622,43 @@ export default function Clients() {
       </Dialog>
 
       {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null) }}>
+      <AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open) { setDeleteTarget(null); setDeleteInfo(null) } }}>
         <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir cliente?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir <span className="font-semibold text-foreground">{deleteTarget?.name}</span>?
-              Esta ação não pode ser desfeita e todos os dados relacionados serão mantidos.
+            <AlertDialogTitle>{deleteInfo && deleteInfo.abertas > 0 ? 'Esse cliente ainda deve' : 'Excluir cliente?'}</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                {!deleteInfo ? (
+                  <p>Conferindo o que está pendurado em {deleteTarget?.name}...</p>
+                ) : deleteInfo.abertas > 0 ? (
+                  <>
+                    <p>
+                      <span className="font-semibold text-foreground">{deleteTarget?.name}</span> tem{' '}
+                      <span className="font-semibold text-danger">{deleteInfo.abertas} cobrança(s) em aberto, {formatCurrency(deleteInfo.valorAberto)}</span>.
+                      Excluir apaga essa dívida junto, e ninguém mais consegue cobrar.
+                    </p>
+                    <p>
+                      Se ele saiu mas ainda deve, feche o cliente em vez de excluir: mude o status para{' '}
+                      <span className="font-semibold text-foreground">cancelado</span>. Ele sai do quadro e do MRR, para de gerar
+                      mensalidade nova, e a dívida continua em Contas a Receber.
+                    </p>
+                  </>
+                ) : (
+                  <p>
+                    Excluir <span className="font-semibold text-foreground">{deleteTarget?.name}</span> apaga junto{' '}
+                    {deleteInfo.pagas > 0
+                      ? <><span className="font-semibold text-foreground">{deleteInfo.pagas} mensalidade(s) já paga(s)</span>, que somem do histórico e do DRE dos meses passados. </>
+                      : 'o histórico dele. '}
+                    Não dá para desfazer.
+                  </p>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteClient} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              {deleting ? 'Excluindo...' : 'Sim, excluir'}
+            <AlertDialogAction onClick={handleDeleteClient} disabled={deleting || !deleteInfo || deleteInfo.abertas > 0} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {deleting ? 'Excluindo...' : deleteInfo && deleteInfo.abertas > 0 ? 'Não dá, tem dívida' : 'Sim, excluir'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -649,7 +689,7 @@ export default function Clients() {
                 <Button variant="outline" size="sm" onClick={e => selectedClient && openEditClient(selectedClient, e)} className="gap-1 text-xs">
                   <Pencil className="h-3 w-3" /> Editar
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => { setDeleteTarget(selectedClient); setSelectedClient(null) }} className="gap-1 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30">
+                <Button variant="outline" size="sm" onClick={() => { if (selectedClient) mirarExclusao(selectedClient); setSelectedClient(null) }} className="gap-1 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30">
                   <Trash2 className="h-3 w-3" /> Excluir
                 </Button>
               </div>
