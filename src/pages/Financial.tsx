@@ -200,6 +200,8 @@ const invoiceStatusClass: Record<string, string> = {
   pendente: 'bg-warning/20 text-warning border-warning/30',
   pago: 'bg-success/20 text-success border-success/30',
   atrasado: 'bg-danger/20 text-danger border-danger/30',
+  // Fatura de quem saiu no meio do ciclo: fica no historico, mas nao se cobra.
+  cancelado: 'bg-muted text-muted-foreground border-border',
 }
 
 const expenseStatusClass: Record<string, string> = {
@@ -952,7 +954,7 @@ export default function Financial() {
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="pendente">Pendente</SelectItem>
                 <SelectItem value="pago">Pago</SelectItem>
-                <SelectItem value="atrasado">Atrasado</SelectItem>
+                <SelectItem value="atrasado">Atrasado</SelectItem><SelectItem value="cancelado">Cancelado</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -993,7 +995,7 @@ export default function Financial() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-1 justify-end">
-                        {inv.status !== 'pago' && (
+                        {isOpenInvoice(inv) && (
                           <>
                             <Button variant="ghost" size="sm" className="h-7 text-xs gap-1"><Send className="h-3 w-3" />Cobrar</Button>
                             <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-success hover:text-success" onClick={() => markInvoicePaid(inv.id)}><CheckCircle className="h-3 w-3" />Pago</Button>
