@@ -290,7 +290,7 @@ export default function Clients() {
           <Input placeholder="Buscar clientes..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos status</SelectItem>
             <SelectItem value="ativo">Ativo</SelectItem>
@@ -306,7 +306,7 @@ export default function Clients() {
 
       {/* Table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <Table>
+        <div className="overflow-x-auto"><Table>
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
               <TableHead>Cliente</TableHead>
@@ -421,7 +421,7 @@ export default function Clients() {
               )
             })}
           </TableBody>
-        </Table>
+        </Table></div>
         {filtered.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
             <User className="h-8 w-8 mx-auto mb-2 opacity-30" />
@@ -570,7 +570,7 @@ export default function Clients() {
                   <Input
                     id="cf-permuta-ate"
                     type="date"
-                    className="w-52"
+                    className="w-full sm:w-52"
                     value={form.permuta_ate}
                     onChange={e => setField('permuta_ate', e.target.value)}
                   />
@@ -771,7 +771,7 @@ export default function Clients() {
                   <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
                     <MessageSquare className="h-3.5 w-3.5" /> Registrar Interação
                   </p>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <Select value={interactionForm.tipo} onValueChange={v => setInteractionForm(p => ({ ...p, tipo: v }))}>
                       <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>

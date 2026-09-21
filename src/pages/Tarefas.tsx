@@ -475,13 +475,47 @@ export default function Tarefas() {
           </div>
         </div>
 
+        {/* No celular o trilho lateral some, entao as pastas viram um seletor.
+            Sem isso nao da pra abrir cliente, pessoa nem lista pelo telefone. */}
+        <div className="lg:hidden">
+          <Select
+            value={`${sel.tipo}:${sel.id}`}
+            onValueChange={v => {
+              const [tipo, ...resto] = v.split(':')
+              setSel({ tipo, id: resto.join(':') } as Selecao)
+            }}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="visao:minhas">Minhas{nMinhas ? ` (${nMinhas})` : ''}</SelectItem>
+              <SelectItem value="visao:todas">Todas{abertas(tarefas) ? ` (${abertas(tarefas)})` : ''}</SelectItem>
+              <SelectItem value="visao:atrasadas">Atrasadas{nAtrasadas ? ` (${nAtrasadas})` : ''}</SelectItem>
+              <SelectItem value="visao:feitas">Feitas</SelectItem>
+              {clientes.filter(c => porCliente.has(c.id)).map(c => (
+                <SelectItem key={c.id} value={`cliente:${c.id}`} className={isClienteMedico(c) ? 'text-info' : ''}>
+                  {c.name} ({porCliente.get(c.id)})
+                </SelectItem>
+              ))}
+              {pessoas.filter(p => porPessoa.has(p.user_id)).map(p => (
+                <SelectItem key={p.user_id} value={`pessoa:${p.user_id}`}>
+                  {p.name.split(' ')[0]}{p.user_id === user?.id ? ' (você)' : ''} ({porPessoa.get(p.user_id)})
+                </SelectItem>
+              ))}
+              {listas.map(l => (
+                <SelectItem key={l.id} value={`lista:${l.id}`}>{l.emoji} {l.nome}{porLista.get(l.id) ? ` (${porLista.get(l.id)})` : ''}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="flex flex-wrap gap-2">
-          <div className="relative flex-1 min-w-44">
+          <div className="relative flex-1 min-w-0 sm:min-w-44">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar por título, cliente ou dono..." value={busca} onChange={e => setBusca(e.target.value)} className="pl-9" />
           </div>
           <Select value={filtroDono} onValueChange={setFiltroDono}>
-            <SelectTrigger className={`w-44 ${filtroDono !== 'todos' ? 'border-primary/40 text-primary' : ''}`}>
+            <SelectTrigger className={`w-full sm:w-44 ${filtroDono !== 'todos' ? 'border-primary/40 text-primary' : ''}`}>
               <SelectValue placeholder="Dono" />
             </SelectTrigger>
             <SelectContent>
@@ -547,8 +581,8 @@ export default function Tarefas() {
                       {t.descricao && <span> · {t.descricao}</span>}
                     </p>
                   </div>
-                  <div className="hidden sm:block shrink-0"><PessoaChip nome={t.dono_nome} /></div>
-                  <div className="w-24 text-right shrink-0">
+                  <div className="shrink-0"><PessoaChip nome={t.dono_nome} mini /></div>
+                  <div className="w-20 sm:w-24 text-right shrink-0">
                     {t.prazo ? (
                       <span className={`text-xs inline-flex items-center gap-1 ${tarde ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
                         {tarde && <AlertTriangle className="h-3 w-3" />}{formatDate(t.prazo)}
@@ -580,7 +614,7 @@ export default function Tarefas() {
               <Textarea id="tf-desc" value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} rows={3} maxLength={4000}
                 placeholder="Contexto, links, o que é 'pronto' nessa tarefa" className="resize-none" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Cliente</Label>
                 <Select value={form.cliente_id || 'nenhum'} onValueChange={v => setForm(f => ({ ...f, cliente_id: v === 'nenhum' ? '' : v }))}>
@@ -604,7 +638,7 @@ export default function Tarefas() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label>Dono</Label>
                 <Select value={form.dono_id || 'ninguem'} onValueChange={v => setForm(f => ({ ...f, dono_id: v === 'ninguem' ? '' : v }))}>
@@ -646,7 +680,7 @@ export default function Tarefas() {
         <DialogContent className="sm:max-w-[760px] max-h-[88vh] overflow-y-auto">
           <DialogTitle className="sr-only">Detalhes da tarefa</DialogTitle>
           {detalhe && (
-            <div key={detalhe.id} className="grid md:grid-cols-[1fr_230px] gap-5">
+            <div key={detalhe.id} className="grid grid-cols-1 md:grid-cols-[1fr_230px] gap-5">
               {/* coluna principal */}
               <div className="space-y-4 min-w-0">
                 <div className="space-y-1.5 pr-6">

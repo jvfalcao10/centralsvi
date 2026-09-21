@@ -175,7 +175,7 @@ function BillingSection({
         <span className="text-sm font-semibold">{title}</span>
         <Badge variant="outline" className="ml-auto text-xs">{clients.length} cliente{clients.length !== 1 ? 's' : ''}</Badge>
       </div>
-      <Table>
+      <div className="overflow-x-auto"><Table>
         <TableHeader>
           <TableRow className="border-border hover:bg-transparent">
             <TableHead>Cliente</TableHead>
@@ -190,7 +190,7 @@ function BillingSection({
             <ClientBillingRow key={c.id} client={c} highlight={highlight} {...deps} />
           ))}
         </TableBody>
-      </Table>
+      </Table></div>
     </div>
   )
 }
@@ -603,7 +603,7 @@ export default function Financial() {
       {paymentsWithoutDate > 0 && <p role="alert" className="text-sm text-warning">{paymentsWithoutDate} fatura(s) paga(s) sem data de recebimento. Complete os registros para conferir os totais de caixa.</p>}
       <div className="flex flex-wrap justify-end gap-2"><Button asChild variant="outline" size="sm"><Link to="/financial/previsao">Previsão de entradas e saídas</Link></Button><Button asChild variant="outline" size="sm"><Link to="/financial/conferencia">Conferência financeira</Link></Button></div>
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-muted max-w-full h-auto flex-wrap justify-start">
+        <TabsList className="bg-muted max-w-full h-auto justify-start overflow-x-auto flex-nowrap sm:flex-wrap">
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
           <TabsTrigger value="cobranca">Cobrança</TabsTrigger>
           <TabsTrigger value="manuais">Cobranças Manuais</TabsTrigger>
@@ -824,7 +824,7 @@ export default function Financial() {
               </p>
             </CardHeader>
             <CardContent>
-              <Table>
+              <div className="overflow-x-auto"><Table>
                 <TableHeader>
                   <TableRow className="border-border hover:bg-transparent">
                     <TableHead>Cliente</TableHead>
@@ -905,7 +905,7 @@ export default function Financial() {
                     )
                   })}
                 </TableBody>
-              </Table>
+              </Table></div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -949,7 +949,7 @@ export default function Financial() {
               </SelectContent>
             </Select>
             <Select value={invoiceStatusFilter} onValueChange={setInvoiceStatusFilter}>
-              <SelectTrigger className="w-40"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="pendente">Pendente</SelectItem>
@@ -974,7 +974,7 @@ export default function Financial() {
           )}
 
           <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <Table>
+            <div className="overflow-x-auto"><Table>
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
                   <TableHead>Cliente</TableHead>
@@ -1013,7 +1013,7 @@ export default function Financial() {
                   </TableRow>
                 )}
               </TableBody>
-            </Table>
+            </Table></div>
           </div>
         </TabsContent>
 
@@ -1051,7 +1051,7 @@ export default function Financial() {
               </SelectContent>
             </Select>
             <Select value={expenseCatFilter} onValueChange={setExpenseCatFilter}>
-              <SelectTrigger className="w-44"><SelectValue placeholder="Categoria" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="Categoria" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas categorias</SelectItem>
                 <SelectItem value="pessoal">Pessoal</SelectItem>
@@ -1076,7 +1076,7 @@ export default function Financial() {
           </div>
 
           <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <Table>
+            <div className="overflow-x-auto"><Table>
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
                   <TableHead>Categoria</TableHead>
@@ -1142,7 +1142,7 @@ export default function Financial() {
                   </TableRow>
                 )}
               </TableBody>
-            </Table>
+            </Table></div>
           </div>
         </TabsContent>
 
@@ -1185,7 +1185,7 @@ export default function Financial() {
             <Card className="border-border bg-card">
               <CardHeader><CardTitle className="text-sm">Faturas e despesas por vencimento</CardTitle></CardHeader>
               <CardContent>
-                <Table>
+                <div className="overflow-x-auto"><Table>
                   <TableHeader>
                     <TableRow className="border-border">
                       <TableHead className="text-xs">Mês</TableHead>
@@ -1225,7 +1225,7 @@ export default function Financial() {
                       </TableRow>
                     )}
                   </TableBody>
-                </Table>
+                </Table></div>
               </CardContent>
             </Card>
           </div>
