@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { TECNICAS, ABERTAS, FAIXAS_VERBA, FAIXAS_CONTAS, VERTICAIS } from '@/data/vagaTrafego'
+import { TECNICAS, ABERTAS, FAIXAS_VERBA, FAIXAS_CONTAS, VERTICAIS, SITUACAO_ATUAL, SE_ENTRAR, HORAS_DIA } from '@/data/vagaTrafego'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -215,13 +215,38 @@ export default function VagaTrafego() {
                 </div>
               )
             })}
-            <div className="grid sm:grid-cols-2 gap-3 pt-2">
+            <div className="pt-2 space-y-3">
+              <div>
+                <p className="text-sm font-medium">Disponibilidade</p>
+                <p className="text-xs text-muted-foreground">
+                  A vaga é para alguém dedicado à nossa carteira. Responder com franqueza aqui evita
+                  desencontro depois, e não elimina ninguém de partida.
+                </p>
+              </div>
               <div className="space-y-1.5">
-                <Label htmlFor="v-disp">Disponibilidade</Label>
-                <select id="v-disp" value={f.disponibilidade || ''} onChange={e => set('disponibilidade', e.target.value)}
+                <Label htmlFor="v-sit">Como está a sua situação hoje?</Label>
+                <select id="v-sit" value={f.situacao_atual || ''} onChange={e => set('situacao_atual', e.target.value)}
                   className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
                   <option value="">Selecione</option>
-                  <option>Integral</option><option>Meio período</option><option>Por demanda</option>
+                  {SITUACAO_ATUAL.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="v-seentrar">Se você entrar na SVI, o que acontece com o que atende hoje?</Label>
+                <select id="v-seentrar" value={f.se_entrar || ''} onChange={e => set('se_entrar', e.target.value)}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
+                  <option value="">Selecione</option>
+                  {SE_ENTRAR.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="v-horas">Quanto tempo por dia você consegue dedicar?</Label>
+                <select id="v-horas" value={f.horas_dia || ''} onChange={e => set('horas_dia', e.target.value)}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
+                  <option value="">Selecione</option>
+                  {HORAS_DIA.map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
               </div>
               <div className="space-y-1.5">

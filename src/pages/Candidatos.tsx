@@ -15,6 +15,7 @@ interface Candidato {
   cidade: string | null; link_prova: string | null; anos_experiencia: number | null
   verba_gerida: string | null; contas_simultaneas: string | null; verticais: string[] | null
   disponibilidade: string | null; aceita_pj: boolean | null; pretensao: string | null
+  situacao_atual: string | null; se_entrar: string | null; horas_dia: string | null
   respostas: Record<string, any>
   score_tecnico: number | null; score_aberto: number | null; score_total: number | null
   notas_dimensao: Record<string, number> | null
@@ -182,6 +183,8 @@ export default function Candidatos() {
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                 {[['Cidade', aberto.cidade], ['Verba já gerida', aberto.verba_gerida],
+                  ['Hoje faz', aberto.situacao_atual], ['Se entrar', aberto.se_entrar],
+                  ['Tempo por dia', aberto.horas_dia],
                   ['Contas juntas', aberto.contas_simultaneas], ['Disponibilidade', aberto.disponibilidade],
                   ['Pretensão', aberto.pretensao], ['PJ', aberto.aceita_pj === null ? null : aberto.aceita_pj ? 'sim' : 'não'],
                   ['Experiência', aberto.anos_experiencia ? `${aberto.anos_experiencia} anos` : null],

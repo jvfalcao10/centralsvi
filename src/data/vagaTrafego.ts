@@ -153,6 +153,25 @@ export const FAIXAS_VERBA = [
   'R$ 10 mil a R$ 50 mil',
   'Acima de R$ 50 mil',
 ]
+export const SITUACAO_ATUAL = [
+  'Não estou trabalhando no momento',
+  'Sou contratado em uma empresa ou agência',
+  'Atendo clientes próprios como freelancer',
+  'Trabalho em outra área e quero migrar',
+]
+export const SE_ENTRAR = [
+  'Encerro o que atendo hoje e fico dedicado à SVI',
+  'Mantenho um ou dois e encerro o restante',
+  'Mantenho tudo que atendo hoje e concilio',
+  'Não atendo ninguém hoje, entro dedicado',
+]
+export const HORAS_DIA = [
+  'Período integral, 8 horas',
+  'Cerca de 6 horas por dia',
+  'Cerca de 4 horas por dia',
+  'Menos de 4 horas por dia',
+]
+
 export const FAIXAS_CONTAS = ['1 conta', '2 a 4 contas', '5 a 10 contas', 'Mais de 10 contas']
 export const VERTICAIS = [
   'Médico ou clínica', 'Odontologia', 'Estética', 'Varejo local',

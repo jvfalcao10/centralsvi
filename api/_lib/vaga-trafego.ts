@@ -119,6 +119,14 @@ export async function handleVagaTrafego(req: VercelRequest, res: VercelResponse)
     }
   }
 
+  // Dedicação é FATO, não qualidade: não mexe na nota, mas vira alerta na ficha,
+  // porque gestor que mantém carteira própria dificilmente vira fixo.
+  const seEntrar = String(b.se_entrar || '');
+  const horas = String(b.horas_dia || '');
+  if (seEntrar.startsWith('Mantenho tudo')) alertas.push('Diz que manteria toda a carteira atual: dificilmente fica dedicado à SVI.');
+  else if (seEntrar.startsWith('Mantenho um ou dois')) alertas.push('Manteria um ou dois clientes próprios: combinar limite antes de fechar.');
+  if (horas.startsWith('Menos de 4')) alertas.push('Oferece menos de 4 horas por dia, abaixo do que a carteira exige.');
+
   // Técnica pesa 60 porque é onde mora o vício que custa dinheiro.
   const scoreTotal = scoreAberto === null
     ? Math.round(scoreTecnico * 0.6 * 100) / 100
@@ -136,6 +144,9 @@ export async function handleVagaTrafego(req: VercelRequest, res: VercelResponse)
     contas_simultaneas: b.contas_simultaneas || null,
     verticais: Array.isArray(b.verticais) ? b.verticais.map(String) : null,
     disponibilidade: b.disponibilidade || null,
+    situacao_atual: b.situacao_atual || null,
+    se_entrar: b.se_entrar || null,
+    horas_dia: b.horas_dia || null,
     aceita_pj: typeof b.aceita_pj === 'boolean' ? b.aceita_pj : null,
     pretensao: String(b.pretensao || '').trim() || null,
     respostas: { ...respostas, __gabarito: gabarito },
