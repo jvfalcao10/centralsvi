@@ -69,6 +69,13 @@ export default function VagaTrafego() {
             Agência multivertical no sul do Pará, carteira com médico, clínica, solar e varejo.
             Começa em R$ 2.000 por mês e cresce por entrega, não por tempo de casa.
           </p>
+          <div className="rounded-xl border border-border bg-muted/30 p-3 text-sm space-y-1">
+            <p className="font-medium">Como funciona a entrada</p>
+            <p className="text-muted-foreground">
+              O primeiro mês é de teste, com contas reais e combinado claro do que é entregar bem.
+              Passou no mês, segue efetivo. É PJ, com nota.
+            </p>
+          </div>
           <p className="text-sm text-muted-foreground">
             São três passos e leva uns 15 minutos. As perguntas abertas são o que mais pesa aqui,
             então responde com caso real e número. Resposta genérica não passa.
