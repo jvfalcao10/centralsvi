@@ -35,6 +35,8 @@ import Processos from "@/pages/Processos";
 import Diretoria from "@/pages/Diretoria";
 import Inteligencia from "@/pages/Inteligencia";
 import Tarefas from "@/pages/Tarefas";
+import VagaTrafego from "@/pages/VagaTrafego";
+import Candidatos from "@/pages/Candidatos";
 import Documentos from "@/pages/Documentos";
 import ActivityLog from "@/pages/ActivityLog";
 import Team from "@/pages/Team";
@@ -103,6 +105,7 @@ const App = () => (
               <Route path="/r/trafego/:slug" element={<TrafegoReport />} />
               <Route path="/aprovar/trafego/:slug" element={<TrafegoApprove />} />
               <Route path="/aprovar/conteudo/:token" element={<ConteudoApprove />} />
+              <Route path="/vaga/trafego" element={<VagaTrafego />} />
               <Route path="/login" element={<Login />} />
               <Route path="/client-signup" element={<ClientSignup />} />
               <Route path="/reset-password" element={<ResetPassword />} />
@@ -143,6 +146,9 @@ const App = () => (
               } />
               <Route path="/diretoria" element={
                 <ProtectedRoute requiredRole="manager"><AppLayout><Diretoria /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/candidatos" element={
+                <ProtectedRoute requiredRole="manager"><AppLayout><Candidatos /></AppLayout></ProtectedRoute>
               } />
               <Route path="/tarefas" element={
                 <ProtectedRoute requiredRole="executor"><AppLayout><Tarefas /></AppLayout></ProtectedRoute>

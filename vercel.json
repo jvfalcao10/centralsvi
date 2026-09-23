@@ -37,6 +37,10 @@
       "destination": "/api/r?__rota=aprovar-conteudo"
     },
     {
+      "source": "/api/vaga-trafego",
+      "destination": "/api/r?__rota=vaga-trafego"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     },
