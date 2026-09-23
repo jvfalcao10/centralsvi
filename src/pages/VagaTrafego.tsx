@@ -51,8 +51,8 @@ export default function VagaTrafego() {
         <CheckCircle2 className="h-14 w-14 text-success mx-auto" />
         <h1 className="text-2xl font-bold">Recebemos sua candidatura</h1>
         <p className="text-muted-foreground">
-          Obrigado pelo tempo, {String(f.nome || '').split(' ')[0]}. Vamos ler com atenção e, se fizer sentido,
-          chamamos você no WhatsApp pra conversar.
+          Obrigado pelo seu tempo, {String(f.nome || '').split(' ')[0]}. Vamos analisar com atenção e
+          entramos em contato pelo WhatsApp para dar retorno.
         </p>
         <p className="text-sm text-muted-foreground">SVI Company · Redenção, Pará</p>
       </div>
@@ -66,24 +66,26 @@ export default function VagaTrafego() {
           <p className="text-xs font-semibold uppercase tracking-widest text-primary">SVI Company · vaga aberta</p>
           <h1 className="text-2xl sm:text-3xl font-bold leading-tight">Gestor de tráfego</h1>
           <p className="text-muted-foreground">
-            Agência multivertical no sul do Pará, carteira com médico, clínica, solar e varejo.
-            Começa em R$ 2.000 por mês e cresce por entrega, não por tempo de casa.
+            A SVI Company é uma agência em Redenção, no sul do Pará, com carteira em saúde,
+            energia solar e varejo. Procuramos um gestor para conduzir contas com autonomia,
+            do planejamento à leitura de resultado.
           </p>
           <div className="rounded-xl border border-border bg-muted/30 p-3 text-sm space-y-1">
             <p className="font-medium">Como funciona a entrada</p>
             <p className="text-muted-foreground">
-              O primeiro mês é de teste, com contas reais e combinado claro do que é entregar bem.
-              Passou no mês, segue efetivo. É PJ, com nota.
+              Remuneração inicial de R$ 2.000 por mês, em regime PJ. O primeiro mês é de adaptação,
+              com acompanhamento próximo e critérios combinados desde o começo. Concluído esse
+              período, a contratação segue em definitivo.
             </p>
           </div>
           <p className="text-sm text-muted-foreground">
-            São três passos e leva uns 15 minutos. As perguntas abertas são o que mais pesa aqui,
-            então responde com caso real e número. Resposta genérica não passa.
+            A candidatura tem três etapas e leva cerca de 15 minutos. Vale responder com calma:
+            exemplos do seu dia a dia ajudam mais a gente a entender o seu trabalho do que um currículo.
           </p>
         </header>
 
         <div className="flex gap-1.5">
-          {['Você', 'Situações', 'Sobre você'].map((nome, i) => (
+          {['Seus dados', 'Situações', 'Experiência'].map((nome, i) => (
             <div key={nome} className="flex-1 space-y-1">
               <div className={`h-1 rounded-full ${i <= passo ? 'bg-primary' : 'bg-muted'}`} />
               <p className={`text-[11px] ${i === passo ? 'text-primary font-medium' : 'text-muted-foreground'}`}>{nome}</p>
@@ -165,7 +167,8 @@ export default function VagaTrafego() {
         {passo === 1 && (
           <div className="space-y-5">
             <p className="text-sm text-muted-foreground">
-              Situações reais de conta. Escolhe o que você faria de verdade, não o que parece bonito.
+              Situações comuns na rotina de quem cuida de contas. Não existe pegadinha:
+              marque a opção mais próxima do que você faria.
             </p>
             {TECNICAS.map((q, i) => (
               <div key={q.id} className="rounded-xl border border-border p-4 space-y-3">
@@ -195,7 +198,8 @@ export default function VagaTrafego() {
         {passo === 2 && (
           <div className="space-y-5">
             <p className="text-sm text-muted-foreground">
-              A parte que mais pesa. Caso real, com número, vale muito mais que texto bonito.
+              Aqui queremos conhecer o seu jeito de trabalhar. Um exemplo concreto, mesmo que
+              simples, diz mais do que uma descrição longa.
             </p>
             {ABERTAS.map((q, i) => {
               const txt = String(r[q.id] || '')
