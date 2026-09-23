@@ -29,6 +29,9 @@ export default function VagaTrafego() {
   const faltaPasso0 = !f.nome?.trim() || String(f.whatsapp || '').replace(/\D/g, '').length < 10 || !f.cidade?.trim()
   const faltaPasso1 = TECNICAS.some(q => !r[q.id])
   const curtas = useMemo(() => ABERTAS.filter(q => String(r[q.id] || '').trim().length < 40), [r])
+  // Dedicação decide se a pessoa vira fixo: sem isso a ficha chega incompleta
+  // e a dúvida só aparece na entrevista, depois de gastar o tempo dos dois.
+  const faltaDedicacao = !f.situacao_atual || !f.se_entrar || !f.horas_dia
 
   async function enviar() {
     setEnviando(true); setErro('')
@@ -224,7 +227,7 @@ export default function VagaTrafego() {
                 </p>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="v-sit">Como está a sua situação hoje?</Label>
+                <Label htmlFor="v-sit">Como está a sua situação hoje? <span className="text-destructive">*</span></Label>
                 <select id="v-sit" value={f.situacao_atual || ''} onChange={e => set('situacao_atual', e.target.value)}
                   className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
                   <option value="">Selecione</option>
@@ -232,7 +235,7 @@ export default function VagaTrafego() {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="v-seentrar">Se você entrar na SVI, o que acontece com o que atende hoje?</Label>
+                <Label htmlFor="v-seentrar">Se você entrar na SVI, o que acontece com o que atende hoje? <span className="text-destructive">*</span></Label>
                 <select id="v-seentrar" value={f.se_entrar || ''} onChange={e => set('se_entrar', e.target.value)}
                   className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
                   <option value="">Selecione</option>
@@ -242,7 +245,7 @@ export default function VagaTrafego() {
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="v-horas">Quanto tempo por dia você consegue dedicar?</Label>
+                <Label htmlFor="v-horas">Quanto tempo por dia você consegue dedicar? <span className="text-destructive">*</span></Label>
                 <select id="v-horas" value={f.horas_dia || ''} onChange={e => set('horas_dia', e.target.value)}
                   className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
                   <option value="">Selecione</option>
@@ -264,13 +267,14 @@ export default function VagaTrafego() {
               <Button variant="outline" onClick={() => { setPasso(1); window.scrollTo(0, 0) }} className="gap-2">
                 <ArrowLeft className="h-4 w-4" /> Voltar
               </Button>
-              <Button className="flex-1 gap-2" disabled={enviando || curtas.length > 0} onClick={enviar}>
+              <Button className="flex-1 gap-2" disabled={enviando || curtas.length > 0 || faltaDedicacao} onClick={enviar}>
                 {enviando ? <><Loader2 className="h-4 w-4 animate-spin" /> Enviando…</> : 'Enviar candidatura'}
               </Button>
             </div>
-            {curtas.length > 0 && (
+            {(curtas.length > 0 || faltaDedicacao) && (
               <p className="text-xs text-muted-foreground text-center">
-                Faltam {curtas.length} resposta(s) com pelo menos 40 caracteres.
+                {curtas.length > 0 && `Faltam ${curtas.length} resposta(s) com pelo menos 40 caracteres. `}
+                {faltaDedicacao && 'Preencha os três campos de disponibilidade.'}
               </p>
             )}
           </div>

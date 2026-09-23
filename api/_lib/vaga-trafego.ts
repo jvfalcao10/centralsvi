@@ -36,6 +36,7 @@ export async function handleVagaTrafego(req: VercelRequest, res: VercelResponse)
   if (nome.length < 3) return res.status(400).json({ error: 'nome_invalido' });
   if (whatsapp.length < 10) return res.status(400).json({ error: 'whatsapp_invalido' });
   for (const q of TECNICAS) if (!respostas[q.id]) return res.status(400).json({ error: 'faltou_tecnica', id: q.id });
+  if (!b.situacao_atual || !b.se_entrar || !b.horas_dia) return res.status(400).json({ error: 'faltou_dedicacao' });
   for (const q of ABERTAS) {
     if (String(respostas[q.id] || '').trim().length < 40) return res.status(400).json({ error: 'resposta_curta', id: q.id });
   }
