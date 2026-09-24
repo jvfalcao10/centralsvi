@@ -34,6 +34,24 @@ function inicioDoDiaBelem(agora: number): number {
   return d.getTime() + TZ_OFFSET_MS;
 }
 
+type Relato = { pessoa?: string; papel?: string; resumo?: string; ok?: boolean };
+
+async function puxarRelatos(): Promise<Relato[]> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return [];
+  const hoje = new Date(Date.now() - TZ_OFFSET_MS).toISOString().slice(0, 10);
+  try {
+    const r = await fetch(`${url}/rest/v1/feedback_dia?dia=eq.${hoje}&select=pessoa,papel,resumo,ok`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+    });
+    if (!r.ok) return [];
+    return (await r.json()) as Relato[];
+  } catch {
+    return [];
+  }
+}
+
 async function puxarTarefas(token: string, fechadas: boolean): Promise<Task[]> {
   const out: Task[] = [];
   for (let page = 0; page < 12; page++) {
@@ -108,7 +126,7 @@ function montar(abertas: Task[], fechadasHoje: Task[]) {
 
 const esc = (s: string) => String(s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c] as string));
 
-function render(pessoas: Pessoa[], quando: string): string {
+function render(pessoas: Pessoa[], quando: string, relatos: Relato[]): string {
   const totAtraso = pessoas.reduce((s, p) => s + p.atrasadas, 0);
   const totAbertas = pessoas.reduce((s, p) => s + p.abertas, 0);
   const totFeitas = pessoas.reduce((s, p) => s + p.concluidasHoje, 0);
@@ -172,6 +190,12 @@ background:rgba(224,114,106,.14);color:var(--red);white-space:nowrap}
 .t a{color:var(--text);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .t a:hover{color:var(--gold-b)}
 .t .d{color:var(--red);font-weight:600;font-size:12px;white-space:nowrap}
+.sec{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold-b);margin:30px 0 12px}
+.rel{background:var(--ink);border:1px solid var(--line);border-radius:13px;padding:14px 16px;margin-bottom:9px}
+.rel.pend{border-color:rgba(224,114,106,.3)}
+.rel header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+.rel h3{font-size:14.5px;font-weight:600}
+.rel p{font-size:13.5px;color:var(--dim);white-space:pre-wrap}
 footer{margin-top:26px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--dim)}
 @media(max-width:520px){.res{grid-template-columns:1fr 1fr}.n{grid-template-columns:repeat(3,1fr);gap:10px}}
 </style></head><body><div class="w">
@@ -184,6 +208,9 @@ footer{margin-top:26px;padding-top:16px;border-top:1px solid var(--line);font-si
   <div><b>${totAbertas}</b><span>abertas no total</span></div>
 </div>
 ${cards || '<p class="sub">Nenhuma tarefa aberta encontrada.</p>'}
+${relatos.length ? `<h2 class="sec">O que cada um relatou hoje</h2>` + relatos.map(r => `<article class="rel${r.ok ? '' : ' pend'}">
+  <header><h3>${esc(r.pessoa || 'sem nome')}</h3><span class="tag ${r.ok ? 'ok' : ''}">${r.ok ? 'fechou' : 'incompleto'}</span></header>
+  <p>${esc(String(r.resumo || '').slice(0, 400))}</p></article>`).join('') : '<h2 class="sec">O que cada um relatou hoje</h2><p class="sub">Ninguém reportou ainda.</p>'}
 <footer>Dados do ClickUp no momento em que você abriu esta página. Ordenado por quem tem mais atraso.
 Clique numa tarefa para abrir direto no ClickUp.</footer>
 </div></body></html>`;
@@ -202,9 +229,10 @@ export async function handleEquipeDia(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const [abertas, fechadas] = await Promise.all([
+    const [abertas, fechadas, relatos] = await Promise.all([
       puxarTarefas(token, false),
       puxarTarefas(token, true),
+      puxarRelatos(),
     ]);
     const pessoas = montar(abertas, fechadas);
     const quando = new Date(Date.now() - TZ_OFFSET_MS).toLocaleString('pt-BR', {
@@ -212,7 +240,7 @@ export async function handleEquipeDia(req: VercelRequest, res: VercelResponse) {
     });
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
-    res.status(200).send(render(pessoas, quando));
+    res.status(200).send(render(pessoas, quando, relatos));
   } catch (e) {
     res.status(500).send('Nao consegui ler o ClickUp agora. Tente de novo em instantes.');
   }
