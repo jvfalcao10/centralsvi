@@ -89,12 +89,17 @@ function montar(abertas: Task[], fechadasHoje: Task[]) {
     }
   }
 
+  const desdeHoje = inicioDoDiaBelem(agora);
   for (const t of fechadasHoje) {
+    // A API aceita date_closed_gt mas nem sempre respeita: conferimos aqui.
+    const fechada = t.date_closed ? Number(t.date_closed) : 0;
+    if (!fechada || fechada < desdeHoje) continue;
     const donos = (t.assignees || []).map(a => a.username || 'sem nome');
     for (const nome of donos) pega(nome).concluidasHoje++;
   }
 
-  const lista = [...mapa.values()];
+  const SAIRAM = ['aleilson'];
+  const lista = [...mapa.values()].filter(p => !SAIRAM.some(x => p.nome.toLowerCase().includes(x)));
   for (const p of lista) p.piores.sort((a, b) => b.dias - a.dias);
   // Quem tem mais atraso aparece primeiro: e por ele que a cobranca comeca.
   lista.sort((a, b) => b.atrasadas - a.atrasadas || b.abertas - a.abertas);
