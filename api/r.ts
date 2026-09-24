@@ -4,6 +4,7 @@ import { handleAprovarConteudo } from './_lib/aprovar-conteudo.js';
 import { handleVagaTrafego } from './_lib/vaga-trafego.js';
 import { handleRadarColetar } from './_lib/radar-coletar.js';
 import { handleRadarTrends } from './_lib/radar-trends.js';
+import { handleEquipeDia } from './_lib/equipe-dia.js';
 
 const CSS = `
 *{box-sizing:border-box;margin:0;padding:0}
@@ -106,6 +107,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Tendencias do nicho de cada cliente, tambem pelo cron.
+  if (req.query.__rota === 'equipe-dia') {
+    return handleEquipeDia(req, res);
+  }
   if (req.query.__rota === 'radar-trends') {
     return handleRadarTrends(req, res);
   }

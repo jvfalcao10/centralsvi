@@ -25,6 +25,10 @@
   ],
   "rewrites": [
     {
+      "source": "/equipe",
+      "destination": "/api/r?__rota=equipe-dia"
+    },
+    {
       "source": "/api/radar-trends",
       "destination": "/api/r?__rota=radar-trends"
     },
