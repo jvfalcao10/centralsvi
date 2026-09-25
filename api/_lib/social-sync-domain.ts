@@ -16,7 +16,7 @@ export function parseDelivery(caption:string, messageId:string) {
   delivery_version:valid?Number(parts[2].slice(1)):null }
 }
 export function mathVideo(m:Record<string,any>) {
- if (m.chatid!==SOCIAL_MATH_GROUP || !SOCIAL_MATH_SENDERS.has(m.sender) || m.wasSentByApi || m.fromMe) return null
+ if (m.chatid!==SOCIAL_MATH_GROUP || ![m.sender,m.sender_pn,m.sender_lid].some(s=>SOCIAL_MATH_SENDERS.has(s)) || m.wasSentByApi || m.fromMe) return null
  let content=m.content; if(typeof content==='string') {try{content=JSON.parse(content)}catch{content={}}}
  content=content?.videoMessage || content?.documentMessage || content || {}
  const name=String(content.fileName||content.title||'')

@@ -40,8 +40,9 @@ async function discover(db:DB,source:string) {
      if(delivery){rows.push({key:delivery.key,provider:delivery.provider,source_id:delivery.source_id,card_id:delivery.card_id,payload:{...delivery.payload,client:delivery.client,title:delivery.title,delivery_version:delivery.delivery_version}});count++}
     }
     await queue(db,rows)
-    // Do not assume API message sort order; scan all available pages (bounded at 2000).
-    if(!data.hasMore){ended=true;break}
+    // Provider contract: newest first. Stop only after reaching the overlap watermark.
+    const last=data.messages.at(-1),rawLast=Number(last?.messageTimestamp),lastAt=rawLast<1e12?rawLast*1000:rawLast
+    if(!data.hasMore || (Number.isFinite(lastAt)&&lastAt>0&&lastAt<since)){ended=true;break}
    }
    if(!ended)throw new SyncError('message_scan_limit')
   } else {
