@@ -1,3 +1,4 @@
+import { handleSocialSync, socialSyncStatus } from './social-sync.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createHash, randomBytes } from 'node:crypto'
 import { createAdminClient } from './supabase.js'
@@ -6,6 +7,7 @@ import { publicCard, socialPatch, SocialError, type SocialCard, type SocialAsset
 const fail = (status: number, message: string): never => { throw new SocialError(status, message) }
 const hash = (value: string) => createHash('sha256').update(value).digest('hex')
 export async function handleSocial(req: VercelRequest, res: VercelResponse) {
+ if (req.query.sync === 'run') return handleSocialSync(req,res)
  res.setHeader('Cache-Control', 'private, no-store')
  res.setHeader('X-Robots-Tag', 'noindex, nofollow')
  res.setHeader('Referrer-Policy', 'no-referrer')
@@ -45,6 +47,7 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
    card = data as SocialCard
   }
   if (req.method === 'GET') {
+   if (!token && req.query.sync === 'status') return res.json(await socialSyncStatus(db))
    if (card && token) return res.json({ card: await media(publicCard(card)) })
    if (card) {
     const { data: events, error } = await db.from('central_social_events').select('*').eq('card_id', card.id).order('created_at', { ascending: false }).limit(100)

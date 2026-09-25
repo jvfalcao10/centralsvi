@@ -97,5 +97,10 @@
         }
       ]
     }
-  ]
+  ],
+  "functions": {
+    "api/r.ts": {
+      "maxDuration": 300
+    }
+  }
 }

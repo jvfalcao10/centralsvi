@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase'
 export type Asset = { id:string; name:string; path:string; thumbnail?:string; type:string; bytes?:number; url?:string; preview?:string }
 export type Card = {
- id:string; client:string; title:string; author:string; source_url:string; source_status:string; source_description?:string;
+ ingest_pending?:boolean; id:string; client:string; title:string; author:string; source_url:string; source_status:string; source_description?:string;
  source_updated:string; assets:Asset[]; selected_assets:string[]; caption:string; note:string; stage:string; revision:number; version:number;
  approved_by:string|null; approved_at:string|null; approval_evidence:string|null; scheduled_at:string|null; posted_at:string|null; posted_url:string|null; channel:string|null; preview?:string;
 }
