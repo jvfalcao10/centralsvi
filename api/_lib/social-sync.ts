@@ -112,8 +112,11 @@ async function processJob(db:DB,job:Job) {
  try {
   const {data:existing}=checked(await db.from('central_social_cards').select('assets,client').eq('id',job.card_id).maybeSingle())
   let metadata:Record<string,unknown>,files:Record<string,any>[]
+  let knownAssets:any[]=existing?.assets||[]
   if(job.provider==='clickup') {
    const t=await clickup('/task/'+encodeURIComponent(job.source_id))
+   const {data:related}=checked(await db.from('central_social_cards').select('assets').eq('source_url',`https://app.clickup.com/t/${job.source_id}`))
+   knownAssets=[...knownAssets,...(related||[]).flatMap(c=>c.assets||[])]
    // Only configured production lists can enter through this collector.
    if(!Object.values(LISTS).some(l=>l.id===String(t.list?.id)))throw new SyncError('task_moved_review',true)
    let client=existing?.client||taskClient(t)
@@ -126,7 +129,7 @@ async function processJob(db:DB,job:Job) {
    metadata={client:p.client,title:p.title,author:'Math',source_url:'https://web.whatsapp.com/',source_status:'Entregue no grupo',source_description:`Grupo: MATH | EDITOR | SVI\nEnviado por Math em ${p.at}\nMensagem: ${job.source_id}\nVersão informada: ${p.delivery_version??'não informada'}\n\n${p.caption}`,source_updated:p.at}
    files=[{id:job.source_id,title:p.name,mimetype:p.type,size:p.bytes,date:Date.parse(p.at)}]
   }
-  files=files.filter(a=>!existing?.assets?.some((old:any)=>old.id===String(a.id)))
+  files=files.filter(a=>!knownAssets.some((old:any)=>old.id===String(a.id)))
   if(files.length)checked(await db.rpc('central_social_notice',{p_key:job.key,p_card:metadata}))
   const current=files.slice(0,2),assets=[]
   for(const a of current){
@@ -166,7 +169,7 @@ export async function handleSocialSync(req:VercelRequest,res:VercelResponse) {
   }
   if(mode==='process'){
    const results=[],start=Date.now()
-   for(let i=0;i<1&&Date.now()-start<90000;i++){
+   for(let i=0;i<12&&Date.now()-start<60000;i++){
     const {data:job}=checked(await db.rpc('central_social_claim',{}));if(!job)break
     results.push(await processJob(db,job as Job))
    }
