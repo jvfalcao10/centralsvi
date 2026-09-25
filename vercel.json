@@ -82,5 +82,20 @@
       "path": "/api/radar-coletar",
       "schedule": "0 12 * * *"
     }
+  ],
+  "headers": [
+    {
+      "source": "/aprovar/social/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
+    }
   ]
 }
