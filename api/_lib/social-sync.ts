@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { timingSafeEqual } from 'node:crypto'
 import { createAdminClient } from './supabase.js'
-import { allowedMediaURL, deliveredByTeam, digest, mathVideo, mediaType, normalized, SOCIAL_MATH_GROUP, taskClient } from './social-sync-domain.js'
+import { allowedMediaURL, deliveredByTeam, digest, whatsappVideo, mediaType, normalized, SOCIAL_WHATSAPP_SOURCES, taskClient } from './social-sync-domain.js'
 const MAX_BYTES=50*1024*1024
 const CLICKUP='https://api.clickup.com/api/v2'
 const UAZ='https://svicompany.uazapi.com'
@@ -25,18 +25,19 @@ async function discover(db:DB,source:string) {
  let count=0
  const until=Date.now()-1000,since=Number(state.cursor_ms)-300000
  try {
-  if(source==='whatsapp:math') {
+  if(Object.hasOwn(SOCIAL_WHATSAPP_SOURCES,source)) {
+   const config=SOCIAL_WHATSAPP_SOURCES[source]
    if(!process.env.SOCIAL_UAZ_TOKEN)throw new SyncError('configuration_missing')
    // Full pagination to the saved watermark. No cursor advance on an incomplete scan.
    let ended=false
    for(let offset=0;offset<2000;offset+=100){
-    const data=await uaz('/message/find',{chatid:SOCIAL_MATH_GROUP,limit:100,offset})
+    const data=await uaz('/message/find',{chatid:config.group,limit:100,offset})
     if(!Array.isArray(data.messages))throw new SyncError('source_shape_invalid')
     const rows=[]
     for(const message of data.messages){
      const raw=Number(message.messageTimestamp),timestamp=raw<1e12?raw*1000:raw
      if(timestamp<since)continue
-     const delivery=mathVideo(message)
+     const delivery=whatsappVideo(message,config)
      if(delivery){rows.push({key:delivery.key,provider:delivery.provider,source_id:delivery.source_id,card_id:delivery.card_id,payload:{...delivery.payload,client:delivery.client,title:delivery.title,delivery_version:delivery.delivery_version}});count++}
     }
     await queue(db,rows)
@@ -126,7 +127,11 @@ async function processJob(db:DB,job:Job) {
    files=(t.attachments||[]).filter((a:any)=>!a.deleted&&!a.hidden&&deliveredByTeam(a)&&Number(a.date)>=Date.parse('2026-09-01T00:00:00-03:00')&&mediaType(a.title||'',a.mimetype||''))
   }else{
    const p=job.payload
-   metadata={client:p.client,title:p.title,author:'Math',source_url:'https://web.whatsapp.com/',source_status:'Entregue no grupo',source_description:`Grupo: MATH | EDITOR | SVI\nEnviado por Math em ${p.at}\nMensagem: ${job.source_id}\nVersão informada: ${p.delivery_version??'não informada'}\n\n${p.caption}`,source_updated:p.at}
+   // Jobs queued before sources were generalized belong to Math.
+   const source=p.source??'whatsapp:math'
+   if(!Object.hasOwn(SOCIAL_WHATSAPP_SOURCES,source))throw new SyncError('source_invalid',true)
+   const config=SOCIAL_WHATSAPP_SOURCES[source]
+   metadata={client:p.client,title:p.title,author:config.author,source_url:'https://web.whatsapp.com/',source_status:'Entregue no grupo',source_description:`Grupo: ${config.groupName}\nEnviado por ${config.author} em ${p.at}\nMensagem: ${job.source_id}\nVersão informada: ${p.delivery_version??'não informada'}\n\n${p.caption}`,source_updated:p.at}
    files=[{id:job.source_id,title:p.name,mimetype:p.type,size:p.bytes,date:Date.parse(p.at)}]
   }
   files=files.filter(a=>!knownAssets.some((old:any)=>old.id===String(a.id)))
@@ -164,7 +169,7 @@ export async function handleSocialSync(req:VercelRequest,res:VercelResponse) {
  try {
   const db=createAdminClient(),mode=req.body?.mode
   if(mode==='collect'){
-   const source=String(req.body?.source||'');if(!['clickup:jose','clickup:lais','clickup:math','whatsapp:math'].includes(source))return res.status(400).json({error:'Invalid source'})
+   const source=String(req.body?.source||'');if(!['clickup:jose','clickup:lais','clickup:math',...Object.keys(SOCIAL_WHATSAPP_SOURCES)].includes(source))return res.status(400).json({error:'Invalid source'})
    return res.json(await discover(db,source))
   }
   if(mode==='process'){

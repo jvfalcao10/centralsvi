@@ -1,6 +1,11 @@
 import { createHash } from 'node:crypto'
 export const SOCIAL_MATH_GROUP = '120363411761185563@g.us'
 export const SOCIAL_MATH_SENDERS = new Set(['554891836693@s.whatsapp.net','5548991836693@s.whatsapp.net','50217076449517@lid'])
+export type WhatsAppSource = {id:string;group:string;groupName:string;author:string;unidentifiedTitle:string;senders:Set<string>}
+export const SOCIAL_WHATSAPP_SOURCES:Record<string,WhatsAppSource> = {
+ 'whatsapp:math':{id:'whatsapp:math',group:SOCIAL_MATH_GROUP,groupName:'MATH | EDITOR | SVI',author:'Math',unidentifiedTitle:'Vídeo do Math · identificar peça',senders:SOCIAL_MATH_SENDERS},
+ 'whatsapp:sarah':{id:'whatsapp:sarah',group:'120363429541277814@g.us',groupName:'SARAH | FILMMAKER | EDITORA | SVI',author:'Sarah',unidentifiedTitle:'Vídeo da Sarah · identificar peça',senders:new Set(['559492941072@s.whatsapp.net','5594992941072@s.whatsapp.net','13868852076575@lid'])},
+}
 export const digest = (s:string|Buffer) => createHash('sha256').update(s).digest('hex')
 export const normalized = (s:string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()
 export const mediaType = (name:string, mime='') => {
@@ -8,15 +13,15 @@ export const mediaType = (name:string, mime='') => {
  const types:Record<string,string>={mp4:'video/mp4',mov:'video/quicktime',m4v:'video/mp4',webm:'video/webm',jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',webp:'image/webp',gif:'image/gif'}
  return types[ext||''] || (/^(image\/(jpeg|png|webp|gif)|video\/(mp4|quicktime|webm))$/.test(mime)?mime:'')
 }
-export function parseDelivery(caption:string, messageId:string) {
+export function parseDelivery(caption:string, messageId:string, source=SOCIAL_WHATSAPP_SOURCES['whatsapp:math']) {
  const parts=caption.split('\n')[0].split('|').map(s=>s.trim())
  const valid=parts.length===3 && parts[0].length>1 && parts[1].length>1 && /^v\d{1,3}$/i.test(parts[2])
- return { client:valid?parts[0].slice(0,120):'Identificar cliente', title:valid?parts[1].slice(0,250):'Vídeo do Math · identificar peça',
-  card_id:'wa-'+digest(valid?`${SOCIAL_MATH_GROUP}|${normalized(parts[0])}|${normalized(parts[1])}`:messageId).slice(0,24),
+ return { client:valid?parts[0].slice(0,120):'Identificar cliente', title:valid?parts[1].slice(0,250):source.unidentifiedTitle,
+  card_id:'wa-'+digest(valid?`${source.group}|${normalized(parts[0])}|${normalized(parts[1])}`:source.id==='whatsapp:math'?messageId:`${source.group}|${messageId}`).slice(0,24),
   delivery_version:valid?Number(parts[2].slice(1)):null }
 }
-export function mathVideo(m:Record<string,any>) {
- if (m.chatid!==SOCIAL_MATH_GROUP || ![m.sender,m.sender_pn,m.sender_lid].some(s=>SOCIAL_MATH_SENDERS.has(s)) || m.wasSentByApi || m.fromMe) return null
+export function whatsappVideo(m:Record<string,any>, source:WhatsAppSource) {
+ if (m.chatid!==source.group || ![m.sender,m.sender_pn,m.sender_lid].some(s=>source.senders.has(s)) || m.wasSentByApi || m.fromMe) return null
  let content=m.content; if(typeof content==='string') {try{content=JSON.parse(content)}catch{content={}}}
  content=content?.videoMessage || content?.documentMessage || content || {}
  const name=String(content.fileName||content.title||'')
@@ -27,9 +32,10 @@ export function mathVideo(m:Record<string,any>) {
  const t=Number(m.messageTimestamp);if(!Number.isFinite(t)||t<=0)return null
  const at=new Date(t<1e12?t*1000:t).toISOString()
  const caption=String(m.text||content.caption||'').slice(0,10000)
- return { key:'wa:'+id, provider:'whatsapp', source_id:id, ...parseDelivery(caption,id),
-  payload:{ message_id:id, name:name||`video-${String(m.messageid||digest(id).slice(0,12))}.mp4`, type:mediaType(name,mime)||'video/mp4', bytes:Number(content.fileLength||content.size||0), caption, at } }
+ return { key:'wa:'+id, provider:'whatsapp', source_id:id, ...parseDelivery(caption,id,source),
+  payload:{ source:source.id, message_id:id, name:name||`video-${String(m.messageid||digest(id).slice(0,12))}.mp4`, type:mediaType(name,mime)||'video/mp4', bytes:Number(content.fileLength||content.size||0), caption, at } }
 }
+export function mathVideo(m:Record<string,any>) { return whatsappVideo(m,SOCIAL_WHATSAPP_SOURCES['whatsapp:math']) }
 export function allowedMediaURL(raw:string, provider:'clickup'|'whatsapp') {
  try {const u=new URL(raw); if(u.protocol!=='https:' || u.username || u.password || (u.port&&u.port!=='443'))return false
   return provider==='clickup' ? (u.hostname==='t9015595861.p.clickup-attachments.com' || u.hostname==='attachments.clickup.com') : u.hostname==='svicompany.uazapi.com'
