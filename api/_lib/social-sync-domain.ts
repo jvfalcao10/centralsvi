@@ -37,7 +37,7 @@ export function allowedMediaURL(raw:string, provider:'clickup'|'whatsapp') {
 }
 export function taskClient(t:Record<string,any>) {
  const bracket=String(t.name||'').match(/\[([^\]]+)\]/)?.[1]
- if(bracket)return bracket.slice(0,120)
+ if(bracket){const key=normalized(bracket);const canonical:Record<string,string>={'dra erika':'DRA ERIKA FIGUEIREDO','erika':'DRA ERIKA FIGUEIREDO','dr brenno':'DR. BRENNO CANGUSSU','brenno':'DR. BRENNO CANGUSSU','dra enia':'DRA ENIA','alpha':'ALPHA FITNESS','dr daniel':'DR. DANIEL PERALBA','dr felipe':'DR. FELIPE BRANCO','dra esia':'DRA. ÉSIA LOPES','exatta':'EXATTA SOLAR','numeros':'NÚMEROS CONTABILIDADE','colegio cristo rei':'COLÉGIO CHRISTO REI'};return canonical[key]||bracket.slice(0,120)}
  const company=t.custom_fields?.find((f:any)=>/^(empresa|cliente)$/i.test(f.name||''))
  if(company?.value!=null){const value=company.type_config?.options?.find((o:any)=>o.id===company.value||o.orderindex===company.value)?.name || (typeof company.value==='string'?company.value:'');if(value)return String(value).slice(0,120)}
  const aliases:Record<string,string>={carlotinha:'Carlotinha',prouro:'Prouro',erika:'Dra. Érika',enia:'Dra. Ênia',brenno:'Dr. Brenno',daniel:'Dr. Daniel',essenc:'Essenc',alpha:'Alpha',exatta:'Exatta',ccr:'CCR',esia:'Ésia',medic:'Médic Fácil','gm gas':'GM Gás','spa nature':'Spa Nature'}

@@ -93,7 +93,7 @@ export default function Social() {
    </div>
   </DragDropContext>}
   <Sheet open={!!cardId} onOpenChange={value=>{if(!value)close()}}><SheetContent className="w-full sm:max-w-5xl overflow-y-auto p-5 sm:p-8">
-   {detailLoading&&!card?<p className="py-12">Carregando peça…</p>:card&&<>
+   {!card?<SheetHeader><SheetTitle>{detailLoading?'Carregando peça…':'Peça indisponível'}</SheetTitle><SheetDescription>Arquivos e histórico da publicação.</SheetDescription></SheetHeader>:<>
     <SheetHeader><p className="text-xs text-primary uppercase tracking-widest">{card.client} · versão {card.revision}</p><SheetTitle className="text-xl pr-5">{cleanTitle(card.title)}</SheetTitle><SheetDescription>{SOCIAL_STAGES.find(s=>s.id===card.stage)?.label} · {card.author}</SheetDescription></SheetHeader>
     {card.ingest_pending&&<p className="mt-4 rounded border border-orange-400/40 p-3 text-xs text-orange-400">Uma entrega nova está sendo importada. A aprovação fica bloqueada até os arquivos estarem disponíveis. Consulte a sincronização no quadro se houver demora.</p>}
     <div className="mt-6 grid lg:grid-cols-[1.05fr_1fr] gap-7">
