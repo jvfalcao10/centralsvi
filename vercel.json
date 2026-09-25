@@ -25,6 +25,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/social",
+      "destination": "/api/r?__rota=social"
+    },
+    {
       "source": "/equipe",
       "destination": "/api/r?__rota=equipe-dia"
     },

@@ -31,6 +31,7 @@ export const NAV_AREAS: NavigationArea[] = [
   { id: 'operacao', title: 'Operação', icon: 'operations', items: [
     { title: 'Tarefas', url: '/tarefas', minRole: 'executor', section: 'Demandas' },
     { title: 'Carga de demandas', url: '/operacional/carga', minRole: 'manager', section: 'Demandas' },
+    { title: 'Social media · Postagens', url: '/content/social', minRole: 'executor', section: 'Conteúdo' },
     { title: 'Organizador de postagens', url: '/content/organizador', minRole: 'executor', section: 'Conteúdo' },
     { title: 'Aprovações', url: '/content/aprovacoes', minRole: 'executor', section: 'Conteúdo' },
     { title: 'Pipeline de conteúdo', url: '/content/posts', minRole: 'executor', section: 'Conteúdo' },
@@ -75,6 +76,9 @@ export const ADMIN_AREA: NavigationArea = {
 export const TRAFFIC_AREAS: NavigationArea[] = [
   { id: 'trafego', title: 'Tráfego', icon: 'traffic', direct: true, items: [
     { title: 'Tráfego', url: '/operacional/trafego', minRole: 'traffic' },
+  ] },
+  { id: 'criativos', title: 'Criativos', icon: 'operations', direct: true, items: [
+    { title: 'Criativos e aprovações', url: '/content/social', minRole: 'traffic' },
   ] },
   { id: 'analises', title: 'Análises', icon: 'results', direct: true, items: [
     { title: 'Análises', url: '/operacional/trafego/analises', minRole: 'traffic' },

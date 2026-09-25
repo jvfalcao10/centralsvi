@@ -536,6 +536,7 @@ export default function Organizador() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2"><LayoutGrid className="h-6 w-6 shrink-0 text-primary" /> Organizador de postagens</h1>
+          <Link to="/content/social" className="inline-flex mt-2 text-sm text-primary underline underline-offset-4">Abrir Kanban da social media →</Link>
           <p className="text-sm text-muted-foreground">
             {carregando ? 'Consultando histórico…' : erro ? 'Histórico indisponível' : `${filtradas.length} de ${pecas.length} peças no recorte`}{pronto && <span className="hidden md:inline"> · Arraste para mover ou clique para abrir a demanda.</span>}
           </p>
