@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { timingSafeEqual } from 'node:crypto'
 import { createAdminClient } from './supabase.js'
-import { allowedMediaURL, digest, mathVideo, mediaType, normalized, SOCIAL_MATH_GROUP, taskClient } from './social-sync-domain.js'
+import { allowedMediaURL, deliveredByTeam, digest, mathVideo, mediaType, normalized, SOCIAL_MATH_GROUP, taskClient } from './social-sync-domain.js'
 const MAX_BYTES=50*1024*1024
 const CLICKUP='https://api.clickup.com/api/v2'
 const UAZ='https://svicompany.uazapi.com'
@@ -123,7 +123,7 @@ async function processJob(db:DB,job:Job) {
    const {data:catalog}=checked(await db.from('central_social_cards').select('client').limit(1000))
    client=catalog?.find(c=>normalized(c.client)===normalized(client))?.client||client
    metadata={client,title:String(t.name).slice(0,250),author:job.payload.author,source_url:`https://app.clickup.com/t/${t.id}`,source_status:t.status?.status||'',source_description:String(t.description||'').slice(0,10000),source_updated:new Date(Number(t.date_updated)).toISOString()}
-   files=(t.attachments||[]).filter((a:any)=>!a.deleted&&!a.hidden&&Number(a.date)>=Date.parse('2026-09-01T00:00:00-03:00')&&mediaType(a.title||'',a.mimetype||''))
+   files=(t.attachments||[]).filter((a:any)=>!a.deleted&&!a.hidden&&deliveredByTeam(a)&&Number(a.date)>=Date.parse('2026-09-01T00:00:00-03:00')&&mediaType(a.title||'',a.mimetype||''))
   }else{
    const p=job.payload
    metadata={client:p.client,title:p.title,author:'Math',source_url:'https://web.whatsapp.com/',source_status:'Entregue no grupo',source_description:`Grupo: MATH | EDITOR | SVI\nEnviado por Math em ${p.at}\nMensagem: ${job.source_id}\nVersão informada: ${p.delivery_version??'não informada'}\n\n${p.caption}`,source_updated:p.at}

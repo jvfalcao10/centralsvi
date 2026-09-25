@@ -44,3 +44,6 @@ export function taskClient(t:Record<string,any>) {
  const n=normalized(String(t.name||''));for(const [alias,value] of Object.entries(aliases))if((' '+n+' ').includes(' '+alias+' '))return value
  return 'Identificar cliente'
 }
+
+// The production list assigns responsibility; attachment uploader identifies a delivery.
+export function deliveredByTeam(attachment:Record<string,any>) { return [284506251,112541047,302494819].includes(Number(attachment.user?.id)) }

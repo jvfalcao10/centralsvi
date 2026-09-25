@@ -1,5 +1,5 @@
 import { describe,it,expect } from 'vitest'
-import { parseDelivery,mathVideo,SOCIAL_MATH_GROUP,allowedMediaURL,mediaType } from '../../api/_lib/social-sync-domain'
+import { parseDelivery,deliveredByTeam,mathVideo,SOCIAL_MATH_GROUP,allowedMediaURL,mediaType } from '../../api/_lib/social-sync-domain'
 const m={id:'fixture-video-1',chatid:SOCIAL_MATH_GROUP,sender:'50217076449517@lid',messageTimestamp:1790367000000,messageType:'VideoMessage',text:'CARLOTINHA | Gol 2017 | V1',content:{mimetype:'video/mp4'}}
 describe('Social video intake',()=>{
  it('keeps a revision under the same explicitly identified piece',()=>expect(parseDelivery(m.text,m.id).card_id).toBe(parseDelivery('carlotinha | Gol 2017 | V2','other').card_id))
@@ -16,3 +16,5 @@ describe('Social video intake',()=>{
   for(const url of ['http://svicompany.uazapi.com/f','https://svicompany.uazapi.com.evil.test/f','https://127.0.0.1/f','https://user:pass@svicompany.uazapi.com/f','https://svicompany.uazapi.com:444/f'])expect(allowedMediaURL(url,'whatsapp')).toBe(false)
  })
 })
+
+describe('Final production attachments',()=>{it('includes designer/editor uploads and excludes briefings uploaded by the requester',()=>{expect(deliveredByTeam({user:{id:284506251}})).toBe(true);expect(deliveredByTeam({user:{id:112541047}})).toBe(true);expect(deliveredByTeam({user:{id:302494819}})).toBe(true);expect(deliveredByTeam({user:{id:78754871}})).toBe(false);expect(deliveredByTeam({})).toBe(false)})})
