@@ -3,6 +3,12 @@ export const SOCIAL_MATH_GROUP = '120363411761185563@g.us'
 export const SOCIAL_MATH_SENDERS = new Set(['554891836693@s.whatsapp.net','5548991836693@s.whatsapp.net','50217076449517@lid'])
 export type WhatsAppSource = {id:string;group:string;groupName:string;author:string;unidentifiedTitle:string;senders:Set<string>}
 export const SOCIAL_WHATSAPP_SOURCES:Record<string,WhatsAppSource> = {
+ 'direct:jose':{id:'direct:jose',group:'558796238835@s.whatsapp.net',groupName:'Privado José → Sofia',author:'José',unidentifiedTitle:'Vídeo enviado por José',senders:new Set(['558796238835@s.whatsapp.net','5587996238835@s.whatsapp.net','276668925132920@lid'])},
+ 'direct:lais':{id:'direct:lais',group:'5515996740929@s.whatsapp.net',groupName:'Privado Laís → Sofia',author:'Laís',unidentifiedTitle:'Vídeo enviado por Laís',senders:new Set(['5515996740929@s.whatsapp.net','70304537821260@lid'])},
+ 'direct:sarah':{id:'direct:sarah',group:'559492941072@s.whatsapp.net',groupName:'Privado Sarah → Sofia',author:'Sarah',unidentifiedTitle:'Vídeo enviado por Sarah',senders:new Set(['559492941072@s.whatsapp.net','5594992941072@s.whatsapp.net','13868852076575@lid'])},
+ 'direct:math':{id:'direct:math',group:'554891836693@s.whatsapp.net',groupName:'Privado Math → Sofia',author:'Math',unidentifiedTitle:'Vídeo enviado por Math',senders:SOCIAL_MATH_SENDERS},
+ 'direct:joao':{id:'direct:joao',group:'559492404033@s.whatsapp.net',groupName:'Privado João → Sofia',author:'João',unidentifiedTitle:'Vídeo enviado por João',senders:new Set(['559492404033@s.whatsapp.net','5594992404033@s.whatsapp.net','43229013668067@lid'])},
+ 'direct:leticia':{id:'direct:leticia',group:'559492416107@s.whatsapp.net',groupName:'Privado Letícia → Sofia',author:'Letícia',unidentifiedTitle:'Vídeo enviado por Letícia',senders:new Set(['559492416107@s.whatsapp.net','5594992416107@s.whatsapp.net','188695110004740@lid'])},
  'whatsapp:math':{id:'whatsapp:math',group:SOCIAL_MATH_GROUP,groupName:'MATH | EDITOR | SVI',author:'Math',unidentifiedTitle:'Vídeo do Math · identificar peça',senders:SOCIAL_MATH_SENDERS},
  'whatsapp:sarah':{id:'whatsapp:sarah',group:'120363429541277814@g.us',groupName:'SARAH | FILMMAKER | EDITORA | SVI',author:'Sarah',unidentifiedTitle:'Vídeo da Sarah · identificar peça',senders:new Set(['559492941072@s.whatsapp.net','5594992941072@s.whatsapp.net','13868852076575@lid'])},
 }

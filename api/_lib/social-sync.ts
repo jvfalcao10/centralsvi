@@ -1,3 +1,5 @@
+import { socialIntake } from './social-intake.js'
+import { driveVideo } from './social-drive.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { timingSafeEqual } from 'node:crypto'
 import { createAdminClient } from './supabase.js'
@@ -11,7 +13,7 @@ type Job={key:string;provider:'clickup'|'whatsapp';source_id:string;card_id:stri
 const checked=<T extends {error:any}>(r:T):T=>{if(r.error)throw new Error('database_failed');return r}
 class SyncError extends Error {constructor(public code:string,public manual=false){super(code)}}
 async function json(url:string,init:RequestInit={}) {
- const r=await fetch(url,{...init,signal:AbortSignal.timeout(25000)})
+ const r=await fetch(url,{...init,signal:AbortSignal.timeout(url.endsWith('/message/download')?60000:25000)})
  if(!r.ok)throw new SyncError(`source_http_${r.status}`)
  return r.json()
 }
@@ -143,13 +145,14 @@ async function processJob(db:DB,job:Job) {
     a.url=result.fileURL
     if(!a.url)throw new SyncError('media_unavailable')
    }
-   const value=await asset(db,job,a);if(value)assets.push(value)
+   const useDrive=job.provider==='whatsapp'&&(job.payload.use_drive||Number(a.size)>MAX_BYTES)
+   const value=useDrive?await driveVideo(db,job,String(a.url)):await asset(db,job,a);if(value)assets.push(value)
   }
-  const {data}=checked(await db.rpc('central_social_ingest',{p_key:job.key,p_card:metadata,p_assets:assets,p_complete:files.length<=2}))
+  const {data}=checked(await db.rpc('central_social_complete',{p_key:job.key,p_card:metadata,p_assets:assets,p_complete:files.length<=2}))
   return {key:job.key,...data}
  }catch(e){
-  const code=e instanceof SyncError?e.code:'processing_unavailable'
-  const manual=(e instanceof SyncError&&e.manual)||job.attempts>=8
+  const code=e instanceof SyncError?e.code:e instanceof Error&&/^(drive_|job_lease_)/.test(e.message)?e.message:'processing_unavailable'
+  const manual=(e instanceof SyncError&&e.manual)||job.attempts>=8||code==='drive_size_limit'
   checked(await db.from('central_social_inbox').update({status:manual?'manual':'error',error:code,lease_until:null,next_attempt_at:new Date(Date.now()+Math.min(60,2**job.attempts)*60000).toISOString(),updated_at:new Date().toISOString()}).eq('key',job.key))
   return {key:job.key,error:code,manual}
  }
@@ -158,7 +161,7 @@ export async function socialSyncStatus(db:DB) {
  const {data:sources}=checked(await db.from('central_social_sync_sources').select('id,label,enabled,last_checked_at,last_success_at,error').order('id'))
  const {count:pending}=checked(await db.from('central_social_inbox').select('key',{head:true,count:'exact'}).in('status',['pending','processing','error']))
  const {data:issues}=checked(await db.from('central_social_inbox').select('key,provider,source_id,payload,error,updated_at').in('status',['error','manual']).order('updated_at',{ascending:false}).limit(20))
- const labels:Record<string,string>={media_over_50mb:'Arquivo acima de 50 MB. Disponibilize uma versão menor ou um link do original.',media_host_review:'O endereço do arquivo precisa ser conferido.',media_unavailable:'O WhatsApp ainda não disponibilizou o arquivo.',task_moved_review:'A tarefa mudou de lista. Confira a origem.'}
+ const labels:Record<string,string>={drive_size_limit:'Vídeo acima de 500 MB ou tamanho não identificado. Confira o original.',drive_auth_failed:'O acesso ao Drive precisa ser reconectado.',media_over_50mb:'Arquivo acima do limite de importação. Confira o original.',media_host_review:'O endereço do arquivo precisa ser conferido.',media_unavailable:'O WhatsApp ainda não disponibilizou o arquivo.',task_moved_review:'A tarefa mudou de lista. Confira a origem.'}
  return {sources,pending,issues:issues?.map(i=>({key:i.key,provider:i.provider,title:i.payload?.title||i.payload?.name||'Arquivo para conferir',source_url:i.provider==='clickup'?`https://app.clickup.com/t/${i.source_id}`:'https://web.whatsapp.com/',reason:labels[i.error]||'A importação precisa de conferência. A peça ainda não entrou no quadro.',updated_at:i.updated_at}))}
 }
 export async function handleSocialSync(req:VercelRequest,res:VercelResponse) {
@@ -168,8 +171,9 @@ export async function handleSocialSync(req:VercelRequest,res:VercelResponse) {
  if(req.method!=='POST')return res.status(405).json({error:'Method not allowed'})
  try {
   const db=createAdminClient(),mode=req.body?.mode
+  if(mode==='intake')return res.json(await socialIntake(db,req.body?.message||{}))
   if(mode==='collect'){
-   const source=String(req.body?.source||'');if(!['clickup:jose','clickup:lais','clickup:math',...Object.keys(SOCIAL_WHATSAPP_SOURCES)].includes(source))return res.status(400).json({error:'Invalid source'})
+   const source=String(req.body?.source||'');if(!['clickup:jose','clickup:lais','clickup:math',...Object.keys(SOCIAL_WHATSAPP_SOURCES).filter(s=>s.startsWith('whatsapp:'))].includes(source))return res.status(400).json({error:'Invalid source'})
    return res.json(await discover(db,source))
   }
   if(mode==='process'){
@@ -177,6 +181,7 @@ export async function handleSocialSync(req:VercelRequest,res:VercelResponse) {
    for(let i=0;i<12&&Date.now()-start<60000;i++){
     const {data:job}=checked(await db.rpc('central_social_claim',{}));if(!job)break
     results.push(await processJob(db,job as Job))
+    if(job.payload.use_drive||Number(job.payload.bytes)>MAX_BYTES)break
    }
    return res.json({processed:results.length,results})
   }

@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-export type Asset = { id:string; name:string; path:string; thumbnail?:string; type:string; bytes?:number; url?:string; preview?:string }
+export type Asset = { id:string; name:string; path:string; storage?:'drive'; drive_id?:string; folder_url?:string; folder_label?:string; thumbnail?:string; type:string; bytes?:number; url?:string; preview?:string }
 export type Card = {
  ingest_pending?:boolean; id:string; client:string; title:string; author:string; source_url:string; source_status:string; source_description?:string;
  source_updated:string; assets:Asset[]; selected_assets:string[]; caption:string; note:string; stage:string; revision:number; version:number;
