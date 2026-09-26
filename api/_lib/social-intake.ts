@@ -12,7 +12,8 @@ export function intakeSource(m:Record<string,any>) {
  return Object.values(SOCIAL_WHATSAPP_SOURCES).find(s=>s.id.startsWith('direct:')&&(s.group===m.chatid||s.senders.has(m.chatid))&&[m.sender,m.sender_pn,m.sender_lid].some(v=>s.senders.has(v)))
 }
 export function intakeClient(raw:string,catalog:string[]) {
- const candidate=taskClient({name:`[${raw.trim()}]`})
+ const clean=normalized(raw).replace(/\s+(?:v)?\d{1,3}$/, '').replace(/^doutora /,'dra ').replace(/^doutor /,'dr ')
+ const candidate=taskClient({name:`[${clean==='enia'?'dra enia':clean}]`})
  return catalog.find(c=>normalized(c)===normalized(candidate))||'Identificar cliente'
 }
 export async function socialIntake(db:ReturnType<typeof createAdminClient>,m:Record<string,any>) {
@@ -23,9 +24,11 @@ export async function socialIntake(db:ReturnType<typeof createAdminClient>,m:Rec
  const now=new Date();const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Belem',year:'numeric',month:'numeric'}).formatToParts(now)
  const year=Number(parts.find(p=>p.type==='year')?.value),month=Number(parts.find(p=>p.type==='month')?.value)
  const event:Record<string,any>={id:String(m.id),chat_id:m.chatid,actor:source.author,at:now.toISOString(),text,command:cmd.command,approved:cmd.approved,can_approve:['direct:joao','direct:leticia'].includes(source.id),quoted:String(m.quoted||m.content?.contextInfo?.stanzaId||'')}
- if(delivery||cmd.client){
+ if(delivery||cmd.client||(!cmd.command&&text.length<100)){
+
   const {data,error}=await db.from('central_social_cards').select('client').limit(1000);if(error)throw new Error('database_failed')
   const catalog=[...new Set((data||[]).map(c=>c.client))]
+  if(!delivery&&!cmd.command&&intakeClient(text,catalog)!=='Identificar cliente'){cmd.command='post';cmd.client=text;event.command='post'}
   if(delivery){
    const name=delivery.payload.name.replace(/\.[^.]+$/,'').trim(),prefix=name.split(/\s+-\s+/)[0]
    const client=intakeClient(delivery.client==='Identificar cliente'?prefix:delivery.client,catalog)
@@ -33,6 +36,11 @@ export async function socialIntake(db:ReturnType<typeof createAdminClient>,m:Rec
    if(client!=='Identificar cliente')delivery.card_id='wa-'+digest(`${source.group}|${normalized(client)}|${normalized(delivery.title)}`).slice(0,24)
    delivery.delivery_version=delivery.delivery_version??Number(name.match(/\s+v(\d{1,3})$/i)?.[1]||1)
    event.delivery={...delivery,payload:{...delivery.payload,wa_message_id:m.messageid,year,month,client,title:delivery.title}}
+   // João's explicit routing rule: a video document is a Central delivery; native video is transcription.
+   const explicit=['post','transcribe','cancel','other'].includes(cmd.command)
+   event.command=explicit?cmd.command:String(m.messageType||'').toLowerCase().includes('document')?'post':'transcribe'
+   event.quoted=String(m.id) // The new file never acts on other pending deliveries in this chat.
+   event.at=delivery.payload.at
   }
   const client=cmd.client?intakeClient(cmd.client,catalog):''
   if(client&&client!=='Identificar cliente')event.client=client
