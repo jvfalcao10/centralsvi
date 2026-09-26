@@ -1,4 +1,6 @@
 import { previewPath } from './social-preview.js'
+import { feedbackContext, saveFeedbackRoute, verifyFeedbackTask } from './social-feedback.js'
+import { handleSocialPlayback } from './social-playback.js'
 import { handleSocialSync, socialSyncStatus } from './social-sync.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createHash, randomBytes } from 'node:crypto'
@@ -8,6 +10,7 @@ import { publicCard, socialPatch, SocialError, type SocialCard, type SocialAsset
 const fail = (status: number, message: string): never => { throw new SocialError(status, message) }
 const hash = (value: string) => createHash('sha256').update(value).digest('hex')
 export async function handleSocial(req: VercelRequest, res: VercelResponse) {
+ if(req.query.stream==='1')return handleSocialPlayback(req,res)
  if (req.query.sync === 'run') return handleSocialSync(req,res)
  res.setHeader('Cache-Control', 'private, no-store')
  res.setHeader('X-Robots-Tag', 'noindex, nofollow')
@@ -36,7 +39,8 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
    const urls=new Map(data?.map(a=>[a.path,a.signedUrl] as const))
    return {...card,assets:card.assets.map(a=>({...a,
     url:a.storage==='drive'&&/^[A-Za-z0-9_-]+$/.test(a.drive_id||'')?`https://drive.google.com/file/d/${a.drive_id}/view`:urls.get(a.path),
-    preview:urls.get(previewPath(a)||'')
+    preview:urls.get(previewPath(a)||''),
+    ...(token&&a.storage==='drive'&&a.type.startsWith('video/')?{playback_url:`/api/social?stream=1&token=${token}&asset=${encodeURIComponent(a.id)}`}:{})
    }))}
   }
   let card: SocialCard | null = null
@@ -56,7 +60,7 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
     const { data: events, error } = await db.from('central_social_events').select('*').eq('card_id', card.id).order('created_at', { ascending: false }).limit(100)
     if (error) throw error
     const { token_hash: _hash, ...safe } = card
-    return res.json({ card: await media(safe), events })
+    return res.json({ card: await media(safe), events, feedback: await feedbackContext(db,card) })
    }
    const cards: SocialCard[] = []
    for (let offset=0;;offset+=500) {
@@ -81,13 +85,17 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
   let action = typeof body.action === 'string' ? body.action : ''
   if (token) {
    if (card.stage !== 'aguardando') fail(409, 'Esta versão já recebeu uma resposta ou saiu de aprovação.')
-   if (!['cliente_aprovar','cliente_ajustes'].includes(action)) fail(403, 'Ação não permitida neste link.')
+   if (!['cliente_aprovar','cliente_ajustes','cliente_reprovar'].includes(action)) fail(403, 'Ação não permitida neste link.')
    if (typeof body.name !== 'string' || body.name.trim().length < 2) fail(400, 'Informe seu nome para registrar a resposta.')
    actor = body.name.trim().slice(0,120)
   } else if (action.startsWith('cliente_')) fail(403, 'Use o registro de aprovação da equipe.')
+  if(!token&&action==='destino') {await saveFeedbackRoute(db,card,body,actor,actorId);return res.json({ok:true})}
   const patch: Record<string, unknown> = socialPatch(card, body)
   let approvalUrl: string | undefined
   if (action === 'solicitar') {
+   const {route}=await feedbackContext(db,card)
+   if(!route.task_id||!route.group_id)fail(400,'Vincule a tarefa no ClickUp e o grupo do responsável antes de gerar o link do cliente.')
+   await verifyFeedbackTask(route.task_id)
    const raw = randomBytes(32).toString('hex')
    patch.token_hash = hash(raw); patch.token_expires_at = new Date(Date.now()+30*86400000).toISOString()
    approvalUrl = `https://central.svicompany.com.br/aprovar/social/${raw}`

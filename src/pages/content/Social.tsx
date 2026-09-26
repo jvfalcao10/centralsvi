@@ -1,3 +1,4 @@
+import FeedbackRouting, { type FeedbackContext } from '@/components/social/FeedbackRouting'
 import VideoPreview, { VideoCover } from '@/components/social/VideoPreview'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -11,12 +12,13 @@ import { socialApi, SOCIAL_STAGES, socialDate, localInput, type Card } from '@/l
 import { useToast } from '@/hooks/use-toast'
 
 type Event = {id:number; action:string; actor:string; revision:number; created_at:string; details:{from:string;to:string;evidence?:string;note?:string}}
-const actionLabel:Record<string,string>={editar:'Atualizou a peça',solicitar:'Gerou link de aprovação',aprovar:'Registrou aprovação',cliente_aprovar:'Aprovou pelo link',ajustes:'Pediu ajustes',cliente_ajustes:'Pediu ajustes pelo link',agendar:'Agendou a postagem',postar:'Confirmou a postagem',arquivar:'Arquivou',conferir:'Voltou para conferência',importar:'Recebeu novos arquivos',receber:'Recebeu uma nova entrega'}
+const actionLabel:Record<string,string>={editar:'Atualizou a peça',solicitar:'Gerou link de aprovação',aprovar:'Registrou aprovação',cliente_aprovar:'Aprovou pelo link',ajustes:'Pediu ajustes',cliente_ajustes:'Pediu ajustes pelo link',cliente_reprovar:'Reprovou pelo link',destino:'Atualizou o destino do retorno',agendar:'Agendou a postagem',postar:'Confirmou a postagem',arquivar:'Arquivou',conferir:'Voltou para conferência',importar:'Recebeu novos arquivos',receber:'Recebeu uma nova entrega'}
 const cleanTitle=(s:string)=>s.replace(/^(HOJE|AMANHÃ|QUA|QUI|SEX|SEG|TER|SÁB|SAB|DOM)[^·]*·\s*/i,'')
 
 export default function Social() {
  const [params,setParams]=useSearchParams(); const {toast}=useToast()
  const [sync,setSync]=useState<{sources:{id:string;label:string;enabled:boolean;last_success_at:string|null;error:string|null}[];pending:number;issues:{key:string;title:string;source_url:string;reason:string}[]}|null>(null);
+ const [feedback,setFeedback]=useState<FeedbackContext|null>(null);const [routeDirty,setRouteDirty]=useState(false);
  const [editClient,setEditClient]=useState('');const [editTitle,setEditTitle]=useState('');
  const [cards,setCards]=useState<Card[]>([]); const [loading,setLoading]=useState(true);const [error,setError]=useState('')
  const [query,setQuery]=useState('');const [client,setClient]=useState(params.get('cliente')||'');const [author,setAuthor]=useState('');const [stage,setStage]=useState('');const [archived,setArchived]=useState(false)
@@ -26,7 +28,7 @@ export default function Social() {
  const detailRequest=useRef(0);const pendingAction=useRef('')
  const notify=(message:string)=>toast({description:message})
  const load=useCallback(async()=>{try {setError('');const [data,status]=await Promise.all([socialApi(),socialApi('?sync=status')]);setCards(data.cards);setSync(status)}catch(e){setError((e as Error).message)}finally{setLoading(false)}},[])
- const open=useCallback(async(id:string)=>{const request=++detailRequest.current;setDetailLoading(true);setCard(null);setAction('');setApprovalUrl('');try{const d=await socialApi('?id='+encodeURIComponent(id));if(request!==detailRequest.current)return;setCard(d.card);setEditClient(d.card.client);setEditTitle(d.card.title);setEvents(d.events);setCaption(d.card.caption);setNote(d.card.note);setSelected(d.card.selected_assets);setChannel(d.card.channel||'Instagram · Feed');setName('');setEvidence('');setReason('');setPostUrl('');setConfirmed(false);setAction(pendingAction.current);pendingAction.current=''}catch(e){if(request===detailRequest.current)setError((e as Error).message)}finally{if(request===detailRequest.current)setDetailLoading(false)}},[])
+ const open=useCallback(async(id:string)=>{const request=++detailRequest.current;setDetailLoading(true);setCard(null);setFeedback(null);setRouteDirty(false);setAction('');setApprovalUrl('');try{const d=await socialApi('?id='+encodeURIComponent(id));if(request!==detailRequest.current)return;setCard(d.card);setFeedback(d.feedback);setEditClient(d.card.client);setEditTitle(d.card.title);setEvents(d.events);setCaption(d.card.caption);setNote(d.card.note);setSelected(d.card.selected_assets);setChannel(d.card.channel||'Instagram · Feed');setName('');setEvidence('');setReason('');setPostUrl('');setConfirmed(false);setAction(pendingAction.current);pendingAction.current=''}catch(e){if(request===detailRequest.current)setError((e as Error).message)}finally{if(request===detailRequest.current)setDetailLoading(false)}},[])
  useEffect(()=>{void load();const timer=setInterval(()=>void load(),60000);return()=>clearInterval(timer)},[load])
  const cardId=params.get('peca')
  useEffect(()=>{if(cardId)void open(cardId);else setCard(null)},[cardId,open])
@@ -36,7 +38,8 @@ export default function Social() {
  const authors=useMemo(()=>[...new Set(cards.map(c=>c.author))].sort(),[cards])
  const filtered=cards.filter(c=>(!client||c.client===client)&&(!author||c.author===author)&&(!query||`${c.title} ${c.client} ${c.note}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()))&&(archived||c.stage!=='arquivado'))
  const columns=SOCIAL_STAGES.filter(s=>(archived||s.id!=='arquivado')&&(!stage||s.id===stage))
- const dirty=card&&(editClient!==card.client||editTitle!==card.title||caption!==card.caption||note!==card.note||JSON.stringify(selected)!==JSON.stringify(card.selected_assets))
+ const contentDirty=card&&(editClient!==card.client||editTitle!==card.title||caption!==card.caption||note!==card.note||JSON.stringify(selected)!==JSON.stringify(card.selected_assets))
+ const dirty=contentDirty||routeDirty
  const copy=async(text:string)=>{try{await navigator.clipboard.writeText(text);notify('Copiado.')}catch{notify('Não foi possível copiar. Selecione o texto e copie.')}}
  const save=async(kind:string)=>{
   if(!card||busy)return;setBusy(true)
@@ -114,7 +117,8 @@ export default function Social() {
       <div className="space-y-3"><div><label htmlFor="social-client" className="text-sm font-semibold">Cliente</label><Input id="social-client" list="social-clients" value={editClient} onChange={e=>setEditClient(e.target.value)} disabled={busy||card.stage==='postado'} className="mt-1"/><datalist id="social-clients">{clients.filter(c=>c!=='Identificar cliente').map(c=><option key={c} value={c}/>)}</datalist></div><div><label htmlFor="social-title" className="text-sm font-semibold">Título da peça</label><Input id="social-title" value={editTitle} onChange={e=>setEditTitle(e.target.value)} disabled={busy||card.stage==='postado'} className="mt-1"/></div></div>
       <div><label htmlFor="social-caption" className="text-sm font-semibold">Legenda final</label><Textarea id="social-caption" disabled={busy||card.stage==='postado'} value={caption} onChange={e=>setCaption(e.target.value)} className="min-h-40 mt-2" placeholder="Cole aqui a legenda que acompanha esta versão."/><Button disabled={!caption} size="sm" variant="ghost" onClick={()=>void copy(caption)}><Copy className="h-3 w-3 mr-2"/>Copiar legenda</Button></div>
       <div><label htmlFor="social-note" className="text-sm font-semibold">Observação da equipe</label><Textarea id="social-note" disabled={busy||card.stage==='postado'} value={note} onChange={e=>setNote(e.target.value)} className="min-h-20 mt-2"/><p className="text-[11px] text-muted-foreground mt-1">Visível somente para a equipe.</p></div>
-      {dirty&&<div className="rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-2"><p className="text-xs">Alterar os arquivos ou a legenda exige nova aprovação. O histórico anterior fica registrado.</p><Button disabled={busy} size="sm" onClick={()=>void save('editar')}>Salvar versão</Button></div>}
+      {contentDirty&&<div className="rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-2"><p className="text-xs">Alterar os arquivos ou a legenda exige nova aprovação. O histórico anterior fica registrado.</p><Button disabled={busy||routeDirty} size="sm" onClick={()=>void save('editar')}>Salvar versão</Button></div>}
+      {feedback&&<FeedbackRouting key={`${card.id}:${card.version}`} cardId={card.id} version={card.version} context={feedback} onDirty={setRouteDirty} onSaved={async()=>{await load();const d=await socialApi('?id='+encodeURIComponent(card.id));setCard(d.card);setFeedback(d.feedback);setEvents(d.events);setRouteDirty(false)}}/>}
       {card.approved_by&&<div className="rounded-lg bg-emerald-500/10 border border-emerald-500/25 p-4"><p className="text-sm font-medium">Aprovado por {card.approved_by}</p><p className="text-xs text-muted-foreground mt-1">Registrado em {socialDate(card.approved_at)} · versão {card.revision}</p><p className="text-xs mt-2 whitespace-pre-wrap">{card.approval_evidence}</p></div>}
       {card.stage==='postado'?<div className="rounded-lg border p-4"><p className="font-medium">Postagem registrada em {socialDate(card.posted_at)}</p><p className="text-sm text-muted-foreground">{card.channel}</p>{card.posted_url&&<a href={card.posted_url} target="_blank" rel="noreferrer" className="text-primary text-sm underline">Abrir publicação</a>}</div>:<div className="space-y-3 border-t pt-4"><p className="text-sm font-semibold">Próximo passo</p><div className="flex gap-2 flex-wrap">
        <Button disabled={busy||!!dirty} size="sm" onClick={()=>requestAction('solicitar')}><Link2 className="h-3 w-3 mr-1"/>Gerar link para aprovar</Button>
@@ -134,7 +138,7 @@ export default function Social() {
        {action==='conferir'&&<p className="text-sm">A peça volta para revisão e precisará de aprovação para postar.</p>}
        <Button disabled={busy||!!dirty} onClick={()=>void save(action)}>{busy?<Loader2 className="h-4 w-4 animate-spin"/>:'Salvar e continuar'}</Button>
       </section>}
-      <section className="border-t pt-4"><h3 className="font-semibold text-sm mb-3">Histórico desta peça</h3>{!events.length?<p className="text-xs text-muted-foreground">Arquivo importado do ClickUp. Ainda não há aprovação registrada nesta Central.</p>:<ol className="space-y-4">{events.map(e=><li key={e.id} className="text-xs pl-3 border-l-2 border-primary/30"><p className="font-medium">{actionLabel[e.action]||e.action} · v{e.revision}</p><p className="text-muted-foreground mt-1">{e.actor} · {socialDate(e.created_at)}</p>{e.details.evidence&&<p className="mt-1 whitespace-pre-wrap">{e.details.evidence}</p>}{['ajustes','cliente_ajustes'].includes(e.action)&&<p className="mt-1 whitespace-pre-wrap">{e.details.note}</p>}</li>)}</ol>}</section>
+      <section className="border-t pt-4"><h3 className="font-semibold text-sm mb-3">Histórico desta peça</h3>{!events.length?<p className="text-xs text-muted-foreground">Arquivo importado do ClickUp. Ainda não há aprovação registrada nesta Central.</p>:<ol className="space-y-4">{events.map(e=><li key={e.id} className="text-xs pl-3 border-l-2 border-primary/30"><p className="font-medium">{actionLabel[e.action]||e.action} · v{e.revision}</p><p className="text-muted-foreground mt-1">{e.actor} · {socialDate(e.created_at)}</p>{e.details.evidence&&<p className="mt-1 whitespace-pre-wrap">{e.details.evidence}</p>}{['ajustes','cliente_ajustes','cliente_reprovar'].includes(e.action)&&<p className="mt-1 whitespace-pre-wrap">{e.details.note}</p>}</li>)}</ol>}</section>
      </div>
     </div>
    </>}

@@ -16,6 +16,10 @@ async function access() {
 async function google(path:string,init:RequestInit={}) {
  return fetch(API+path,{...init,headers:{Authorization:`Bearer ${await access()}`,...init.headers},signal:AbortSignal.timeout(30000)})
 }
+export async function driveVideoRange(id:string,start:number,end:number) {
+ if(!/^[A-Za-z0-9_-]+$/.test(id))throw new Error('drive_id_invalid')
+ return google(`/files/${id}?alt=media`,{headers:{Range:`bytes=${start}-${end}`}})
+}
 async function generatedID(){const r=await google('/files/generateIds?count=1&space=drive');if(!r.ok)throw new Error('drive_id_failed');return (await r.json()).ids[0] as string}
 async function folder(db:DB,parent:string,name:string) {
  const key=digest(`${parent}|${name}`)

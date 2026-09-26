@@ -1,4 +1,4 @@
-export type SocialAsset = { id: string; name: string; path: string; storage?: 'drive'; drive_id?: string; folder_url?: string; folder_label?: string; thumbnail?: string; duration_ms?:number; width?:number; height?:number; preview_retry_at?:string; type: string; bytes?: number; date?: string; url?: string; preview?: string }
+export type SocialAsset = { id: string; name: string; path: string; storage?: 'drive'; drive_id?: string; folder_url?: string; folder_label?: string; thumbnail?: string; duration_ms?:number; width?:number; height?:number; preview_retry_at?:string; playback_url?:string; type: string; bytes?: number; date?: string; url?: string; preview?: string }
 export type SocialCard = {
  ingest_pending?: boolean; id: string; client: string; title: string; author: string; source_url: string; source_status: string;
  source_description: string; source_updated: string | null; assets: SocialAsset[]; selected_assets: string[];
@@ -36,9 +36,9 @@ export function socialPatch(c: SocialCard, body: Record<string, unknown>, now = 
   if (action === 'aprovar' && evidence.length < 8) reject('Registre onde e quando a aprovação foi recebida.')
   return { stage: 'aprovado', approved_revision: c.revision, approved_by: name, approved_at: now.toISOString(), approval_evidence: action === 'cliente_aprovar' ? 'Resposta pelo link desta versão; nome informado pelo cliente.' : evidence, scheduled_at: null }
  }
- if (action === 'ajustes' || action === 'cliente_ajustes') {
+ if (action === 'ajustes' || action === 'cliente_ajustes' || action === 'cliente_reprovar') {
   if (c.stage === 'postado') reject('Peça já postada; preserve o registro.')
-  const reason = text(body.reason, 2000); if (reason.length < 5) reject('Descreva o ajuste necessário.')
+  const reason = text(body.reason, 2000); if (reason.length < 5) reject(action==='cliente_reprovar'?'Informe o motivo da reprovação.':'Descreva o ajuste necessário.')
   return { ...cleared, stage: 'ajustes', note: reason }
  }
  if (action === 'agendar') {

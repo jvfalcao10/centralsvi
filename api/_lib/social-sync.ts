@@ -1,4 +1,5 @@
 import { refreshVideoPreviews } from './social-preview.js'
+import { processFeedback } from './social-feedback.js'
 import { socialIntake } from './social-intake.js'
 import { driveVideo } from './social-drive.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
@@ -172,6 +173,7 @@ export async function handleSocialSync(req:VercelRequest,res:VercelResponse) {
  if(req.method!=='POST')return res.status(405).json({error:'Method not allowed'})
  try {
   const db=createAdminClient(),mode=req.body?.mode
+  if(mode==='feedback')return res.json(await processFeedback(db))
   if(mode==='previews')return res.json(await refreshVideoPreviews(db,3))
   if(mode==='intake')return res.json(await socialIntake(db,req.body?.message||{}))
   if(mode==='collect'){
@@ -180,6 +182,7 @@ export async function handleSocialSync(req:VercelRequest,res:VercelResponse) {
   }
   if(mode==='process'){
    const results=[],start=Date.now()
+   const feedback=await processFeedback(db).catch(()=>({error:'feedback_unavailable'}))
    for(let i=0;i<12&&Date.now()-start<60000;i++){
     const {data:job}=checked(await db.rpc('central_social_claim',{}));if(!job)break
     results.push(await processJob(db,job as Job))
@@ -187,7 +190,7 @@ export async function handleSocialSync(req:VercelRequest,res:VercelResponse) {
    }
    // Thumbnail availability must never turn a successful original import into failure.
    const previews=Date.now()-start<40000?await refreshVideoPreviews(db,3).catch(()=>({ready:0,pending:0})):undefined
-   return res.json({processed:results.length,results,previews})
+   return res.json({processed:results.length,results,previews,feedback})
   }
   return res.status(400).json({error:'Invalid mode'})
  }catch{return res.status(500).json({error:'sync_failed'})}
