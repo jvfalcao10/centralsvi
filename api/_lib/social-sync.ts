@@ -1,3 +1,4 @@
+import { refreshVideoPreviews } from './social-preview.js'
 import { socialIntake } from './social-intake.js'
 import { driveVideo } from './social-drive.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
@@ -145,7 +146,7 @@ async function processJob(db:DB,job:Job) {
     a.url=result.fileURL
     if(!a.url)throw new SyncError('media_unavailable')
    }
-   const useDrive=job.provider==='whatsapp'&&(job.payload.use_drive||Number(a.size)>MAX_BYTES)
+   const useDrive=job.provider==='whatsapp'
    const value=useDrive?await driveVideo(db,job,String(a.url)):await asset(db,job,a);if(value)assets.push(value)
   }
   const {data}=checked(await db.rpc('central_social_complete',{p_key:job.key,p_card:metadata,p_assets:assets,p_complete:files.length<=2}))
@@ -171,6 +172,7 @@ export async function handleSocialSync(req:VercelRequest,res:VercelResponse) {
  if(req.method!=='POST')return res.status(405).json({error:'Method not allowed'})
  try {
   const db=createAdminClient(),mode=req.body?.mode
+  if(mode==='previews')return res.json(await refreshVideoPreviews(db,3))
   if(mode==='intake')return res.json(await socialIntake(db,req.body?.message||{}))
   if(mode==='collect'){
    const source=String(req.body?.source||'');if(!['clickup:jose','clickup:lais','clickup:math',...Object.keys(SOCIAL_WHATSAPP_SOURCES).filter(s=>s.startsWith('whatsapp:'))].includes(source))return res.status(400).json({error:'Invalid source'})
@@ -181,9 +183,11 @@ export async function handleSocialSync(req:VercelRequest,res:VercelResponse) {
    for(let i=0;i<12&&Date.now()-start<60000;i++){
     const {data:job}=checked(await db.rpc('central_social_claim',{}));if(!job)break
     results.push(await processJob(db,job as Job))
-    if(job.payload.use_drive||Number(job.payload.bytes)>MAX_BYTES)break
+    if(job.provider==='whatsapp')break
    }
-   return res.json({processed:results.length,results})
+   // Thumbnail availability must never turn a successful original import into failure.
+   const previews=Date.now()-start<40000?await refreshVideoPreviews(db,3).catch(()=>({ready:0,pending:0})):undefined
+   return res.json({processed:results.length,results,previews})
   }
   return res.status(400).json({error:'Invalid mode'})
  }catch{return res.status(500).json({error:'sync_failed'})}

@@ -1,3 +1,4 @@
+import { previewPath } from './social-preview.js'
 import { handleSocialSync, socialSyncStatus } from './social-sync.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createHash, randomBytes } from 'node:crypto'
@@ -28,13 +29,15 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
   } else if (!/^[a-f0-9]{64}$/.test(token)) fail(404, 'Este link não está disponível.')
 
   async function media<T extends { assets: SocialAsset[] }>(card: T, all = true): Promise<T> {
-   const assets = (all ? card.assets : card.assets.slice(0,1)).filter(a=>a.storage!=='drive')
-   const paths = assets.flatMap(a => [a.path, ...(a.thumbnail ? [a.thumbnail] : [])])
-   if (!paths.length) return { ...card,assets:card.assets.map(a=>a.storage==='drive'&&/^[A-Za-z0-9_-]+$/.test(a.drive_id||'')?{...a,url:`https://drive.google.com/file/d/${a.drive_id}/view`}:a) }
-   const { data, error } = await db.storage.from('central-social').createSignedUrls(paths, 3600)
-   if (error) throw new Error('media_sign_failed')
-   const urls = new Map(data?.map(a => [a.path, a.signedUrl] as const))
-   return { ...card, assets: card.assets.map(a => (a.storage==='drive'&&/^[A-Za-z0-9_-]+$/.test(a.drive_id||'')?{...a,url:`https://drive.google.com/file/d/${a.drive_id}/view`}:{ ...a, url: urls.get(a.path), preview: urls.get(a.thumbnail || a.path) })) }
+   const assets = all ? card.assets : card.assets.slice(0,1)
+   const paths = assets.flatMap(a=>[...(a.storage==='drive'?[]:[a.path]),...(a.thumbnail?[a.thumbnail]:[])])
+   const {data,error}=paths.length?await db.storage.from('central-social').createSignedUrls([...new Set(paths)],3600):{data:[],error:null}
+   if(error)throw new Error('media_sign_failed')
+   const urls=new Map(data?.map(a=>[a.path,a.signedUrl] as const))
+   return {...card,assets:card.assets.map(a=>({...a,
+    url:a.storage==='drive'&&/^[A-Za-z0-9_-]+$/.test(a.drive_id||'')?`https://drive.google.com/file/d/${a.drive_id}/view`:urls.get(a.path),
+    preview:urls.get(previewPath(a)||'')
+   }))}
   }
   let card: SocialCard | null = null
   const id = typeof req.query.id === 'string' ? req.query.id : typeof req.body?.id === 'string' ? req.body.id : ''
@@ -61,14 +64,14 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
     if (error) throw error
     cards.push(...data); if (data.length<500) break
    }
-   const paths = cards.map(c => { const a = c.assets.find(a=>a.id===c.selected_assets[0]) || c.assets[0]; return a?.storage==='drive'?null:a?.thumbnail || a?.path }).filter(Boolean) as string[]
+   const paths = cards.map(c => { const a = c.assets.find(a=>a.id===c.selected_assets[0]) || c.assets[0]; return a?previewPath(a,true):null }).filter(Boolean) as string[]
    const { data: signed, error: signError } = paths.length ? await db.storage.from('central-social').createSignedUrls([...new Set(paths)], 3600) : { data:[], error:null }
    if (signError) throw signError
    const urls = new Map(signed?.map(a=>[a.path,a.signedUrl] as const))
    return res.json({ cards: cards.map(c=>{
     const { token_hash: _hash, source_description: _description, ...safe } = c
     const a = c.assets.find(a=>a.id===c.selected_assets[0]) || c.assets[0]
-    return { ...safe, preview: a&&a.storage!=='drive' ? urls.get(a.thumbnail || a.path) : null }
+    return { ...safe, preview: a ? urls.get(previewPath(a,true)||'') : null }
    }), refreshed_at: new Date().toISOString() })
   }
   if (!card) fail(400, 'Selecione uma peça.')

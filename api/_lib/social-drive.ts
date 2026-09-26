@@ -82,3 +82,23 @@ export async function driveVideo(db:DB,job:Job,url:string) {
  if(read!==total||offset!==total||!finished)throw new Error('drive_source_size')
  return asset(finished)
 }
+
+export function validDriveThumbnailURL(raw:string) {
+ try {const u=new URL(raw);return u.protocol==='https:'&&/^lh\d+\.googleusercontent\.com$/.test(u.hostname)&&!u.username&&!u.password&&!u.port}catch{return false}
+}
+export async function driveThumbnail(id:string) {
+ if(!/^[A-Za-z0-9_-]+$/.test(id))throw new Error('drive_id_invalid')
+ const r=await google(`/files/${id}?fields=id,trashed,thumbnailLink,videoMediaMetadata`)
+ if(!r.ok)throw new Error('drive_preview_unavailable')
+ const data=await r.json();if(data.trashed||!data.thumbnailLink)return null
+ const url=String(data.thumbnailLink).replace(/=s\d+$/,'=s640')
+ if(!validDriveThumbnailURL(url))throw new Error('drive_preview_host')
+ const response=await fetch(url,{headers:{Authorization:`Bearer ${await access()}`},redirect:'manual',signal:AbortSignal.timeout(15000)})
+ if(!response.ok||!response.body||response.headers.get('content-type')?.split(';')[0]!=='image/jpeg')throw new Error('drive_preview_failed')
+ const max=2*1024*1024;if(Number(response.headers.get('content-length')||0)>max){await response.body.cancel();throw new Error('drive_preview_size')}
+ const reader=response.body.getReader(),chunks:Uint8Array[]=[];let size=0
+ try{while(true){const {value,done}=await reader.read();if(done)break;size+=value.length;if(size>max)throw new Error('drive_preview_size');chunks.push(value)}}finally{await reader.cancel().catch(()=>{});reader.releaseLock()}
+ const bytes=Buffer.concat(chunks);if(bytes.length<3||bytes[0]!==0xff||bytes[1]!==0xd8||bytes[2]!==0xff)throw new Error('drive_preview_type')
+ const m=data.videoMediaMetadata||{}
+ return {bytes,duration_ms:Number(m.durationMillis)||undefined,width:Number(m.width)||undefined,height:Number(m.height)||undefined}
+}

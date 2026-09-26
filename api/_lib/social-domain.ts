@@ -1,4 +1,4 @@
-export type SocialAsset = { id: string; name: string; path: string; storage?: 'drive'; drive_id?: string; folder_url?: string; folder_label?: string; thumbnail?: string; type: string; bytes?: number; date?: string; url?: string; preview?: string }
+export type SocialAsset = { id: string; name: string; path: string; storage?: 'drive'; drive_id?: string; folder_url?: string; folder_label?: string; thumbnail?: string; duration_ms?:number; width?:number; height?:number; preview_retry_at?:string; type: string; bytes?: number; date?: string; url?: string; preview?: string }
 export type SocialCard = {
  ingest_pending?: boolean; id: string; client: string; title: string; author: string; source_url: string; source_status: string;
  source_description: string; source_updated: string | null; assets: SocialAsset[]; selected_assets: string[];

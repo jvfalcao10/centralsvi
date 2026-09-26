@@ -1,0 +1,15 @@
+import { beforeEach,afterEach,describe,expect,it,vi } from 'vitest'
+import { render,screen,fireEvent,cleanup } from '@testing-library/react'
+import VideoPreview from '../components/social/VideoPreview'
+import { previewPath } from '../../api/_lib/social-preview'
+import { validDriveThumbnailURL } from '../../api/_lib/social-drive'
+const drive={id:'asset-a',name:'Vídeo da clínica.MOV',path:'drive:abc_123',storage:'drive' as const,drive_id:'abc_123',type:'video/quicktime',thumbnail:'previews/test.jpg',preview:'https://example.test/signed-cover.jpg',url:'https://drive.google.com/file/d/abc_123/view',duration_ms:65400}
+afterEach(()=>cleanup())
+describe('video previews',()=>{
+ it('uses a private thumbnail path for Drive without trying to sign a drive: path',()=>{expect(previewPath(drive)).toBe('previews/test.jpg');expect(previewPath({...drive,thumbnail:undefined},true)).toBeUndefined()})
+ it('keeps a native-video fallback separate from the poster image',()=>{const asset={id:'b',name:'video.mp4',path:'sync/video.mp4',type:'video/mp4'};expect(previewPath(asset)).toBeUndefined();expect(previewPath(asset,true)).toBe('sync/video.mp4')})
+ it('does not load a Drive player until its own thumbnail is clicked',()=>{const {container}=render(<><VideoPreview asset={drive}/><VideoPreview asset={{...drive,id:'b',name:'Outro vídeo',drive_id:'other_id'}}/></>);expect(container.querySelectorAll('iframe')).toHaveLength(0);expect(screen.getByAltText('Prévia de Vídeo da clínica.MOV')).toHaveAttribute('src',drive.preview);fireEvent.click(screen.getByRole('button',{name:'Reproduzir prévia de Vídeo da clínica.MOV'}));expect(container.querySelectorAll('iframe')).toHaveLength(1);expect(screen.getByTitle('Reproduzir Vídeo da clínica.MOV')).toHaveAttribute('src','https://drive.google.com/file/d/abc_123/preview')})
+ it('keeps native controls and a poster for Supabase videos',()=>{const {container}=render(<VideoPreview asset={{...drive,storage:undefined,path:'sync/video.mp4',url:'https://example.test/video.mp4'}}/>);const video=container.querySelector('video');expect(video).toHaveAttribute('controls');expect(video).toHaveAttribute('poster',drive.preview);expect(container.querySelector('iframe')).toBeNull()})
+ it('never turns arbitrary URLs into embedded Drive players',()=>{render(<VideoPreview asset={{...drive,drive_id:'x/../../other?token=bad'}}/>);expect(screen.getByRole('button')).toBeDisabled()})
+ it('allows Google thumbnail hosts only, without URL credentials or alternate ports',()=>{expect(validDriveThumbnailURL('https://lh3.googleusercontent.com/a=s640')).toBe(true);for(const url of ['https://evil.test/a','https://lh3.googleusercontent.com.evil.test/a','http://lh3.googleusercontent.com/a','https://user:pass@lh3.googleusercontent.com/a','https://lh3.googleusercontent.com:8080/a'])expect(validDriveThumbnailURL(url)).toBe(false)})
+})

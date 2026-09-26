@@ -1,3 +1,4 @@
+import VideoPreview from '@/components/social/VideoPreview'
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { CheckCircle2, Loader2 } from 'lucide-react'
@@ -19,7 +20,7 @@ export default function SocialApprove() {
   {error&&<p role="alert" className="my-5 rounded-lg bg-red-50 border border-red-200 text-red-800 p-4 text-sm">{error}</p>}
   {card&&<><p className="text-xs uppercase tracking-widest text-[#8e6c31] mt-7">{card.client} · Versão {card.revision}</p><h2 className="mt-2 text-xl font-semibold">{card.title}</h2>
    <section className="mt-6 space-y-5" aria-label="Arquivos para aprovação">{card.assets.map((a,i)=><figure key={a.id} className="border border-[#ded5c5] rounded-xl overflow-hidden bg-white">
-    {a.storage==='drive'?<p className="p-6">Vídeo original no Drive. Abra o arquivo abaixo com a conta autorizada para conferir esta versão.</p>:a.type.startsWith('image/')&&a.type!=='image/vnd.adobe.photoshop'?<img src={a.url} alt={`${i+1}. ${a.name}`} className="w-full max-h-[80vh] object-contain"/>:a.type.startsWith('video/')?<video src={a.url} controls className="w-full"/>:<p className="p-6">Arquivo disponível no link abaixo.</p>}
+    {a.type.startsWith('video/')?<VideoPreview asset={a}/>:a.type.startsWith('image/')&&a.type!=='image/vnd.adobe.photoshop'?<img src={a.url} alt={`${i+1}. ${a.name}`} className="w-full max-h-[80vh] object-contain"/>:<p className="p-6">Arquivo disponível no link abaixo.</p>}
     <figcaption className="flex justify-between items-center gap-3 text-xs p-3 text-[#746a59]"><span>Arquivo {i+1} de {card.assets.length}</span><a className="underline" href={a.url} target="_blank" rel="noreferrer">Abrir original</a></figcaption>
    </figure>)}</section>
    <section className="mt-7 border-y border-[#ded5c5] py-6"><h3 className="text-xs tracking-widest uppercase text-[#8e6c31]">Legenda</h3><p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">{card.caption||'Aprovação dos arquivos visuais. A legenda ainda não foi definida pela equipe.'}</p></section>
