@@ -27,7 +27,7 @@ async function discover(db:DB,source:string) {
  let count=0
  const until=Date.now()-1000,since=Number(state.cursor_ms)-300000
  try {
-  if(Object.hasOwn(SOCIAL_WHATSAPP_SOURCES,source)) {
+  if(Object.prototype.hasOwnProperty.call(SOCIAL_WHATSAPP_SOURCES,source)) {
    const config=SOCIAL_WHATSAPP_SOURCES[source]
    if(!process.env.SOCIAL_UAZ_TOKEN)throw new SyncError('configuration_missing')
    // Full pagination to the saved watermark. No cursor advance on an incomplete scan.
@@ -131,7 +131,7 @@ async function processJob(db:DB,job:Job) {
    const p=job.payload
    // Jobs queued before sources were generalized belong to Math.
    const source=p.source??'whatsapp:math'
-   if(!Object.hasOwn(SOCIAL_WHATSAPP_SOURCES,source))throw new SyncError('source_invalid',true)
+   if(!Object.prototype.hasOwnProperty.call(SOCIAL_WHATSAPP_SOURCES,source))throw new SyncError('source_invalid',true)
    const config=SOCIAL_WHATSAPP_SOURCES[source]
    metadata={client:p.client,title:p.title,author:config.author,source_url:'https://web.whatsapp.com/',source_status:'Entregue no grupo',source_description:`Grupo: ${config.groupName}\nEnviado por ${config.author} em ${p.at}\nMensagem: ${job.source_id}\nVersão informada: ${p.delivery_version??'não informada'}\n\n${p.caption}`,source_updated:p.at}
    files=[{id:job.source_id,title:p.name,mimetype:p.type,size:p.bytes,date:Date.parse(p.at)}]
