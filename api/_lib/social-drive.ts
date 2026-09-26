@@ -34,6 +34,12 @@ async function folder(db:DB,parent:string,name:string) {
  return id
 }
 export function validDriveSession(raw:string){try{const u=new URL(raw);return u.protocol==='https:'&&u.hostname==='www.googleapis.com'&&!u.username&&!u.password&&!u.port&&u.pathname==='/upload/drive/v3/files'&&u.searchParams.has('upload_id')}catch{return false}}
+// Use the stored binary's checksum, never the filename, thumbnail or an incoming caption.
+export function driveFingerprint(data:Record<string,any>,bytes:number) {
+ if(Number(data.size)!==bytes||data.trashed)throw new Error('drive_file_invalid')
+ if(typeof data.sha256Checksum!=='string'||! /^[a-f0-9]{64}$/i.test(data.sha256Checksum))throw new Error('drive_checksum_unavailable')
+ return data.sha256Checksum.toLowerCase()
+}
 export async function driveVideo(db:DB,job:Job,url:string) {
  const p=job.payload,total=Number(p.bytes),type=String(p.type||'video/mp4')
  if(!Number.isSafeInteger(total)||total<=0||total>LIMIT)throw new Error('drive_size_limit')
@@ -46,20 +52,20 @@ export async function driveVideo(db:DB,job:Job,url:string) {
  if(!p.drive_id)await patch({drive_id:await generatedID()})
  const asset=(d:Record<string,any>)=>{
   if(Number(d.size)!==total||d.trashed||!d.parents?.includes(parent))throw new Error('drive_file_invalid')
-  return {id:job.source_id,name:p.name,path:`drive:${d.id}`,storage:'drive',drive_id:d.id,type,bytes:Number(d.size),date:p.at,folder_url:`https://drive.google.com/drive/folders/${parent}`,folder_label:`${year} / ${MONTHS[month-1]} / ${client}`}
+  return {id:job.source_id,name:p.name,path:`drive:${d.id}`,storage:'drive',drive_id:d.id,type,bytes:Number(d.size),sha256:driveFingerprint(d,total),delivery_period:`${year}-${String(month).padStart(2,'0')}`,date:p.at,folder_url:`https://drive.google.com/drive/folders/${parent}`,folder_label:`${year} / ${MONTHS[month-1]} / ${client}`}
  }
- const existing=await google(`/files/${p.drive_id}?fields=id,size,parents,trashed`)
+ const existing=await google(`/files/${p.drive_id}?fields=id,size,parents,trashed,sha256Checksum`)
  if(existing.ok)return asset(await existing.json())
  if(existing.status!==404)throw new Error('drive_file_failed')
  let session=String(p.drive_session||''),offset=0
  if(session&&validDriveSession(session)){
   const status=await fetch(session,{method:'PUT',headers:{Authorization:`Bearer ${await access()}`,'Content-Range':`bytes */${total}`,'Content-Length':'0'},signal:AbortSignal.timeout(20000),redirect:'manual'})
-  if(status.ok){const r=await google(`/files/${p.drive_id}?fields=id,size,parents,trashed`);if(!r.ok)throw new Error('drive_file_failed');return asset(await r.json())}
+  if(status.ok){const r=await google(`/files/${p.drive_id}?fields=id,size,parents,trashed,sha256Checksum`);if(!r.ok)throw new Error('drive_file_failed');return asset(await r.json())}
   if(status.status===308)offset=Number(status.headers.get('range')?.match(/-(\d+)$/)?.[1]??-1)+1
   else if([404,410].includes(status.status))session='';else throw new Error('drive_resume_failed')
  }else session=''
  if(!session){
-  const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,size,parents,trashed',{method:'POST',headers:{Authorization:`Bearer ${await access()}`,'Content-Type':'application/json','X-Upload-Content-Type':type,'X-Upload-Content-Length':String(total)},body:JSON.stringify({id:p.drive_id,name:p.name,mimeType:type,parents:[parent],description:`Original recebido pela Central SVI. Mensagem ${job.source_id}.`,appProperties:{social_job:digest(job.key)}}),signal:AbortSignal.timeout(25000),redirect:'manual'})
+  const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,size,parents,trashed,sha256Checksum',{method:'POST',headers:{Authorization:`Bearer ${await access()}`,'Content-Type':'application/json','X-Upload-Content-Type':type,'X-Upload-Content-Length':String(total)},body:JSON.stringify({id:p.drive_id,name:p.name,mimeType:type,parents:[parent],description:`Original recebido pela Central SVI. Mensagem ${job.source_id}.`,appProperties:{social_job:digest(job.key)}}),signal:AbortSignal.timeout(25000),redirect:'manual'})
   session=r.headers.get('location')||'';if(!r.ok||!validDriveSession(session))throw new Error('drive_start_failed')
   await patch({drive_session:session})
  }

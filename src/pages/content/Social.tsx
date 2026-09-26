@@ -14,7 +14,7 @@ import { socialApi, SOCIAL_STAGES, socialDate, localInput, type Card } from '@/l
 import { useToast } from '@/hooks/use-toast'
 
 type Event = {id:number; action:string; actor:string; revision:number; created_at:string; details:{from:string;to:string;evidence?:string;note?:string}}
-const actionLabel:Record<string,string>={editar:'Atualizou a peça',solicitar:'Gerou link de aprovação',aprovar:'Registrou aprovação',cliente_aprovar:'Aprovou pelo link',ajustes:'Pediu ajustes',cliente_ajustes:'Pediu ajustes pelo link',cliente_reprovar:'Reprovou pelo link',destino:'Atualizou o destino do retorno',agendar:'Agendou a postagem',postar:'Confirmou a postagem',arquivar:'Arquivou',conferir:'Voltou para conferência',importar:'Recebeu novos arquivos',receber:'Recebeu uma nova entrega'}
+const actionLabel:Record<string,string>={editar:'Atualizou a peça',solicitar:'Gerou link de aprovação',aprovar:'Registrou aprovação',cliente_aprovar:'Aprovou pelo link',ajustes:'Pediu ajustes',cliente_ajustes:'Pediu ajustes pelo link',cliente_reprovar:'Reprovou pelo link',destino:'Atualizou o destino do retorno',agendar:'Agendou a postagem',postar:'Confirmou a postagem',arquivar:'Arquivou',conferir:'Voltou para conferência',importar:'Recebeu novos arquivos',receber:'Recebeu uma nova entrega',reenvio:'Reconheceu um reenvio idêntico'}
 const cleanTitle=(s:string)=>s.replace(/^(HOJE|AMANHÃ|QUA|QUI|SEX|SEG|TER|SÁB|SAB|DOM)[^·]*·\s*/i,'')
 
 export default function Social() {

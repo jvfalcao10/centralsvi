@@ -143,7 +143,7 @@ async function processJob(db:DB,job:Job) {
    files=[{id:job.source_id,title:p.name,mimetype:p.type,size:p.bytes,date:Date.parse(p.at)}]
   }
   files=files.filter(a=>!knownAssets.some((old:any)=>old.id===String(a.id)))
-  if(files.length)checked(await db.rpc('central_social_notice',{p_key:job.key,p_card:metadata}))
+  if(files.length)checked(await db.rpc(job.provider==='whatsapp'?'central_social_video_prepare':'central_social_notice',{p_key:job.key,p_card:metadata}))
   const current=files.slice(0,2),assets=[]
   for(const a of current){
    if(job.provider==='whatsapp'){
@@ -154,7 +154,7 @@ async function processJob(db:DB,job:Job) {
    const useDrive=job.provider==='whatsapp'
    const value=useDrive?await driveVideo(db,job,String(a.url)):await asset(db,job,a);if(value)assets.push(value)
   }
-  const {data}=checked(await db.rpc('central_social_complete',{p_key:job.key,p_card:metadata,p_assets:assets,p_complete:files.length<=2}))
+  const {data}=checked(await db.rpc(job.provider==='whatsapp'?'central_social_video_complete':'central_social_complete',{p_key:job.key,p_card:metadata,p_assets:assets,p_complete:files.length<=2}))
   return {key:job.key,...data}
  }catch(e){
   const code=e instanceof SyncError?e.code:e instanceof Error&&/^(drive_|job_lease_)/.test(e.message)?e.message:'processing_unavailable'

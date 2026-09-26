@@ -1,5 +1,5 @@
 import {it,expect,vi,afterEach} from 'vitest'
-import {driveVideo} from '../../api/_lib/social-drive'
+import {driveVideo,driveFingerprint} from '../../api/_lib/social-drive'
 afterEach(()=>{vi.unstubAllGlobals();vi.unstubAllEnvs()})
 it('copies a 53 MiB original in bounded chunks into year / month / client and reuses it on retry',async()=>{
  vi.stubGlobal('AbortSignal',{timeout:()=>new AbortController().signal})
@@ -24,11 +24,18 @@ it('copies a 53 MiB original in bounded chunks into year / month / client and re
    const bytes=init.body as Uint8Array;sizes.push(bytes.length);expect(bytes[0]).toBe(17);expect(bytes[bytes.length-1]).toBe(17)
    expect(headers['Content-Range']).toBe(`bytes ${received}-${received+bytes.length-1}/${total}`);received+=bytes.length
    if(received<total)return new Response(null,{status:308,headers:{range:`bytes=0-${received-1}`}})
-   const f={...meta,size:String(received)};files.set(meta.id,f);return Response.json(f)
+   const f={...meta,size:String(received),sha256Checksum:'a'.repeat(64)};files.set(meta.id,f);return Response.json(f)
   }
   throw new Error('Unexpected mock request '+u.pathname)
  }))
  const result=await driveVideo(db,job,'https://svicompany.uazapi.com/media/test')
  expect(folders).toEqual(['2026','SETEMBRO','DR. FELIPE BRANCO']);expect(result.bytes).toBe(total);expect(result.storage).toBe('drive');expect(Math.max(...sizes)).toBeLessThanOrEqual(8*1024*1024);expect(received).toBe(total)
  expect(await driveVideo(db,job,'https://svicompany.uazapi.com/media/test')).toEqual(result);expect(sourceRequests).toBe(1)
+ expect(result.sha256).toBe('a'.repeat(64));expect(result.delivery_period).toBe('2026-09')
+})
+it('requires a complete checksum from the stored binary and an exact size match',()=>{
+ expect(driveFingerprint({size:'12',sha256Checksum:'AB'.repeat(32)},12)).toBe('ab'.repeat(32))
+ for(const patch of [{sha256Checksum:null},{sha256Checksum:'x'.repeat(64)},{sha256Checksum:'abc'},{size:'13'},{trashed:true}]){
+  expect(()=>driveFingerprint({size:'12',sha256Checksum:'a'.repeat(64),...patch},12)).toThrow()
+ }
 })
