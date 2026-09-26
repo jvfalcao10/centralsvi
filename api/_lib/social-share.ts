@@ -3,8 +3,9 @@ import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { createAdminClient } from './supabase.js'
-import { publicCard, type SocialCard } from './social-domain.js'
+import { publicCard, SocialError, type SocialCard } from './social-domain.js'
 import { previewPath } from './social-preview.js'
+import {clientReview,pendingClientCards} from './social-client.js'
 
 const origin='https://central.svicompany.com.br'
 const esc=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!))
@@ -15,6 +16,11 @@ export function socialShareMeta(card:SocialCard,token:string) {
  const description=`${c.assets.length>1?`${c.assets.length} arquivos`:video?'Vídeo':'Publicação'} para aprovação · versão ${c.revision}. Abra para ${video?'assistir':'conferir'} e aprovar ou pedir ajustes.`
  const url=`${origin}/aprovar/social/${token}`
  return {title,description,url,image:asset&&previewPath(asset)?`${url}/preview.jpg`:undefined,asset}
+}
+export function clientShareMeta(client:string,cards:SocialCard[],token:string) {
+ const asset=cards.flatMap(c=>publicCard(c).assets).find(a=>previewPath(a))
+ const url=`${origin}/aprovar/cliente/${token}`
+ return {title:`${client} · Aprovação de conteúdo`.slice(0,180),description:cards.length?`${cards.length} ${cards.length===1?'peça aguardando':'peças aguardando'} sua resposta. Assista, confira e aprove ou peça alterações em cada publicação.`:'Todas as pendências em um só lugar. Abra para conferir os conteúdos enviados pela equipe.',url,image:asset?`${url}/preview.jpg`:undefined,asset}
 }
 export function socialShareHTML(shell:string,meta:ReturnType<typeof socialShareMeta>) {
  const tags=`<title>${esc(meta.title)} · Aprovação</title>
@@ -43,12 +49,19 @@ export async function handleSocialShare(req:VercelRequest,res:VercelResponse) {
  if(!/^[a-f0-9]{64}$/.test(token))return error(404)
  try {
   const db=createAdminClient()
-  const {data,error:dbError}=await db.from('central_social_cards').select('*').eq('token_hash',createHash('sha256').update(token).digest('hex')).maybeSingle()
-  if(dbError)throw new Error('share_unavailable')
-  if(!data||!(Date.parse(data.token_expires_at)>Date.now())||data.ingest_pending)return error(404)
-  const meta=socialShareMeta(data as SocialCard,token)
-  if(!meta.asset)return error(404)
+  let meta:ReturnType<typeof socialShareMeta>
+  if(req.query.bundle==='1'){
+   const review=await clientReview(db,token)
+   meta=clientShareMeta(review.client,await pendingClientCards(db,review.client),token)
+  } else {
+   const {data,error:dbError}=await db.from('central_social_cards').select('*').eq('token_hash',createHash('sha256').update(token).digest('hex')).maybeSingle()
+   if(dbError)throw new Error('share_unavailable')
+   if(!data||!(Date.parse(data.token_expires_at)>Date.now())||data.ingest_pending)return error(404)
+   meta=socialShareMeta(data as SocialCard,token)
+   if(!meta.asset)return error(404)
+  }
   if(req.query.image==='1'){
+   if(!meta.asset)return error(404)
    const path=previewPath(meta.asset);if(!path)return error(404)
    const {data:blob,error:storageError}=await db.storage.from('central-social').download(path)
    if(storageError||!blob||!/^image\/(jpeg|png|webp)$/.test(blob.type)||blob.size>5*1024*1024)return error(404)
@@ -58,5 +71,5 @@ export async function handleSocialShare(req:VercelRequest,res:VercelResponse) {
   const shell=await readFile(join(process.cwd(),'dist/index.html'),'utf8')
   res.setHeader('Content-Type','text/html; charset=utf-8')
   return req.method==='HEAD'?res.status(200).end():res.status(200).send(socialShareHTML(shell,meta))
- } catch {return error(503)}
+ } catch(e) {return error(e instanceof SocialError?e.status:503)}
 }

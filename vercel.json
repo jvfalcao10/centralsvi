@@ -25,6 +25,14 @@
   ],
   "rewrites": [
     {
+      "source": "/aprovar/cliente/:token/preview.jpg",
+      "destination": "/api/r?__rota=social-share&bundle=1&token=:token&image=1"
+    },
+    {
+      "source": "/aprovar/cliente/:token",
+      "destination": "/api/r?__rota=social-share&bundle=1&token=:token"
+    },
+    {
       "source": "/aprovar/social/:token/preview.jpg",
       "destination": "/api/r?__rota=social-share&token=:token&image=1"
     },
@@ -92,6 +100,13 @@
     }
   ],
   "headers": [
+    {
+      "source": "/aprovar/cliente/:path*",
+      "headers": [
+        {"key": "X-Robots-Tag", "value": "noindex, nofollow"},
+        {"key": "Referrer-Policy", "value": "no-referrer"}
+      ]
+    },
     {
       "source": "/aprovar/social/:path*",
       "headers": [

@@ -65,6 +65,7 @@ import Producao from "@/pages/content/Producao";
 import Organizador from "@/pages/content/Organizador";
 import Social from "@/pages/content/Social";
 import SocialApprove from "@/pages/r/SocialApprove";
+import SocialClientApprove from "@/pages/r/SocialClientApprove";
 
 // Painel cliente (svi.ai)
 import PainelLayout from "@/components/PainelLayout";
@@ -107,6 +108,7 @@ const App = () => (
               <Route path="/r/trafego/:slug" element={<TrafegoReport />} />
               <Route path="/aprovar/trafego/:slug" element={<TrafegoApprove />} />
               <Route path="/aprovar/social/:token" element={<SocialApprove />} />
+              <Route path="/aprovar/cliente/:token" element={<SocialClientApprove />} />
               <Route path="/aprovar/conteudo/:token" element={<ConteudoApprove />} />
               <Route path="/vaga/trafego" element={<VagaTrafego />} />
               <Route path="/login" element={<Login />} />

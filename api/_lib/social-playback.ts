@@ -3,6 +3,8 @@ import { createHash } from 'node:crypto'
 import { createAdminClient } from './supabase.js'
 import { publicCard,type SocialCard } from './social-domain.js'
 import { driveVideoRange } from './social-drive.js'
+import {clientReviewCard} from './social-client.js'
+import {SocialError} from './social-domain.js'
 export const VIDEO_CHUNK=3*1024*1024
 export function videoRange(raw:string|undefined,size:number) {
  if(!Number.isSafeInteger(size)||size<=0)return null
@@ -16,13 +18,18 @@ export function videoRange(raw:string|undefined,size:number) {
 export async function handleSocialPlayback(req:VercelRequest,res:VercelResponse) {
  res.setHeader('Cache-Control','private, no-store');res.setHeader('Referrer-Policy','no-referrer');res.setHeader('X-Robots-Tag','noindex, nofollow');res.setHeader('X-Content-Type-Options','nosniff')
  if(!['GET','HEAD'].includes(req.method||''))return res.status(405).end()
- const token=typeof req.query.token==='string'?req.query.token:'',id=typeof req.query.asset==='string'?req.query.asset:''
- if(!/^[a-f0-9]{64}$/.test(token)||!id)return res.status(404).end()
+ const token=typeof req.query.token==='string'?req.query.token:'',bundle=typeof req.query.bundle==='string'?req.query.bundle:'',id=typeof req.query.asset==='string'?req.query.asset:''
+ if((token&&bundle)||!/^[a-f0-9]{64}$/.test(token||bundle)||!id)return res.status(404).end()
  try {
-  const db=createAdminClient(),{data,error}=await db.from('central_social_cards').select('*').eq('token_hash',createHash('sha256').update(token).digest('hex')).maybeSingle()
-  if(error)throw new Error('database_error')
-  if(!data||!(Date.parse(data.token_expires_at)>Date.now())||data.ingest_pending)return res.status(404).end()
-  const asset=publicCard(data as SocialCard).assets.find(a=>a.id===id)
+  const db=createAdminClient()
+  let card:SocialCard
+  if(bundle){card=await clientReviewCard(db,bundle,typeof req.query.id==='string'?req.query.id:'')}
+  else {const {data,error}=await db.from('central_social_cards').select('*').eq('token_hash',createHash('sha256').update(token).digest('hex')).maybeSingle()
+   if(error)throw new Error('database_error')
+   if(!data||!(Date.parse(data.token_expires_at)>Date.now())||data.ingest_pending)return res.status(404).end()
+   card=data as SocialCard
+  }
+  const asset=publicCard(card).assets.find(a=>a.id===id)
   if(!asset||asset.storage!=='drive'||!asset.type.startsWith('video/'))return res.status(404).end()
   const size=Number(asset.bytes),range=videoRange(typeof req.headers.range==='string'?req.headers.range:undefined,size)
   res.setHeader('Accept-Ranges','bytes');res.setHeader('Content-Type',asset.type)
@@ -34,5 +41,5 @@ export async function handleSocialPlayback(req:VercelRequest,res:VercelResponse)
   const bytes=Buffer.from(await response.arrayBuffer());if(bytes.length!==range.end-range.start+1||bytes.length>VIDEO_CHUNK)return res.status(502).end()
   res.setHeader('Content-Range',expected);res.setHeader('Content-Length',String(bytes.length))
   return res.status(206).send(bytes)
- }catch{return res.status(503).end()}
+ }catch(e){return res.status(e instanceof SocialError?e.status:503).end()}
 }
