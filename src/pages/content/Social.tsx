@@ -2,6 +2,7 @@ import ClientApprovalLink from '@/components/social/ClientApprovalLink'
 import ApprovalLink from '@/components/social/ApprovalLink'
 import FeedbackRouting, { type FeedbackContext } from '@/components/social/FeedbackRouting'
 import VideoPreview, { VideoCover } from '@/components/social/VideoPreview'
+import StageMoveDialog, {type StageMoveAction} from '@/components/social/StageMoveDialog'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
@@ -27,16 +28,17 @@ export default function Social() {
  const [card,setCard]=useState<Card|null>(null);const [events,setEvents]=useState<Event[]>([]);const [detailLoading,setDetailLoading]=useState(false);const [busy,setBusy]=useState(false)
  const [caption,setCaption]=useState('');const [note,setNote]=useState('');const [selected,setSelected]=useState<string[]>([])
  const [action,setAction]=useState('');const [name,setName]=useState('');const [evidence,setEvidence]=useState('');const [reason,setReason]=useState('');const [date,setDate]=useState(localInput());const [channel,setChannel]=useState('Instagram · Feed');const [postUrl,setPostUrl]=useState('');const [confirmed,setConfirmed]=useState(false);const [approvalUrl,setApprovalUrl]=useState('')
- const detailRequest=useRef(0);const pendingAction=useRef('')
+ const detailRequest=useRef(0)
+ const [stageMove,setStageMove]=useState<{card:Card;action:StageMoveAction}|null>(null)
  const notify=(message:string)=>toast({description:message})
  const load=useCallback(async()=>{try {setError('');const [data,status]=await Promise.all([socialApi(),socialApi('?sync=status')]);setCards(data.cards);setSync(status)}catch(e){setError((e as Error).message)}finally{setLoading(false)}},[])
- const open=useCallback(async(id:string)=>{const request=++detailRequest.current;setDetailLoading(true);setCard(null);setFeedback(null);setRouteDirty(false);setAction('');setApprovalUrl('');try{const d=await socialApi('?id='+encodeURIComponent(id));if(request!==detailRequest.current)return;setCard(d.card);setFeedback(d.feedback);setApprovalUrl(d.approval_url||'');setEditClient(d.card.client);setEditTitle(d.card.title);setEvents(d.events);setCaption(d.card.caption);setNote(d.card.note);setSelected(d.card.selected_assets);setChannel(d.card.channel||'Instagram · Feed');setName('');setEvidence('');setReason('');setPostUrl('');setConfirmed(false);setAction(pendingAction.current);pendingAction.current=''}catch(e){if(request===detailRequest.current)setError((e as Error).message)}finally{if(request===detailRequest.current)setDetailLoading(false)}},[])
+ const open=useCallback(async(id:string)=>{const request=++detailRequest.current;setDetailLoading(true);setCard(null);setFeedback(null);setRouteDirty(false);setAction('');setApprovalUrl('');try{const d=await socialApi('?id='+encodeURIComponent(id));if(request!==detailRequest.current)return;setCard(d.card);setFeedback(d.feedback);setApprovalUrl(d.approval_url||'');setEditClient(d.card.client);setEditTitle(d.card.title);setEvents(d.events);setCaption(d.card.caption);setNote(d.card.note);setSelected(d.card.selected_assets);setChannel(d.card.channel||'Instagram · Feed');setName('');setEvidence('');setReason('');setPostUrl('');setConfirmed(false)}catch(e){if(request===detailRequest.current)setError((e as Error).message)}finally{if(request===detailRequest.current)setDetailLoading(false)}},[])
  useEffect(()=>{void load();const timer=setInterval(()=>void load(),60000);return()=>clearInterval(timer)},[load])
  const cardId=params.get('peca')
  useEffect(()=>{if(cardId)void open(cardId);else setCard(null)},[cardId,open])
  useEffect(()=>{if(action==='solicitar'&&card){setAction('');const details=document.getElementById('social-individual-link') as HTMLDetailsElement|null;if(details)details.open=true;document.getElementById('social-approval-link')?.scrollIntoView({behavior:'smooth',block:'start'})}},[action,card])
  const choose=(id:string)=>setParams(p=>{p.set('peca',id);return p})
- const close=()=>{if(busy)return;detailRequest.current++;pendingAction.current='';setCard(null);setAction('');setParams(p=>{p.delete('peca');return p})}
+ const close=()=>{if(busy)return;detailRequest.current++;setCard(null);setAction('');setParams(p=>{p.delete('peca');return p})}
  const clients=useMemo(()=>[...new Set(cards.map(c=>c.client))].sort((a,b)=>a.localeCompare(b)),[cards])
  const authors=useMemo(()=>[...new Set(cards.map(c=>c.author))].sort(),[cards])
  const filtered=cards.filter(c=>(!client||c.client===client)&&(!author||c.author===author)&&(!query||`${c.title} ${c.client} ${c.note}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()))&&(archived||c.stage!=='arquivado'))
@@ -59,9 +61,14 @@ export default function Social() {
  }
  const requestAction=(value:string)=>{if(dirty){notify('Salve os arquivos, a legenda e as observações antes de mudar a etapa.');return}setAction(value);setDate(localInput());setConfirmed(false)}
  const drag=async(result:DropResult)=>{
-  if(!result.destination||result.destination.droppableId===result.source.droppableId)return
-  const target=result.destination.droppableId;pendingAction.current=({aguardando:'solicitar',aprovado:'aprovar',agendado:'agendar',postado:'postar'} as Record<string,string>)[target]||target
-  if(cardId===result.draggableId)await open(result.draggableId);else choose(result.draggableId)
+  if(busy||stageMove||cardId||result.reason!=='DROP'||!result.destination||result.destination.droppableId===result.source.droppableId)return
+  const moving=cards.find(c=>c.id===result.draggableId);if(!moving||moving.stage==='postado')return
+  const target=result.destination.droppableId
+  const form=({aprovado:'aprovar',ajustes:'ajustes',agendado:'agendar',postado:'postar'} as Record<string,StageMoveAction>)[target]
+  if(form){setStageMove({card:moving,action:form});return}
+  const direct=({conferir:'conferir',aguardando:'solicitar',arquivado:'arquivar'} as Record<string,string>)[target];if(!direct)return
+  setBusy(true)
+  try{await socialApi('',{id:moving.id,version:moving.version,action:direct});await load();notify(`Peça movida para ${SOCIAL_STAGES.find(s=>s.id===target)?.label}.`)}catch(e){notify((e as Error).message)}finally{setBusy(false)}
  }
  const reorder=(id:string,delta:number)=>setSelected(previous=>{const i=previous.indexOf(id),j=i+delta;if(i<0||j<0||j>=previous.length)return previous;const next=[...previous];[next[i],next[j]]=[next[j],next[i]];return next})
  return <main className="space-y-6 min-w-0">
@@ -88,8 +95,8 @@ export default function Social() {
     {columns.map(s=>{const group=filtered.filter(c=>c.stage===s.id);return <section key={s.id} className={`${stage?'w-full max-w-4xl':'w-[280px] md:w-[300px]'} shrink-0 rounded-xl border bg-muted/20 overflow-hidden`}>
      <div className="h-1" style={{background:s.color}}/><div className="p-4 border-b"><div className="flex items-center justify-between gap-2"><h2 className="text-sm font-semibold">{s.label}</h2><span className="text-xs rounded-md bg-muted px-2 py-1">{group.length}</span></div><p className="mt-1 text-[11px] text-muted-foreground">{s.hint}</p></div>
      <Droppable droppableId={s.id}>{provided=><div ref={provided.innerRef} {...provided.droppableProps} className={`p-3 min-h-[190px] max-h-[66vh] overflow-y-auto ${stage?'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3':'space-y-3'}`}>
-      {group.map((c,index)=><Draggable disableInteractiveElementBlocking key={c.id} draggableId={c.id} index={index} isDragDisabled={busy||c.stage==='postado'}>{p=><article ref={p.innerRef} {...p.draggableProps} {...p.dragHandleProps} className="rounded-lg border bg-card hover:border-primary/60 transition-colors overflow-hidden cursor-grab" onClick={e=>{if(!e.defaultPrevented)choose(c.id)}}>
-       <button className="block text-left w-full" aria-label={`Abrir ${c.title}`} onClick={e=>{e.stopPropagation();choose(c.id)}}>
+      {group.map((c,index)=><Draggable disableInteractiveElementBlocking key={c.id} draggableId={c.id} index={index} isDragDisabled={busy||!!stageMove||c.stage==='postado'}>{p=><article ref={p.innerRef} {...p.draggableProps} {...p.dragHandleProps} className="rounded-lg border bg-card hover:border-primary/60 transition-colors overflow-hidden cursor-grab" onClick={e=>{if(!e.defaultPrevented)choose(c.id)}}>
+       <button className="block text-left w-full" aria-label={`Abrir ${c.title}`} onClick={e=>{e.stopPropagation();if(!e.defaultPrevented)choose(c.id)}}>
         <VideoCover key={`${c.id}:${c.preview||''}`} asset={c.assets.find(a=>a.id===c.selected_assets[0])||c.assets[0]} preview={c.preview}/>
 
         <div className="p-3 space-y-2"><p className="text-[10px] font-semibold uppercase tracking-wider text-primary">{c.client}</p><h3 className="text-sm leading-snug line-clamp-3 font-medium">{cleanTitle(c.title)}</h3>
@@ -106,6 +113,7 @@ export default function Social() {
     </section>})}
    </div>
   </DragDropContext>}
+  {stageMove&&<StageMoveDialog key={`${stageMove.card.id}:${stageMove.action}`} card={stageMove.card} action={stageMove.action} onClose={()=>setStageMove(null)} onSaved={async()=>{setStageMove(null);await load();notify('Etapa atualizada no quadro.')}}/>}
   <Sheet open={!!cardId} onOpenChange={value=>{if(!value)close()}}><SheetContent className="w-full sm:max-w-5xl overflow-y-auto p-5 sm:p-8">
    {!card?<SheetHeader><SheetTitle>{detailLoading?'Carregando peça…':'Peça indisponível'}</SheetTitle><SheetDescription>Arquivos e histórico da publicação.</SheetDescription></SheetHeader>:<>
     <SheetHeader><p className="text-xs text-primary uppercase tracking-widest">{card.client} · versão {card.revision}</p><SheetTitle className="text-xl pr-5">{cleanTitle(card.title)}</SheetTitle><SheetDescription>{SOCIAL_STAGES.find(s=>s.id===card.stage)?.label} · {card.author}</SheetDescription></SheetHeader>
