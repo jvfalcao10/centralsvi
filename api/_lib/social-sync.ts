@@ -1,6 +1,7 @@
 import { refreshVideoPreviews } from './social-preview.js'
 import { processFeedback } from './social-feedback.js'
 import { socialIntake } from './social-intake.js'
+import { identifyGroupDelivery } from './social-delivery.js'
 import { driveVideo } from './social-drive.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { timingSafeEqual } from 'node:crypto'
@@ -32,6 +33,8 @@ async function discover(db:DB,source:string) {
   if(Object.prototype.hasOwnProperty.call(SOCIAL_WHATSAPP_SOURCES,source)) {
    const config=SOCIAL_WHATSAPP_SOURCES[source]
    if(!process.env.SOCIAL_UAZ_TOKEN)throw new SyncError('configuration_missing')
+   const {data:catalogRows}=checked(await db.from('central_social_cards').select('client').limit(1000))
+   const catalog=[...new Set((catalogRows||[]).map(c=>c.client))]
    // Full pagination to the saved watermark. No cursor advance on an incomplete scan.
    let ended=false
    for(let offset=0;offset<2000;offset+=100){
@@ -41,7 +44,8 @@ async function discover(db:DB,source:string) {
     for(const message of data.messages){
      const raw=Number(message.messageTimestamp),timestamp=raw<1e12?raw*1000:raw
      if(timestamp<since)continue
-     const delivery=whatsappVideo(message,config)
+     const parsed=whatsappVideo(message,config)
+     const delivery=parsed?identifyGroupDelivery(parsed,catalog):null
      if(delivery){rows.push({key:delivery.key,provider:delivery.provider,source_id:delivery.source_id,card_id:delivery.card_id,payload:{...delivery.payload,client:delivery.client,title:delivery.title,delivery_version:delivery.delivery_version}});count++}
     }
     await queue(db,rows)

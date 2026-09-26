@@ -38,7 +38,13 @@ export function whatsappVideo(m:Record<string,any>, source:WhatsAppSource) {
  const t=Number(m.messageTimestamp);if(!Number.isFinite(t)||t<=0)return null
  const at=new Date(t<1e12?t*1000:t).toISOString()
  const caption=String(m.text||content.caption||'').slice(0,10000)
- return { key:'wa:'+id, provider:'whatsapp', source_id:id, ...parseDelivery(caption,id,source),
+ const delivery=parseDelivery(caption,id,source)
+ // Distinguish unlabelled files on the board without guessing that equal titles,
+ // thumbnails or durations mean the same edit. Explicit CLIENT | TITLE | Vn
+ // still owns revision grouping; existing message identities stay unchanged.
+ const fileTitle=name.replace(/\.[^.]+$/,'').replace(/\s+v\d{1,3}$/i,'').trim().slice(0,250)
+ return { key:'wa:'+id, provider:'whatsapp', source_id:id, ...delivery,
+  ...(delivery.delivery_version===null&&fileTitle?{title:fileTitle}:{}),
   payload:{ source:source.id, message_id:id, name:name||`video-${String(m.messageid||digest(id).slice(0,12))}.mp4`, type:mediaType(name,mime)||'video/mp4', bytes:Number(content.fileLength||content.size||0), caption, at } }
 }
 export function mathVideo(m:Record<string,any>) { return whatsappVideo(m,SOCIAL_WHATSAPP_SOURCES['whatsapp:math']) }
