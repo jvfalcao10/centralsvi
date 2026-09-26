@@ -1,9 +1,10 @@
+import { approvalLink, newApprovalLink } from './social-approval-link.js'
 import { previewPath } from './social-preview.js'
-import { feedbackContext, saveFeedbackRoute, verifyFeedbackTask } from './social-feedback.js'
+import { feedbackContext, saveFeedbackRoute } from './social-feedback.js'
 import { handleSocialPlayback } from './social-playback.js'
 import { handleSocialSync, socialSyncStatus } from './social-sync.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { createHash, randomBytes } from 'node:crypto'
+import { createHash } from 'node:crypto'
 import { createAdminClient } from './supabase.js'
 import { publicCard, socialPatch, SocialError, type SocialCard, type SocialAsset } from './social-domain.js'
 
@@ -60,7 +61,7 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
     const { data: events, error } = await db.from('central_social_events').select('*').eq('card_id', card.id).order('created_at', { ascending: false }).limit(100)
     if (error) throw error
     const { token_hash: _hash, ...safe } = card
-    return res.json({ card: await media(safe), events, feedback: await feedbackContext(db,card) })
+    return res.json({ card: await media(safe), events, feedback: await feedbackContext(db,card), approval_url: await approvalLink(db,card) })
    }
    const cards: SocialCard[] = []
    for (let offset=0;;offset+=500) {
@@ -90,17 +91,15 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
    actor = body.name.trim().slice(0,120)
   } else if (action.startsWith('cliente_')) fail(403, 'Use o registro de aprovação da equipe.')
   if(!token&&action==='destino') {await saveFeedbackRoute(db,card,body,actor,actorId);return res.json({ok:true})}
+  if(action==='solicitar'&&!body.renew&&card.stage==='aguardando') {const existing=await approvalLink(db,card);if(existing)return res.json({ok:true,approval_url:existing})}
   const patch: Record<string, unknown> = socialPatch(card, body)
-  let approvalUrl: string | undefined
+  let approvalUrl: string | undefined; let sealed: string | undefined
   if (action === 'solicitar') {
-   const {route}=await feedbackContext(db,card)
-   if(!route.task_id||!route.group_id)fail(400,'Vincule a tarefa no ClickUp e o grupo do responsável antes de gerar o link do cliente.')
-   await verifyFeedbackTask(route.task_id)
-   const raw = randomBytes(32).toString('hex')
-   patch.token_hash = hash(raw); patch.token_expires_at = new Date(Date.now()+30*86400000).toISOString()
-   approvalUrl = `https://central.svicompany.com.br/aprovar/social/${raw}`
+   const link=newApprovalLink(card.id)
+   patch.token_hash=link.hash;patch.token_expires_at=new Date(Date.now()+30*86400000).toISOString()
+   approvalUrl=link.url;sealed=link.ciphertext
   }
-  const { data, error } = await db.rpc('central_social_apply', { p_id: card.id, p_expected: body.version, p_patch: patch, p_action: action, p_actor: actor, p_actor_id: actorId })
+  const { data, error } = sealed ? await db.rpc('central_social_request_link',{p_id:card.id,p_expected:body.version,p_patch:patch,p_ciphertext:sealed,p_actor:actor,p_actor_id:actorId}) : await db.rpc('central_social_apply', { p_id: card.id, p_expected: body.version, p_patch: patch, p_action: action, p_actor: actor, p_actor_id: actorId })
   if (error) { if (error.message.includes('version_conflict')) fail(409, 'Outra pessoa acabou de atualizar esta peça. Reabra e confira.'); throw error }
   if (token) return res.json({ ok:true, card: publicCard(data as SocialCard) })
   return res.json({ ok:true, approval_url: approvalUrl })

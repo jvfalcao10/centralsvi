@@ -1,3 +1,4 @@
+import ApprovalLink from '@/components/social/ApprovalLink'
 import FeedbackRouting, { type FeedbackContext } from '@/components/social/FeedbackRouting'
 import VideoPreview, { VideoCover } from '@/components/social/VideoPreview'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -28,10 +29,11 @@ export default function Social() {
  const detailRequest=useRef(0);const pendingAction=useRef('')
  const notify=(message:string)=>toast({description:message})
  const load=useCallback(async()=>{try {setError('');const [data,status]=await Promise.all([socialApi(),socialApi('?sync=status')]);setCards(data.cards);setSync(status)}catch(e){setError((e as Error).message)}finally{setLoading(false)}},[])
- const open=useCallback(async(id:string)=>{const request=++detailRequest.current;setDetailLoading(true);setCard(null);setFeedback(null);setRouteDirty(false);setAction('');setApprovalUrl('');try{const d=await socialApi('?id='+encodeURIComponent(id));if(request!==detailRequest.current)return;setCard(d.card);setFeedback(d.feedback);setEditClient(d.card.client);setEditTitle(d.card.title);setEvents(d.events);setCaption(d.card.caption);setNote(d.card.note);setSelected(d.card.selected_assets);setChannel(d.card.channel||'Instagram · Feed');setName('');setEvidence('');setReason('');setPostUrl('');setConfirmed(false);setAction(pendingAction.current);pendingAction.current=''}catch(e){if(request===detailRequest.current)setError((e as Error).message)}finally{if(request===detailRequest.current)setDetailLoading(false)}},[])
+ const open=useCallback(async(id:string)=>{const request=++detailRequest.current;setDetailLoading(true);setCard(null);setFeedback(null);setRouteDirty(false);setAction('');setApprovalUrl('');try{const d=await socialApi('?id='+encodeURIComponent(id));if(request!==detailRequest.current)return;setCard(d.card);setFeedback(d.feedback);setApprovalUrl(d.approval_url||'');setEditClient(d.card.client);setEditTitle(d.card.title);setEvents(d.events);setCaption(d.card.caption);setNote(d.card.note);setSelected(d.card.selected_assets);setChannel(d.card.channel||'Instagram · Feed');setName('');setEvidence('');setReason('');setPostUrl('');setConfirmed(false);setAction(pendingAction.current);pendingAction.current=''}catch(e){if(request===detailRequest.current)setError((e as Error).message)}finally{if(request===detailRequest.current)setDetailLoading(false)}},[])
  useEffect(()=>{void load();const timer=setInterval(()=>void load(),60000);return()=>clearInterval(timer)},[load])
  const cardId=params.get('peca')
  useEffect(()=>{if(cardId)void open(cardId);else setCard(null)},[cardId,open])
+ useEffect(()=>{if(action==='solicitar'&&card){setAction('');document.getElementById('social-approval-link')?.scrollIntoView({behavior:'smooth',block:'start'})}},[action,card])
  const choose=(id:string)=>setParams(p=>{p.set('peca',id);return p})
  const close=()=>{if(busy)return;detailRequest.current++;pendingAction.current='';setCard(null);setAction('');setParams(p=>{p.delete('peca');return p})}
  const clients=useMemo(()=>[...new Set(cards.map(c=>c.client))].sort((a,b)=>a.localeCompare(b)),[cards])
@@ -48,6 +50,11 @@ export default function Social() {
    await load();await open(card.id);if(data.approval_url)setApprovalUrl(data.approval_url)
    notify(kind==='solicitar'?'Link pronto. Copie e compartilhe com o cliente.':'Registro salvo para toda a equipe.')
   }catch(e){notify((e as Error).message)}finally{setBusy(false)}
+ }
+ const generateApprovalLink=async()=>{
+  if(!card)throw new Error('Reabra a peça para gerar o link.')
+  setBusy(true)
+  try{const result=await socialApi('',{id:card.id,version:card.version,action:'solicitar'});if(!result.approval_url)throw new Error('Não foi possível gerar o link. Tente novamente.');setApprovalUrl(result.approval_url);const d=await socialApi('?id='+encodeURIComponent(card.id));setCard(d.card);setEvents(d.events);setFeedback(d.feedback);void load();return result.approval_url as string}finally{setBusy(false)}
  }
  const requestAction=(value:string)=>{if(dirty){notify('Salve os arquivos, a legenda e as observações antes de mudar a etapa.');return}setAction(value);setDate(localInput());setConfirmed(false)}
  const drag=async(result:DropResult)=>{
@@ -100,6 +107,7 @@ export default function Social() {
   <Sheet open={!!cardId} onOpenChange={value=>{if(!value)close()}}><SheetContent className="w-full sm:max-w-5xl overflow-y-auto p-5 sm:p-8">
    {!card?<SheetHeader><SheetTitle>{detailLoading?'Carregando peça…':'Peça indisponível'}</SheetTitle><SheetDescription>Arquivos e histórico da publicação.</SheetDescription></SheetHeader>:<>
     <SheetHeader><p className="text-xs text-primary uppercase tracking-widest">{card.client} · versão {card.revision}</p><SheetTitle className="text-xl pr-5">{cleanTitle(card.title)}</SheetTitle><SheetDescription>{SOCIAL_STAGES.find(s=>s.id===card.stage)?.label} · {card.author}</SheetDescription></SheetHeader>
+    <ApprovalLink key={card.id} url={approvalUrl} legacy={card.stage==='aguardando'&&!approvalUrl} routingPending={!feedback?.route.task_id||!feedback?.route.group_id} disabledReason={busy?'Aguarde a operação atual.':dirty?'Salve as alterações da peça antes de gerar ou copiar o link.':card.ingest_pending?'Aguarde a importação dos arquivos.':card.client==='Identificar cliente'?'Identifique o cliente desta peça.':!selected.length?'Selecione os arquivos finais abaixo e salve a versão.':['postado','arquivado'].includes(card.stage)?'Esta peça está encerrada.':undefined} onGenerate={generateApprovalLink}/>
     {card.ingest_pending&&<p className="mt-4 rounded border border-orange-400/40 p-3 text-xs text-orange-400">Uma entrega nova está sendo importada. A aprovação fica bloqueada até os arquivos estarem disponíveis. Consulte a sincronização no quadro se houver demora.</p>}
     <div className="mt-6 grid lg:grid-cols-[1.05fr_1fr] gap-7">
      <div className="space-y-5">
@@ -110,7 +118,7 @@ export default function Social() {
         <div className="flex items-center gap-1"><Button size="icon" variant="ghost" className="h-7 w-7" disabled={pos<=0||busy||card.stage==='postado'} aria-label={`Subir ${a.name}`} onClick={()=>reorder(a.id,-1)}><ArrowUp className="h-3 w-3"/></Button><Button size="icon" variant="ghost" className="h-7 w-7" disabled={pos<0||pos===selected.length-1||busy||card.stage==='postado'} aria-label={`Descer ${a.name}`} onClick={()=>reorder(a.id,1)}><ArrowDown className="h-3 w-3"/></Button><a href={a.url} target="_blank" rel="noreferrer" className="ml-auto text-[11px] text-primary flex items-center gap-1"><Download className="h-3 w-3"/>Original</a></div>
        </div>
       </div>})}</div>
-      <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" asChild><a href={card.source_url} target="_blank" rel="noreferrer"><ExternalLink className="h-3 w-3 mr-2"/>{card.source_url.includes('clickup.com')?'Tarefa no ClickUp':'Abrir WhatsApp'}</a></Button><Button disabled={busy||!!dirty||card.stage==='postado'} size="sm" onClick={()=>requestAction('solicitar')}><Link2 className="h-3 w-3 mr-2"/>Link de aprovação do cliente</Button></div>
+      <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" asChild><a href={card.source_url} target="_blank" rel="noreferrer"><ExternalLink className="h-3 w-3 mr-2"/>{card.source_url.includes('clickup.com')?'Tarefa no ClickUp':'Abrir WhatsApp'}</a></Button></div>
       <details className="text-xs rounded-lg border p-3"><summary className="cursor-pointer font-medium">Briefing e origem</summary><Button variant="ghost" size="sm" className="mt-3" onClick={()=>void copy(`${window.location.origin}/content/social?peca=${card.id}`)}><Link2 className="h-3 w-3 mr-2"/>Copiar link interno da equipe</Button><p className="text-muted-foreground">Este endereço exige acesso à Central. Para o cliente, use o link de aprovação.</p><p className="text-muted-foreground mt-3">Status coletado: {card.source_status} · arquivo de {socialDate(card.source_updated)}. Esse status não comprova aprovação nem postagem.</p><p className="whitespace-pre-wrap mt-3 text-muted-foreground max-h-72 overflow-y-auto">{card.source_description||'Consulte a tarefa de origem.'}</p></details>
      </div>
      <div className="space-y-5">
@@ -121,13 +129,12 @@ export default function Social() {
       {feedback&&<FeedbackRouting key={`${card.id}:${card.version}`} cardId={card.id} version={card.version} context={feedback} onDirty={setRouteDirty} onSaved={async()=>{await load();const d=await socialApi('?id='+encodeURIComponent(card.id));setCard(d.card);setFeedback(d.feedback);setEvents(d.events);setRouteDirty(false)}}/>}
       {card.approved_by&&<div className="rounded-lg bg-emerald-500/10 border border-emerald-500/25 p-4"><p className="text-sm font-medium">Aprovado por {card.approved_by}</p><p className="text-xs text-muted-foreground mt-1">Registrado em {socialDate(card.approved_at)} · versão {card.revision}</p><p className="text-xs mt-2 whitespace-pre-wrap">{card.approval_evidence}</p></div>}
       {card.stage==='postado'?<div className="rounded-lg border p-4"><p className="font-medium">Postagem registrada em {socialDate(card.posted_at)}</p><p className="text-sm text-muted-foreground">{card.channel}</p>{card.posted_url&&<a href={card.posted_url} target="_blank" rel="noreferrer" className="text-primary text-sm underline">Abrir publicação</a>}</div>:<div className="space-y-3 border-t pt-4"><p className="text-sm font-semibold">Próximo passo</p><div className="flex gap-2 flex-wrap">
-       <Button disabled={busy||!!dirty} size="sm" onClick={()=>requestAction('solicitar')}><Link2 className="h-3 w-3 mr-1"/>Gerar link para aprovar</Button>
        <Button disabled={busy||!!dirty} variant="outline" size="sm" onClick={()=>requestAction('aprovar')}>Registrar aprovação</Button>
        <Button disabled={busy||!!dirty} variant="outline" size="sm" onClick={()=>requestAction('ajustes')}>Pedir ajuste</Button>
        {['aprovado','agendado'].includes(card.stage)&&<><Button disabled={busy||!!dirty} variant="outline" size="sm" onClick={()=>requestAction('agendar')}>Agendar</Button><Button disabled={busy||!!dirty} variant="outline" size="sm" onClick={()=>requestAction('postar')}>Marcar postado</Button></>}
        <Button disabled={busy||!!dirty} variant="ghost" size="sm" onClick={()=>requestAction(card.stage==='arquivado'?'conferir':'arquivar')}>{card.stage==='arquivado'?'Reabrir':'Arquivar'}</Button>
       </div></div>}
-      {approvalUrl&&<div className="p-4 border border-primary/40 rounded-lg bg-primary/5 space-y-2"><p className="text-sm font-medium">Link de aprovação desta versão</p><p className="text-xs text-muted-foreground">O WhatsApp exibirá a prévia do primeiro arquivo selecionado. Ao abrir, o cliente verá os arquivos e a legenda. Válido por 30 dias. Um novo link substitui o anterior.</p><Input readOnly value={approvalUrl} aria-label="Link de aprovação"/><Button size="sm" onClick={()=>void copy(approvalUrl)}>Copiar link do cliente</Button></div>}
+
       {action&&<section className="border border-primary/40 rounded-lg p-4 space-y-3 bg-primary/5" aria-label="Registrar próximo passo"><div className="flex justify-between items-center"><h3 className="font-semibold text-sm">{({solicitar:'Solicitar aprovação',aprovar:'Registrar aprovação recebida',ajustes:'Descrever ajustes',agendar:'Agendar postagem',postar:'Registrar postagem',arquivar:'Arquivar peça',conferir:'Voltar para conferência'} as Record<string,string>)[action]}</h3><Button size="icon" variant="ghost" aria-label="Cancelar ação" onClick={()=>setAction('')}><X className="h-4 w-4"/></Button></div>
        {action==='solicitar'&&<p className="text-sm text-muted-foreground">A peça irá para “Aguardando cliente”. O link terá a miniatura do primeiro arquivo selecionado para aparecer no WhatsApp. Copie o link gerado para compartilhar.</p>}
        {action==='aprovar'&&<><Input aria-label="Quem aprovou" placeholder="Quem aprovou?" value={name} onChange={e=>setName(e.target.value)}/><Textarea aria-label="Comprovante da aprovação" placeholder="Ex.: Maria, no grupo da clínica, em 25/09 às 14h. Mensagem: pode postar esta versão." value={evidence} onChange={e=>setEvidence(e.target.value)}/></>}
