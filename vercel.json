@@ -25,6 +25,14 @@
   ],
   "rewrites": [
     {
+      "source": "/aprovar/social/:token/preview.jpg",
+      "destination": "/api/r?__rota=social-share&token=:token&image=1"
+    },
+    {
+      "source": "/aprovar/social/:token",
+      "destination": "/api/r?__rota=social-share&token=:token"
+    },
+    {
       "source": "/api/social",
       "destination": "/api/r?__rota=social"
     },
@@ -100,6 +108,7 @@
   ],
   "functions": {
     "api/r.ts": {
+      "includeFiles": "dist/index.html",
       "maxDuration": 300
     }
   }

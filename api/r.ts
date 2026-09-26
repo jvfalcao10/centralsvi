@@ -1,4 +1,5 @@
 import { handleSocial } from './_lib/social.js';
+import { handleSocialShare } from './_lib/social-share.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createAdminClient } from './_lib/supabase.js';
 import { handleAprovarConteudo } from './_lib/aprovar-conteudo.js';
@@ -94,6 +95,7 @@ function deltaHtml(pct: any): string {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.query.__rota === 'social-share') return handleSocialShare(req, res);
   if (req.query.__rota === 'social') return handleSocial(req, res);
   // Aprovacao de conteudo entra por aqui: o plano Hobby limita as functions.
   if (req.query.__rota === 'vaga-trafego') {
