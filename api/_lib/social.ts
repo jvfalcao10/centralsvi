@@ -12,6 +12,11 @@ import { publicCard, socialPatch, socialMovePatch, SocialError, type SocialCard 
 
 const fail = (status: number, message: string): never => { throw new SocialError(status, message) }
 const hash = (value: string) => createHash('sha256').update(value).digest('hex')
+// Return only the persisted movement fields, without signing all media again.
+export function staffMoveState(card:SocialCard) {
+ const {id,stage,version,revision,approved_revision,approved_by,approved_at,approval_evidence,scheduled_at,posted_at,posted_url,channel}=card
+ return {id,stage,version,revision,approved_revision,approved_by,approved_at,approval_evidence,scheduled_at,posted_at,posted_url,channel}
+}
 export async function handleSocial(req: VercelRequest, res: VercelResponse) {
  if(req.query.stream==='1')return handleSocialPlayback(req,res)
  if (req.query.sync === 'run') return handleSocialSync(req,res)
@@ -31,9 +36,11 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
    if (!bearer) fail(401, 'Entre na Central para acessar o quadro.')
    const { data, error } = await db.auth.getUser(bearer)
    if (error || !data.user) fail(401, 'Sua sessão expirou. Entre novamente.')
-   const { data: roles, error: roleError } = await db.from('user_roles').select('role').eq('user_id', data.user.id)
+   const [{ data: roles, error: roleError },{data:profile}] = await Promise.all([
+    db.from('user_roles').select('role').eq('user_id', data.user.id),
+    db.from('profiles').select('name').eq('user_id', data.user.id).maybeSingle(),
+   ])
    if (roleError || !roles?.some(r => ['admin','manager','seller','executor','traffic'].includes(r.role))) fail(403, 'Acesso restrito à equipe SVI.')
-   const { data: profile } = await db.from('profiles').select('name').eq('user_id', data.user.id).maybeSingle()
    actorId = data.user.id; actor = profile?.name || data.user.email || 'Equipe SVI'
   } else if (!/^[a-f0-9]{64}$/.test(token||bundle)) fail(404, 'Este link não está disponível.')
 
@@ -63,6 +70,7 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
    if (card) {
     const { data: events, error } = await db.from('central_social_events').select('*').eq('card_id', card.id).order('created_at', { ascending: false }).limit(100)
     if (error) throw error
+    if(req.query.history==='1')return res.json({events})
     const { token_hash: _hash, ...safe } = card
     return res.json({ card: await media(safe), events, feedback: await feedbackContext(db,card), approval_url: await approvalLink(db,card) })
    }
@@ -95,7 +103,7 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
   } else if (action.startsWith('cliente_')) fail(403, 'Use o registro de aprovação da equipe.')
   if(!publicAccess&&action==='destino') {await saveFeedbackRoute(db,card,body,actor,actorId);return res.json({ok:true})}
   if(action==='solicitar'&&!body.renew&&card.stage==='aguardando') {const existing=await approvalLink(db,card);if(existing)return res.json({ok:true,approval_url:existing})}
-  if(action==='mover'&&body.stage===card.stage)return res.json({ok:true})
+  if(action==='mover'&&body.stage===card.stage)return res.json({ok:true,card:staffMoveState(card)})
   const patch: Record<string, unknown> = action==='mover' ? socialMovePatch(card,body.stage,actor) : socialPatch(card, body)
   let approvalUrl: string | undefined; let sealed: string | undefined
   if (action === 'solicitar' || (action==='mover'&&patch.stage==='aguardando')) {
@@ -106,6 +114,7 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
   const { data, error } = bundle ? await db.rpc('central_social_client_answer',{p_hash:hash(bundle),p_id:card.id,p_expected:body.version,p_patch:patch,p_action:action,p_actor:actor}) : sealed ? await db.rpc('central_social_request_link',{p_id:card.id,p_expected:body.version,p_patch:patch,p_ciphertext:sealed,p_actor:actor,p_actor_id:actorId}) : await db.rpc('central_social_apply', { p_id: card.id, p_expected: body.version, p_patch: patch, p_action: action, p_actor: actor, p_actor_id: actorId })
   if (error) { if (error.message.includes('version_conflict')) fail(409, 'Outra pessoa acabou de atualizar esta peça. Reabra e confira.'); if(error.message.includes('link_unavailable'))fail(404,'Este link ou esta peça não está disponível. Atualize a página.'); throw error }
   if (publicAccess) return res.json({ ok:true, card: publicCard(data as SocialCard) })
+  if(action==='mover')return res.json({ok:true,card:staffMoveState(data as SocialCard),approval_url:approvalUrl||''})
   return res.json({ ok:true, approval_url: approvalUrl })
  } catch (error) {
   if (error instanceof SocialError) return res.status(error.status).json({ error:error.message })

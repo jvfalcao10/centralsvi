@@ -32,15 +32,22 @@ export default function Social() {
  const [card,setCard]=useState<Card|null>(null);const [events,setEvents]=useState<Event[]>([]);const [detailLoading,setDetailLoading]=useState(false);const [busy,setBusy]=useState(false)
  const [caption,setCaption]=useState('');const [note,setNote]=useState('');const [selected,setSelected]=useState<string[]>([])
  const [approvalUrl,setApprovalUrl]=useState('')
- const detailRequest=useRef(0);const moving=useRef(false)
+ const detailRequest=useRef(0);const historyRequest=useRef(0);const moving=useRef(false);const boardEpoch=useRef(0);const boardRead=useRef(0)
+ const [pendingStage,setPendingStage]=useState('')
  const notify=(message:string)=>toast({description:message})
- const load=useCallback(async()=>{try {setError('');const [data,status]=await Promise.all([socialApi(),socialApi('?sync=status')]);setCards(data.cards);setSync(status)}catch(e){setError((e as Error).message)}finally{setLoading(false)}},[])
+ const load=useCallback(async()=>{
+  const epoch=boardEpoch.current,request=++boardRead.current;setError('')
+  await Promise.all([
+   (async()=>{try{const data=await socialApi();if(request===boardRead.current&&epoch===boardEpoch.current&&!moving.current)setCards(data.cards)}catch(e){if(request===boardRead.current)setError((e as Error).message)}finally{if(request===boardRead.current)setLoading(false)}})(),
+   (async()=>{try{const status=await socialApi('?sync=status');if(request===boardRead.current)setSync(status)}catch{/* Sync health must not block the board. */}})(),
+  ])
+ },[])
  const open=useCallback(async(id:string)=>{const request=++detailRequest.current;setDetailLoading(true);setCard(null);setFeedback(null);setRouteDirty(false);setApprovalUrl('');try{const d=await socialApi('?id='+encodeURIComponent(id));if(request!==detailRequest.current)return;setCard(d.card);setFeedback(d.feedback);setApprovalUrl(d.approval_url||'');setEditClient(d.card.client);setEditTitle(d.card.title);setEvents(d.events);setCaption(d.card.caption);setNote(d.card.note);setSelected(d.card.selected_assets);}catch(e){if(request===detailRequest.current)setError((e as Error).message)}finally{if(request===detailRequest.current)setDetailLoading(false)}},[])
  useEffect(()=>{void load();const timer=setInterval(()=>void load(),60000);return()=>clearInterval(timer)},[load])
  const cardId=params.get('peca')
  useEffect(()=>{if(cardId)void open(cardId);else setCard(null)},[cardId,open])
 
- const choose=(id:string)=>setParams(p=>{p.set('peca',id);return p})
+ const choose=(id:string)=>{if(busy||moving.current)return;setParams(p=>{p.set('peca',id);return p})}
  const close=()=>{if(busy)return;detailRequest.current++;setCard(null);setParams(p=>{p.delete('peca');return p})}
  const clients=useMemo(()=>[...new Set(cards.map(c=>c.client))].sort((a,b)=>a.localeCompare(b)),[cards])
  const authors=useMemo(()=>[...new Set(cards.map(c=>c.author))].sort(),[cards])
@@ -68,8 +75,29 @@ export default function Social() {
   if(!current||current.stage===target)return
   if(cardId&&cardId!==id)return
   if(cardId&&dirty){notify('Salve suas alterações na peça antes de mudar a etapa.');return}
-  moving.current=true;setBusy(true)
-  try{await socialApi('',{id:current.id,version:current.version,action:'mover',stage:target});await load();if(cardId===id)await open(id);notify(`Peça movida para ${SOCIAL_STAGES.find(s=>s.id===target)?.label}.`)}catch(e){notify((e as Error).message)}finally{moving.current=false;setBusy(false)}
+  const label=SOCIAL_STAGES.find(s=>s.id===target)?.label,previousLink=approvalUrl,detail=detailRequest.current
+  moving.current=true;boardEpoch.current++;setBusy(true);setPendingStage(label||target)
+  setCards(previous=>previous.map(c=>c.id===id?{...c,stage:target}:c))
+  if(cardId===id){setCard(c=>c?.id===id?{...c,stage:target}:c);setApprovalUrl('')}
+  try{
+   const result=await socialApi('',{id:current.id,version:current.version,action:'mover',stage:target})
+   if(!result.card?.version)throw new Error('Não foi possível confirmar a etapa. Atualizando o quadro para conferir.')
+   boardEpoch.current++
+   setCards(previous=>previous.map(c=>c.id===id?{...c,...result.card}:c))
+   if(cardId===id&&detail===detailRequest.current){
+    setCard(c=>c?.id===id?{...c,...result.card}:c);setApprovalUrl(result.approval_url||'')
+    // Only refresh the history; keep the media and edit panel mounted.
+    const history=++historyRequest.current
+    void socialApi('?id='+encodeURIComponent(id)+'&history=1').then(d=>{if(detail===detailRequest.current&&history===historyRequest.current)setEvents(d.events)}).catch(()=>{})
+   }
+   notify(`Peça movida para ${label}.`)
+  }catch(e){
+   boardEpoch.current++;setCards(previous=>previous.map(c=>c.id===id?current:c))
+   if(cardId===id&&detail===detailRequest.current){setCard(current);setApprovalUrl(previousLink)}
+   notify((e as Error).message)
+   // A lost response may still have committed. Reconcile with the server, never retry the write blindly.
+   moving.current=false;void load();if(cardId===id&&detail===detailRequest.current)void open(id)
+  }finally{moving.current=false;setBusy(false);setPendingStage('')}
  }
  const reorder=(id:string,delta:number)=>setSelected(previous=>{const i=previous.indexOf(id),j=i+delta;if(i<0||j<0||j>=previous.length)return previous;const next=[...previous];[next[i],next[j]]=[next[j],next[i]];return next})
  return <main className="space-y-4 md:space-y-6 min-w-0">
@@ -93,7 +121,7 @@ export default function Social() {
    </div>}
   </section>
   {(!isMobile||client)&&<details key={client} className="rounded-xl border bg-card px-4 py-3"><summary className="cursor-pointer text-sm font-medium py-1">Link de aprovação do cliente{client?` · ${client}`:''}</summary><ClientApprovalLink client={client} pendingCount={cards.filter(c=>c.client===client&&c.stage==='aguardando').length}/></details>}
-  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span>{filtered.length} peças · {filtered.reduce((n,c)=>n+c.assets.length,0)} arquivos · acervo da equipe</span><span className="hidden md:inline">Mudanças de etapa ficam no histórico.</span></div>
+  <div className="flex min-h-6 flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span>{filtered.length} peças · {filtered.reduce((n,c)=>n+c.assets.length,0)} arquivos · acervo da equipe</span><span role="status" aria-live="polite" className="flex items-center gap-2">{pendingStage?<><Loader2 className="h-3 w-3 animate-spin"/>Salvando em {pendingStage}…</>:<span className="hidden md:inline">Mudanças de etapa ficam no histórico.</span>}</span></div>
   {sync&&<details className="rounded-lg border bg-card p-3 text-xs"><summary className="min-h-8 cursor-pointer flex flex-wrap items-center gap-2"><RefreshCw className="w-3 h-3"/>Entrada automática · ClickUp, grupos e Sofia{sync.pending>0&&<span className="text-muted-foreground">{sync.pending} na fila</span>}{(sync.issues.length>0||sync.sources.some(s=>s.error||!s.last_success_at||Date.now()-Date.parse(s.last_success_at)>15*60000))&&<span className="text-orange-400">Conferir sincronização</span>}</summary><div className="mt-3 space-y-3"><p className="text-muted-foreground">Novos uploads de José, Laís e Math no ClickUp. Consulta a cada 2 minutos; o quadro se atualiza a cada minuto. Nos respectivos grupos, Math e Sarah podem identificar o vídeo com CLIENTE | TÍTULO | V1. Uma correção usa o mesmo título e V2. Envie como documento para preservar o arquivo. Entrega nova exige conferência. No privado da Sofia, vídeo enviado como arquivo/documento vai para a Central; vídeo enviado normalmente vai para transcrição. Ela pergunta se faltar identificar o cliente. Pastas: ano / mês / cliente. Para indicar outro mês, use POSTAR | CLIENTE | OUTUBRO na legenda do documento. APROVADO registra a liberação quando informado por João ou Letícia.</p><div className="flex flex-wrap gap-3">{sync.sources.map(s=><p key={s.id}>{s.label}: <span className={s.error?'text-orange-400':'text-muted-foreground'}>{s.error?'consulta pendente':s.last_success_at?socialDate(s.last_success_at):'primeira consulta pendente'}</span></p>)}</div>{sync.issues.map(i=><div key={i.key} className="border-l-2 border-orange-400 pl-3"><p className="font-medium">{i.title}</p><p className="text-muted-foreground">{i.reason}</p><a className="underline text-primary" href={i.source_url} target="_blank" rel="noreferrer">Conferir na origem</a></div>)}</div></details>}
   {error&&<div role="alert" className="p-4 rounded-lg border border-destructive/40 text-destructive">{error}<Button variant="ghost" size="sm" onClick={()=>void load()}>Tentar novamente</Button></div>}
   {loading?<div className="flex gap-2 items-center py-16 text-muted-foreground"><Loader2 className="animate-spin h-5 w-5"/>Carregando o quadro…</div>:isMobile?<MobileSocialBoard cards={filtered} stage={mobileStage} filterKey={`${client}|${author}|${query}|${archived}`} busy={busy||!!cardId} onOpen={choose} onMove={(id,target)=>void moveStage(id,target)} onCopy={text=>void copy(text)}/>:<DesktopSocialBoard cards={filtered} columns={columns} busy={busy||!!cardId} onOpen={choose} onMove={(id,target)=>void moveStage(id,target)} onCopy={text=>void copy(text)}/>}

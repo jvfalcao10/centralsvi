@@ -27,7 +27,7 @@ beforeEach(()=>{
  if(!globalThis.DOMRect)vi.stubGlobal('DOMRect',class {static fromRect(r:any){return {...r,top:r.y,left:r.x,right:r.x+r.width,bottom:r.y+r.height,toJSON:()=>r}}})
  mocks.mobile=false;current=structuredClone(initial);mocks.api.mockReset();mocks.toast.mockReset();mocks.drop=null
  mocks.api.mockImplementation(async(query='',body)=>{
-  if(body){current={...current,stage:body.stage||current.stage,version:current.version+1};return {ok:true}}
+  if(body){current={...current,stage:body.stage||current.stage,version:current.version+1};return {ok:true,card:{...current}}}
   if(query==='?sync=status')return {sources:[],pending:0,issues:[]}
   if(query.startsWith('?id='))return {card:current,events:[],feedback:null}
   return {cards:[current]}
@@ -47,7 +47,7 @@ describe('direct staff movements',()=>{
   await drop('conferir','CANCEL');expect(cancel).toHaveBeenCalled()
   raf.mockRestore();cancel.mockRestore()
  })
- it.each(['aguardando','aprovado','ajustes','agendado','postado','arquivado'])('moves to %s without asking for a form or opening the piece',async stage=>{
+ it.each(['aguardando','aprovado','ajustes','para_anuncio','agendado','postado','arquivado'])('moves to %s without asking for a form or opening the piece',async stage=>{
   show();await screen.findByRole('button',{name:'Abrir Vídeo QA'});await drop(stage)
   await waitFor(()=>expect(writes()).toEqual([['',{id:'piece-a',version:4,action:'mover',stage}]]))
   expect(screen.queryByRole('dialog')).toBeNull();expect(screen.getByLabelText('Endereço atual')).not.toHaveTextContent('peca=')
@@ -99,5 +99,41 @@ describe('touch controls',()=>{
   expect(await screen.findByRole('menuitem',{name:'Agendado'})).toBeVisible();expect(screen.queryByRole('dialog')).toBeNull()
   fireEvent.click(screen.getByRole('menuitem',{name:'Agendado'}))
   await waitFor(()=>expect(writes()[0][1]).toMatchObject({stage:'agendado'}))
+ })
+})
+
+describe('fast stage feedback',()=>{
+ it('shows the destination before the write completes and does not reload the board on success',async()=>{
+  let finish!:()=>void
+  const base=mocks.api.getMockImplementation()!;mocks.api.mockImplementation(async(q,b)=>{if(b)await new Promise<void>(resolve=>{finish=resolve});return base(q,b)})
+  show();await screen.findByRole('button',{name:'Abrir Vídeo QA'});const reads=mocks.api.mock.calls.filter(([,body])=>!body).length
+  await drop('postado')
+  expect(screen.getByRole('combobox',{name:'Mudar etapa de Vídeo QA'})).toHaveValue('postado')
+  expect(screen.getByText('Salvando em Postado…')).toBeVisible();expect(mocks.toast).not.toHaveBeenCalled()
+  await act(async()=>{finish()})
+  expect(screen.queryByText('Salvando em Postado…')).toBeNull();expect(mocks.api.mock.calls.filter(([,body])=>!body)).toHaveLength(reads)
+  mocks.api.mockImplementation(base);await drop('conferir');expect(writes()[1][1].version).toBe(5)
+ })
+ it('does not wait for sync health to show the cards',async()=>{
+  const base=mocks.api.getMockImplementation()!;mocks.api.mockImplementation((q,b)=>q==='?sync=status'?new Promise(()=>{}):base(q,b))
+  show();await screen.findByRole('button',{name:'Abrir Vídeo QA'});expect(screen.queryByText('Carregando o quadro…')).toBeNull()
+  await drop('postado');expect(screen.getByRole('combobox',{name:'Mudar etapa de Vídeo QA'})).toHaveValue('postado')
+ })
+ it('ignores an old board response that arrives after a saved movement',async()=>{
+  const base=mocks.api.getMockImplementation()!;let finish!:(d:unknown)=>void
+  show();await screen.findByRole('button',{name:'Abrir Vídeo QA'})
+  const old=structuredClone(current)
+  mocks.api.mockImplementation((q='',b)=>!q&&!b?new Promise(resolve=>{finish=resolve}):base(q,b))
+  fireEvent.click(screen.getByRole('button',{name:'Atualizar quadro'}));await drop('postado')
+  await act(async()=>finish({cards:[old]}))
+  expect(screen.getByRole('combobox',{name:'Mudar etapa de Vídeo QA'})).toHaveValue('postado')
+ })
+ it('restores the stage if saving fails after the optimistic movement',async()=>{
+  let fail!:(e:Error)=>void
+  const base=mocks.api.getMockImplementation()!;mocks.api.mockImplementation((q,b)=>b?new Promise((_,reject)=>{fail=reject}):base(q,b))
+  show();await screen.findByRole('button',{name:'Abrir Vídeo QA'});await drop('postado')
+  expect(screen.getByRole('combobox',{name:'Mudar etapa de Vídeo QA'})).toHaveValue('postado')
+  await act(async()=>fail(new Error('Sem conexão.')))
+  expect(screen.getByRole('combobox',{name:'Mudar etapa de Vídeo QA'})).toHaveValue('conferir');expect(mocks.toast).toHaveBeenCalledWith({description:'Sem conexão.'})
  })
 })

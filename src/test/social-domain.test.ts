@@ -25,7 +25,7 @@ describe('Aprovação de uma versão exata',()=>{
 
 
 describe('movimentação interna direta',()=>{
- it.each(['conferir','aguardando','ajustes','aprovado','agendado','postado','arquivado'])('aceita %s sem formulário',stage=>expect(socialMovePatch(card(),stage,'João',now).stage).toBe(stage))
+ it.each(['conferir','aguardando','ajustes','aprovado','para_anuncio','agendado','postado','arquivado'])('aceita %s sem formulário',stage=>expect(socialMovePatch(card(),stage,'João',now).stage).toBe(stage))
  it('atribui liberação interna ao operador, sem inventar resposta de cliente',()=>expect(socialMovePatch(card(),'aprovado','João',now)).toMatchObject({approved_by:'João',approval_evidence:'Liberação interna pela equipe ao mover para Aprovado para postar na Central.'}))
  it('preserva a aprovação já registrada da mesma versão',()=>{expect(socialMovePatch(approved(),'aprovado','João',now)).not.toHaveProperty('approved_by')})
  it('não inventa aprovação nem data planejada ao agendar',()=>{const p=socialMovePatch(card(),'agendado','João',now);expect(p.scheduled_at).toBeNull();expect(p).not.toHaveProperty('approved_by')})
@@ -37,3 +37,5 @@ describe('movimentação interna direta',()=>{
  it('permite detalhes opcionais sem mudar etapa nem aprovação',()=>{const p=socialPatch(card({stage:'agendado'}),{action:'informacoes',channel:'Reels',scheduled_at:null},now);expect(p).toMatchObject({channel:'Reels',scheduled_at:null});expect(p).not.toHaveProperty('stage');expect(p).not.toHaveProperty('approved_by')})
  it('permite completar a publicação depois e valida links/datas',()=>{const c=card({stage:'postado',posted_at:now.toISOString()});expect(socialPatch(c,{action:'informacoes',posted_url:'https://instagram.com/p/qa',posted_at:now.toISOString()},now)).toMatchObject({posted_url:'https://instagram.com/p/qa'});expect(()=>socialPatch(c,{action:'informacoes',posted_url:'javascript:alert(1)'},now)).toThrow('inválido');expect(()=>socialPatch(c,{action:'informacoes',posted_at:'2027-01-01'},now)).toThrow('válida')})
 })
+
+it('Para anúncio organiza tráfego pago sem marcar publicação ou inventar aprovação',()=>{const p=socialMovePatch(card(),'para_anuncio','João',now);expect(p).toMatchObject({stage:'para_anuncio',posted_at:null,scheduled_at:null});expect(p).not.toHaveProperty('approved_by');expect(()=>socialMovePatch(card({selected_assets:[]}),'para_anuncio','João',now)).toThrow('arquivo')})

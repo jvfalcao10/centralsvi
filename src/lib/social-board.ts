@@ -10,6 +10,7 @@ export const SOCIAL_STAGES = [
  {id:'aguardando',label:'Aguardando cliente',color:'#80a8cf',hint:'Link de aprovação gerado'},
  {id:'ajustes',label:'Ajustes',color:'#df9279',hint:'Resolver antes de publicar'},
  {id:'aprovado',label:'Aprovado para postar',color:'#79b79b',hint:'Aprovação registrada'},
+ {id:'para_anuncio',label:'Para anúncio',color:'#5ea9c9',hint:'Selecionado para tráfego pago'},
  {id:'agendado',label:'Agendado',color:'#ada0cf',hint:'Programado pela equipe'},
  {id:'postado',label:'Postado',color:'#a6b7b0',hint:'Publicação confirmada'},
  {id:'arquivado',label:'Arquivo',color:'#999999',hint:'Fora da fila de postagem'},

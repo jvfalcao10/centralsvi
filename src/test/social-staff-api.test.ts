@@ -11,7 +11,7 @@ beforeEach(()=>{
  vi.clearAllMocks();role='admin';card={id:'qa',client:'Cliente',title:'Peça',stage:'conferir',version:4,revision:1,assets:[{id:'a'}],selected_assets:['a'],note:''}
  m.auth.mockResolvedValue({data:{user:{id:'authenticated-user',email:'qa@example.com'}},error:null})
  m.from.mockImplementation((table:string)=>({select:()=>({eq:()=>table==='user_roles'?Promise.resolve({data:[{role}],error:null}):{maybeSingle:async()=>({data:table==='profiles'?{name:'Pessoa autenticada'}:card,error:null})}})}))
- m.rpc.mockResolvedValue({data:{},error:null});m.link.mockReturnValue({url:'https://example.com/review',hash:'hash',ciphertext:'sealed'})
+ m.rpc.mockImplementation(async(_name,args)=>({data:{...card,...args.p_patch,version:5,token_hash:'private-hash',source_description:'internal briefing'},error:null}));m.link.mockReturnValue({url:'https://example.com/review',hash:'hash',ciphertext:'sealed'})
 })
 describe('authenticated direct staff stage changes',()=>{
  it('uses the authenticated actor, ignoring a supplied name and approval',async()=>{const r=await call({id:'qa',version:4,action:'mover',stage:'aprovado',name:'Cliente falso',approved_by:'Cliente falso'});expect(r.code).toBe(200);expect(m.rpc).toHaveBeenCalledWith('central_social_apply',expect.objectContaining({p_action:'mover',p_actor:'Pessoa autenticada',p_actor_id:'authenticated-user',p_patch:expect.objectContaining({stage:'aprovado',approved_by:'Pessoa autenticada'})}))})
@@ -22,3 +22,5 @@ describe('authenticated direct staff stage changes',()=>{
  it('rejects a stale card version',async()=>{expect((await call({id:'qa',version:3,action:'mover',stage:'postado'})).code).toBe(409);expect(m.rpc).not.toHaveBeenCalled()})
  it('ignores same-stage movement without a second history entry',async()=>{expect((await call({id:'qa',version:4,action:'mover',stage:'conferir'})).code).toBe(200);expect(m.rpc).not.toHaveBeenCalled()})
 })
+
+it('returns persisted movement fields without another media request or private data',async()=>{const r=await call({id:'qa',version:4,action:'mover',stage:'para_anuncio'});expect(r.body.card).toMatchObject({id:'qa',stage:'para_anuncio',version:5});expect(r.body.card).not.toHaveProperty('token_hash');expect(r.body.card).not.toHaveProperty('source_description');expect(r.body.card).not.toHaveProperty('assets')})

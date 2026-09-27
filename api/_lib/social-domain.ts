@@ -14,9 +14,9 @@ const cleared = { approved_revision: null, approved_by: null, approved_at: null,
 /** A staff member explicitly moving a card is the decision; optional details never block it. */
 export function socialMovePatch(c: SocialCard, target: unknown, actor: string, now = new Date()): Record<string, unknown> {
  const stage = text(target, 30)
- if (!['conferir','aguardando','ajustes','aprovado','agendado','postado','arquivado'].includes(stage)) reject('Etapa inválida.')
+ if (!['conferir','aguardando','ajustes','aprovado','para_anuncio','agendado','postado','arquivado'].includes(stage)) reject('Etapa inválida.')
  if (!actor.trim()) reject('Entre na Central novamente.')
- if (['aguardando','aprovado','agendado','postado'].includes(stage)) {
+ if (['aguardando','aprovado','para_anuncio','agendado','postado'].includes(stage)) {
   if (c.ingest_pending) reject('Aguarde a importação dos arquivos para continuar.')
   if (!c.selected_assets.length) reject('Selecione ao menos um arquivo final.')
   if (c.client === 'Identificar cliente') reject('Identifique o cliente desta peça para continuar.')
@@ -34,6 +34,7 @@ export function socialMovePatch(c: SocialCard, target: unknown, actor: string, n
  }
  // Do not invent a planned date or a customer approval for a manual stage change.
  if (stage === 'agendado') patch.scheduled_at=c.scheduled_at || null
+ if (stage === 'para_anuncio') patch.scheduled_at=null
  if (stage === 'postado') patch.posted_at=c.posted_at || now.toISOString()
  return patch
 }
