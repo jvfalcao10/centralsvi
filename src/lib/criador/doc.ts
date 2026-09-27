@@ -1,5 +1,5 @@
 import { TEMPLATE_POR_ID } from '@/data/criador/templates'
-import type { CarrosselDoc, OpcoesCarrossel, SlideDoc, TemplateId } from '@/data/criador/tipos'
+import type { CarrosselDoc, Formato, OpcoesCarrossel, SlideDoc, TemplateId } from '@/data/criador/tipos'
 import { novoId } from './contrato'
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
@@ -8,9 +8,13 @@ export function dataRodapePadrao(d = new Date()) {
   return `${MESES[d.getMonth()]}, ©${d.getFullYear()}`
 }
 
-export function opcoesPadrao(template: TemplateId): OpcoesCarrossel {
+export const ehEstatico = (d: Pick<CarrosselDoc, 'opcoes'>) => d.opcoes?.formato === 'estatico'
+export const aceitaEstatico = (template: TemplateId) => !!TEMPLATE_POR_ID[template]?.estatico
+
+export function opcoesPadrao(template: TemplateId, formato: Formato = 'carrossel'): OpcoesCarrossel {
   const tpl = TEMPLATE_POR_ID[template]
-  return { assinatura: tpl.assinaturaPadrao, ...(tpl.fundoPadrao ? { fundo: tpl.fundoPadrao } : {}), ...(template === 't10' ? { dataRodape: dataRodapePadrao() } : {}) }
+  const fmt: Formato = formato === 'estatico' && tpl.estatico ? 'estatico' : 'carrossel'
+  return { formato: fmt, assinatura: tpl.assinaturaPadrao, ...(tpl.fundoPadrao ? { fundo: tpl.fundoPadrao } : {}), ...(template === 't10' ? { dataRodape: dataRodapePadrao() } : {}) }
 }
 
 export function novoSlide(template: TemplateId, tipo: string): SlideDoc {
@@ -20,13 +24,23 @@ export function novoSlide(template: TemplateId, tipo: string): SlideDoc {
   return { id: novoId(), tipo: def.tipo, campos, fotos: {} }
 }
 
-export function novoDoc(template: TemplateId): CarrosselDoc {
+export function novoDoc(template: TemplateId, formato: Formato = 'carrossel'): CarrosselDoc {
   const tpl = TEMPLATE_POR_ID[template]
-  return { titulo: '', template, legenda: '', slides: tpl.estrutura.map(t => novoSlide(template, t)), opcoes: opcoesPadrao(template) }
+  const opcoes = opcoesPadrao(template, formato)
+  const estrutura = opcoes.formato === 'estatico' && tpl.estatico ? [tpl.estatico.tipo] : tpl.estrutura
+  return { titulo: '', template, legenda: '', slides: estrutura.map(t => novoSlide(template, t)), opcoes }
 }
 
-export function docDoExemplo(template: TemplateId): CarrosselDoc {
+export function docDoExemplo(template: TemplateId, formato: Formato = 'carrossel'): CarrosselDoc {
   const tpl = TEMPLATE_POR_ID[template]
+  if (formato === 'estatico' && tpl.estatico) {
+    const s = tpl.estatico.exemplo
+    return {
+      titulo: `Exemplo ${tpl.codigo} · ${tpl.estatico.nome}`, template, legenda: '',
+      slides: [{ ...s, id: novoId(), campos: { ...s.campos }, fotos: { ...s.fotos } }],
+      opcoes: opcoesPadrao(template, 'estatico'),
+    }
+  }
   return {
     titulo: `Exemplo ${tpl.codigo} · ${tpl.nome}`, template, legenda: '',
     slides: tpl.exemplo.map(s => ({ ...s, id: novoId(), campos: { ...s.campos }, fotos: { ...s.fotos } })),

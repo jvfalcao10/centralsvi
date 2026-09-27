@@ -7,7 +7,7 @@ import { AbaMontar } from '@/components/criador/AbaMontar'
 import { injetarFontes } from '@/lib/criador/fontes'
 import { docDoExemplo, novoDoc } from '@/lib/criador/doc'
 import { TEMPLATE_POR_ID } from '@/data/criador/templates'
-import type { CarrosselDoc, TemplateId } from '@/data/criador/tipos'
+import type { CarrosselDoc, Formato, TemplateId } from '@/data/criador/tipos'
 
 // Criador de Carrossel (27/09/2026). Só o João (admin) usa.
 // Sem IA dentro da Central: os agentes são prompts prontos, a resposta volta em JSON na aba Montar,
@@ -45,12 +45,12 @@ export default function CriadorCarrossel() {
   const setDoc = useCallback((fn: (d: CarrosselDoc) => CarrosselDoc) => setDocState(fn), [])
   const substituirDoc = useCallback((d: CarrosselDoc) => setDocState(d), [])
 
-  const usarTemplate = (id: TemplateId) => {
+  const usarTemplate = (id: TemplateId, formato: Formato = 'carrossel') => {
     const temConteudo = doc.slides.some(s => Object.values(s.campos).some(v => v.trim()))
     if (doc.id || (temConteudo && !doc.titulo.startsWith('Exemplo'))) {
       if (!window.confirm('Abrir o exemplo deste template na aba Montar? O carrossel que está lá sai da tela (o que foi salvo continua nos rascunhos).')) return
     }
-    setDocState(id === doc.template && !temConteudo ? novoDoc(id) : docDoExemplo(id))
+    setDocState(id === doc.template && !temConteudo ? novoDoc(id, formato) : docDoExemplo(id, formato))
     setAba('montar')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -68,7 +68,7 @@ export default function CriadorCarrossel() {
         <TabsTrigger value="montar">Montar</TabsTrigger>
       </TabsList>
       <TabsContent value="templates"><AbaTemplates aoUsar={usarTemplate} /></TabsContent>
-      <TabsContent value="agentes"><AbaAgentes templateInicial={doc.template} /></TabsContent>
+      <TabsContent value="agentes"><AbaAgentes templateInicial={doc.template} formatoInicial={doc.opcoes.formato ?? 'carrossel'} /></TabsContent>
       <TabsContent value="conhecimento"><AbaConhecimento /></TabsContent>
       <TabsContent value="montar"><AbaMontar doc={doc} setDoc={setDoc} substituirDoc={substituirDoc} /></TabsContent>
     </Tabs>

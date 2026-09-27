@@ -271,3 +271,11 @@ export async function exportarZip(nos: HTMLElement[], legenda: string, titulo: s
   baixar(blob, `${nomeArquivo(titulo)}.zip`)
   return blob
 }
+
+/** Peça única (estático ou carrossel de 1 lâmina): baixa o PNG direto, sem ZIP. Devolve o PNG para teste. */
+export async function exportarPngUnico(no: HTMLElement, titulo: string): Promise<Blob> {
+  const png = await pngDaLamina(no)
+  const blob = await (await fetch(png)).blob()
+  baixar(blob, `${nomeArquivo(titulo)}.png`)
+  return blob
+}

@@ -1,5 +1,5 @@
 import { docs } from './conhecimento'
-import type { TemplateDef } from './tipos'
+import type { Formato, TemplateDef } from './tipos'
 import { especificacaoDoTemplate, exemploDoContrato } from '@/lib/criador/contrato'
 
 // Agentes de prompt do Criador de Carrossel (27/09/2026).
@@ -30,6 +30,25 @@ export interface EntradaAgente {
   framework: Framework
   laminas: number
   material: string
+  /** Carrossel ou estático (peça única). Estático só nos templates que têm versão de peça única. */
+  formato?: Formato
+}
+
+const estatico = (e: EntradaAgente) => e.formato === 'estatico' && !!e.template.estatico
+
+/** Régua do estático (peça única), igual para Roteirista e Revisor. */
+function reguaEstatico(e: EntradaAgente) {
+  const est = e.template.estatico!
+  const t9 = e.template.id === 't9'
+  return `FORMATO: ESTÁTICO (peça única, ${e.template.codigo} ${est.nome})
+${est.quandoUsar}
+1. Exatamente 1 lâmina, do tipo "${est.tipo}", e "formato": "estatico" no JSON.
+${t9
+    ? '2. A frase vem em duas metades: linhaA abre a cena (até 70 caracteres) e linhaB fecha o sentido (até 70 caracteres). Ninguém entende a peça lendo só a primeira metade.\n3. O trecho forte vai em **negrito**, uma vez em cada metade no máximo.'
+    : '2. Título de tese em até 100 caracteres que se sustenta sozinho, apoio de uma frase em até 120 caracteres.\n3. Sem "arrasta para o lado": a peça termina nela mesma.'}
+4. Uma ideia só, de reflexão de dono: um fato real da vida de quem toca um consultório, lido com calma. Sem esporro, sem aula, sem lista, sem chamada de venda na arte.
+5. Sem "não é X, é Y", sem ponto e vírgula, sem travessão.
+6. A foto de cada quadro vai descrita em "foto" (${t9 ? 'a mesma cena duas vezes: quadro aberto em cima e fechado embaixo, rosto no terço de cima e a legenda no terço de baixo' : 'foto escura de ponta a ponta, rosto no terço de cima e o texto no pé'}).`
 }
 
 export interface Agente {
@@ -64,7 +83,7 @@ function contexto(e: EntradaAgente) {
     `TEMA: ${e.tema.trim() || '(o João não definiu, proponha a partir da linha editorial)'}`,
     `TEMPLATE: ${e.template.codigo} · ${e.template.nome} (${e.template.quandoUsar})`,
     `ESTRUTURA: ${e.framework.nome}. ${e.framework.descricao}`,
-    `NÚMERO DE LÂMINAS: ${e.laminas}`,
+    estatico(e) ? `FORMATO: estático (peça única, ${e.template.estatico!.nome})` : `NÚMERO DE LÂMINAS: ${e.laminas}`,
   ].join('\n')
 }
 
@@ -125,7 +144,7 @@ COMO ESCREVER
 História visual, não aula: cada lâmina tem uma ideia e prepara a seguinte. A capa abre uma lacuna em até 8 palavras no título.
 Separe observação (o que se vê), interpretação (o que isso quer dizer) e ação (o que fazer). Não misture as três na mesma frase.
 Frases de conversa, como o João falando com um médico no café. Quebra de linha por sentido no título.
-Respeite o número de lâminas pedido.
+${estatico(e) ? 'ESTÁTICO: esqueça a sequência de lâminas. Escreva uma frase só, em duas metades (a primeira abre a cena, a segunda fecha o sentido), de reflexão de dono, com o trecho forte marcado. Entregue três opções numeradas.' : 'Respeite o número de lâminas pedido.'}
 
 O QUE ENTREGAR
 Para cada lâmina:
@@ -148,14 +167,14 @@ Depois das lâminas, uma linha "Tese central:" com a tese em uma frase, e uma li
       material(e, 'Copy aprovada'),
       `COMO ENCAIXAR
 Use só os tipos de lâmina listados no template e respeite o limite de caracteres de cada campo. Se a frase não couber, reescreva mais curto sem perder o sentido, nunca corte no meio.
-Monte exatamente ${e.laminas} lâminas. Partindo da sequência padrão do template, ajuste para a estrutura pedida.
+${estatico(e) ? reguaEstatico(e) : `Monte exatamente ${e.laminas} lâminas. Partindo da sequência padrão do template, ajuste para a estrutura pedida.`}
 Campo de lista vai como array de textos. Negrito com **assim** e destaque dourado com ==assim==, só onde o template aceita. Para quebrar a linha dentro de um campo, use \\n.
 Em toda lâmina que tem foto, preencha "foto" com a descrição curta da foto desejada: cena, quem aparece, onde o rosto fica (terço de cima) e onde o texto vai ficar, para o texto nunca cair em cima do rosto. Prefira fotograma real de vídeo do João.
 Inclua em "legenda" uma legenda curta (continuação do post, uma pergunta ao leitor, de 3 a 5 hashtags no fim).
 
 FORMATO DA RESPOSTA
 Responda APENAS com o JSON, sem texto antes ou depois, sem comentários, neste formato (os valores abaixo são só exemplo):
-${exemploDoContrato(e.template)}`,
+${exemploDoContrato(e.template, estatico(e) ? 'estatico' : 'carrossel')}`,
     ].filter(Boolean).join('\n\n'),
   },
   {
@@ -181,10 +200,11 @@ ${exemploDoContrato(e.template)}`,
 7. Cheiro de IA: clichê de influencer, fórmula de revelação ("o segredo é"), slogan com quiasmo ("menos X, mais Y"), três fragmentos sem sujeito em sequência.
 8. Limites de caracteres do template.
 Mexa só no que quebra a régua. O que está bom fica como está, na voz do João.
+${estatico(e) ? `\n${reguaEstatico(e)}\nNo estático, confira também se a frase fecha só na segunda metade e se o negrito está no trecho que carrega a ideia.` : ''}
 
 FORMATO DA RESPOSTA
 Responda APENAS com um JSON no formato do contrato abaixo, com a copy corrigida, e acrescente a chave "mudancas": uma lista de textos curtos no formato "Lâmina N, campo: antes => depois (motivo)". Se nada precisou mudar, "mudancas" vem com um item dizendo isso.
-${exemploDoContrato(e.template)}`,
+${exemploDoContrato(e.template, estatico(e) ? 'estatico' : 'carrossel')}`,
     ].filter(Boolean).join('\n\n'),
   },
   {

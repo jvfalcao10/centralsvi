@@ -1,12 +1,13 @@
 import { z } from 'zod'
 import { TEMPLATE_IDS, TEMPLATE_POR_ID } from '@/data/criador/templates'
-import type { CarrosselDoc, SlideDoc, TemplateDef, TemplateId } from '@/data/criador/tipos'
+import type { CarrosselDoc, Formato, SlideDoc, TemplateDef, TemplateId } from '@/data/criador/tipos'
 
 // Contrato JSON único entre os agentes de prompt e a aba Montar.
 // O Roteirista e o Revisor devolvem exatamente este formato, e é ele que a aba Montar valida.
 //
 // {
 //   "template": "t10",
+//   "formato": "carrossel",   (ou "estatico": peça única, exatamente 1 lâmina)
 //   "titulo": "nome interno do carrossel",
 //   "legenda": "legenda do post",
 //   "slides": [
@@ -26,6 +27,7 @@ const SlideJson = z.object({
 
 export const CarrosselJson = z.object({
   template: z.enum(TEMPLATE_IDS, { errorMap: () => ({ message: `"template" precisa ser um destes: ${TEMPLATE_IDS.join(', ')}` }) }),
+  formato: z.enum(['carrossel', 'estatico'], { errorMap: () => ({ message: '"formato" precisa ser "carrossel" ou "estatico"' }) }).optional().default('carrossel'),
   titulo: z.string().optional().default(''),
   legenda: z.string().optional().default(''),
   slides: z.array(SlideJson, { required_error: 'falta a lista "slides"', invalid_type_error: '"slides" precisa ser uma lista' }).min(1, 'a lista "slides" está vazia'),
@@ -60,7 +62,7 @@ function caminhoAmigavel(path: (string | number)[]): string {
 }
 
 export type ResultadoContrato =
-  | { ok: true; doc: Omit<CarrosselDoc, 'opcoes' | 'id'>; avisos: string[] }
+  | { ok: true; doc: Omit<CarrosselDoc, 'opcoes' | 'id'> & { formato: Formato }; avisos: string[] }
   | { ok: false; erros: string[] }
 
 /** Valida o JSON colado e converte para o documento da aba Montar. Nunca lança erro. */
@@ -83,6 +85,11 @@ export function lerJsonDoAgente(bruto: string, templatePadrao?: TemplateId): Res
   const tpl: TemplateDef = TEMPLATE_POR_ID[r.data.template]
   const erros: string[] = []
   const avisos: string[] = []
+  if (r.data.formato === 'estatico') {
+    if (!tpl.estatico) return { ok: false, erros: [`O ${tpl.codigo} não tem versão estática. Estático existe em: ${Object.values(TEMPLATE_POR_ID).filter(t => t.estatico).map(t => t.codigo).join(', ')}.`] }
+    if (r.data.slides.length !== 1) return { ok: false, erros: [`Estático é peça única: o JSON trouxe ${r.data.slides.length} lâminas, precisa de exatamente 1.`] }
+    if (r.data.slides[0].tipo !== tpl.estatico.tipo) return { ok: false, erros: [`No estático do ${tpl.codigo} a lâmina precisa ser do tipo "${tpl.estatico.tipo}".`] }
+  }
   const slides: SlideDoc[] = r.data.slides.map((s, i) => {
     const def = tpl.slideTypes.find(t => t.tipo === s.tipo)
     if (!def) {
@@ -103,14 +110,15 @@ export function lerJsonDoAgente(bruto: string, templatePadrao?: TemplateId): Res
     return { id: novoId(), tipo: s.tipo, campos, foto: fotoPedida || undefined, fotos: {} }
   })
   if (erros.length) return { ok: false, erros }
-  return { ok: true, doc: { template: r.data.template, titulo: r.data.titulo, legenda: r.data.legenda, slides }, avisos }
+  return { ok: true, doc: { template: r.data.template, formato: r.data.formato, titulo: r.data.titulo, legenda: r.data.legenda, slides }, avisos }
 }
 
 /** Converte o documento atual de volta para o contrato (para levar ao Revisor ou guardar). */
-export function paraJsonDoAgente(doc: Pick<CarrosselDoc, 'template' | 'titulo' | 'legenda' | 'slides'>): string {
+export function paraJsonDoAgente(doc: Pick<CarrosselDoc, 'template' | 'titulo' | 'legenda' | 'slides'> & { opcoes?: CarrosselDoc['opcoes'] }): string {
   const tpl = TEMPLATE_POR_ID[doc.template]
   return JSON.stringify({
     template: doc.template,
+    formato: doc.opcoes?.formato === 'estatico' ? 'estatico' : 'carrossel',
     titulo: doc.titulo,
     legenda: doc.legenda,
     slides: doc.slides.map(s => {
@@ -143,9 +151,10 @@ export function especificacaoDoTemplate(tpl: TemplateDef): string {
 }
 
 /** Exemplo do contrato preenchido com a primeira lâmina de cada tipo do template. */
-export function exemploDoContrato(tpl: TemplateDef): string {
+export function exemploDoContrato(tpl: TemplateDef, formato: Formato = 'carrossel'): string {
   const vistos = new Set<string>()
-  const slides = tpl.exemplo.filter(s => (vistos.has(s.tipo) ? false : (vistos.add(s.tipo), true))).map(s => {
+  const fonte = formato === 'estatico' && tpl.estatico ? [tpl.estatico.exemplo] : tpl.exemplo
+  const slides = fonte.filter(s => (vistos.has(s.tipo) ? false : (vistos.add(s.tipo), true))).map(s => {
     const def = tpl.slideTypes.find(t => t.tipo === s.tipo)
     const campos: Record<string, string | string[]> = {}
     for (const c of def?.campos ?? []) {
@@ -155,5 +164,5 @@ export function exemploDoContrato(tpl: TemplateDef): string {
     }
     return { tipo: s.tipo, campos, ...(def?.usaFoto ? { foto: 'descrição curta da foto desejada para esta lâmina' } : {}) }
   })
-  return JSON.stringify({ template: tpl.id, titulo: 'nome interno do carrossel', legenda: 'legenda do post', slides }, null, 2)
+  return JSON.stringify({ template: tpl.id, formato: formato === 'estatico' && tpl.estatico ? 'estatico' : 'carrossel', titulo: 'nome interno da peça', legenda: 'legenda do post', slides }, null, 2)
 }

@@ -125,7 +125,9 @@ function medir(raiz: HTMLElement): RelatorioT10 {
 
 export function T10Slide({ slide, n, total, opcoes }: SlideProps) {
   const escuro = ['capa', 'foto', 'fecho'].includes(slide.tipo)
-  const fim = slide.tipo === 'fecho'
+  // estático (peça única): sem contador e sem "arrasta", o rodapé leva a data como no fecho
+  const estatico = opcoes.formato === 'estatico'
+  const fim = slide.tipo === 'fecho' || estatico
   const titulo = campo(slide, 'titulo')
   const apoio = campo(slide, 'apoio')
   const relatar = useContext(RelatorioT10Context)
@@ -155,7 +157,7 @@ export function T10Slide({ slide, n, total, opcoes }: SlideProps) {
         {slide.tipo !== 'foto' && <Colab />}
         <h1 data-tf="head">{rico(titulo)}</h1>
         {slide.tipo !== 'fecho' && apoio && <p data-tf="sub">{rico(apoio)}</p>}
-        {slide.tipo === 'capa' && <span className="arrasta">Arrasta para o lado ›</span>}
+        {slide.tipo === 'capa' && !estatico && <span className="arrasta">Arrasta para o lado ›</span>}
       </div>
     </>
   } else if (slide.tipo === 'lista') {
@@ -185,7 +187,7 @@ export function T10Slide({ slide, n, total, opcoes }: SlideProps) {
 
   return <div ref={raiz} className={`cz ${escuro ? 't10esc' : 't10cla'}`}>
     <div className="t10">
-      <span className="cnt">{n}/{total}</span>
+      {!estatico && <span className="cnt">{n}/{total}</span>}
       {miolo}
       <Rodape fim={fim} data={opcoes.dataRodape} />
     </div>

@@ -1,4 +1,4 @@
-import type { Campo, FotoCampo, SlideType, TemplateDef, TemplateId } from './tipos'
+import type { Campo, FotoCampo, SlideDoc, SlideType, TemplateDef, TemplateId } from './tipos'
 
 // Registro dos templates do Criador de Carrossel.
 // Fonte da verdade visual: ~/Dev/conteudo-joao/carrosseis/templates.py (motor Python).
@@ -16,6 +16,8 @@ const tipo = (tipo: string, nome: string, descricao: string, campos: Campo[], fo
 const A = (arquivo: string) => `/criador/amostras/${arquivo}`
 
 // ───────────── T10 · Editorial (colab SVI Médicos) ─────────────
+const CAPA_T10: Omit<SlideDoc, 'id'> = { tipo: 'capa', campos: { titulo: 'O paciente que mais custa caro para o seu consultório é o que nunca chegou a ligar.', apoio: 'Ele pesquisou, comparou e desistiu antes do primeiro alô. E você nem ficou sabendo.' }, fotos: { fundo: { url: A('terno.jpg'), x: 55, y: 20, cab: [[0.2156, 0.0415, 0.6587, 0.55]] } } }
+
 const T10: TemplateDef = {
   id: 't10', codigo: 'T10', nome: 'Editorial',
   origem: '@leobrf_ em colaboração com @mkt.insider.ca',
@@ -43,8 +45,14 @@ const T10: TemplateDef = {
       [t('titulo', 'Título', 110, { obrigatorio: true, multiline: true })],
       [foto('fundo', 'Foto de fundo', '1080x1350', true, [50, 20])]),
   ],
+  estatico: {
+    nome: 'Estático · Capa editorial',
+    quandoUsar: 'Uma tese em peça única, no visual de revista: foto escura, pílulas da colab, título em serifa e apoio. Sem contador e sem "arrasta".',
+    tipo: 'capa',
+    exemplo: CAPA_T10,
+  },
   exemplo: [
-    { tipo: 'capa', campos: { titulo: 'O paciente que mais custa caro para o seu consultório é o que nunca chegou a ligar.', apoio: 'Ele pesquisou, comparou e desistiu antes do primeiro alô. E você nem ficou sabendo.' }, fotos: { fundo: { url: A('terno.jpg'), x: 55, y: 20, cab: [[0.2156, 0.0415, 0.6587, 0.55]] } } },
+    CAPA_T10,
     { tipo: 'texto', campos: { titulo: 'Hoje o paciente consegue pesquisar o seu nome, ler o que outros pacientes escreveram e comparar três médicos antes de marcar.', apoio: 'E quanto mais ele consegue comparar, mais motivos encontra para escolher outro.', onde: 'abaixo' }, fotos: { caixa: { url: A('noite-a.jpg'), x: 70, y: 30, cab: [[0.4023, 0.0058, 0.6223, 0.6123]] } } },
     { tipo: 'texto', campos: { titulo: 'Durante anos, a indicação bastava. O paciente chegava com o seu nome e ligava direto.', apoio: 'Hoje ele recebe o seu nome e pesquisa antes de ligar. A indicação ganhou uma etapa no meio.', onde: 'acima' }, fotos: { caixa: { url: A('reuniao.jpg'), x: 50, y: 18, cab: [[0.6739, 0.2707, 0.8863, 0.4482], [0.2135, 0.1965, 0.4374, 0.3557]], util: [0, 0, 1, 0.65] } } },
     { tipo: 'texto', campos: { titulo: 'O primeiro lugar em que isso acontece é o Google. Ele digita o que sente e aparecem três nomes.', apoio: 'O horário, a foto e a resposta ao último comentário de paciente contam antes do seu currículo.', onde: 'acima' }, fotos: { caixa: { url: A('noite-b.jpg'), x: 50, y: 40, cab: [[0.4237, 0, 0.6705, 0.7019]] } } },
@@ -70,8 +78,14 @@ const T9: TemplateDef = {
         t('cta', 'Botão no quadro de baixo (opcional)', 30)],
       [foto('a', 'Quadro de cima', '1080x672', true, [50, 35]), foto('b', 'Quadro de baixo', '1080x672', true, [50, 35])]),
   ],
+  estatico: {
+    nome: 'Estático · Quadros',
+    quandoUsar: 'Reflexão de dono em peça única: dois quadros da mesma cena (aberto e fechado), a frase começa em cima e fecha embaixo, com o trecho forte em negrito.',
+    tipo: 'quadros',
+    exemplo: { tipo: 'quadros', campos: { linhaA: 'Às 22h, com dor, **o paciente não liga para ninguém.**', linhaB: '**Ele pega o celular e pesquisa no Google.**', cta: '' }, fotos: { a: { url: A('noite-a.jpg'), x: 100, y: 30 }, b: { url: A('noite-a.jpg'), x: 100, y: 30, z: 1.175 } } },
+  },
   exemplo: [
-    { tipo: 'quadros', campos: { linhaA: 'Às 22h, com dor, **o paciente não liga para ninguém.**', linhaB: '**Ele pega o celular e pesquisa no Google.**' }, fotos: { a: { url: A('noite-a.jpg'), x: 100, y: 50 }, b: { url: A('noite-a.jpg'), x: 100, y: 19, z: 1.3 } } },
+    { tipo: 'quadros', campos: { linhaA: 'Às 22h, com dor, **o paciente não liga para ninguém.**', linhaB: '**Ele pega o celular e pesquisa no Google.**' }, fotos: { a: { url: A('noite-a.jpg'), x: 100, y: 30 }, b: { url: A('noite-a.jpg'), x: 100, y: 30, z: 1.175 } } },
     { tipo: 'quadros', campos: { linhaA: 'Aparecem três médicos, **com estrelas e comentários de pacientes.**', linhaB: '**Ele escolhe um deles ali mesmo.**' }, fotos: { a: { url: A('noite-b.jpg'), x: 100, y: 50 }, b: { url: A('noite-b.jpg'), x: 72, y: 80, z: 1.3 } } },
     { tipo: 'quadros', campos: { linhaA: 'Se o seu nome não está nessa lista, **ele nem sabe que você existe.**', linhaB: '**E marca com quem apareceu.**' }, fotos: { a: { url: A('reuniao.jpg'), x: 50, y: 24 }, b: { url: A('faixa.jpg'), x: 50, y: 24, z: 1.25 } } },
     { tipo: 'quadros', campos: { linhaA: 'Quer saber o que o paciente encontra **quando pesquisa você?**', linhaB: '**Comenta RAIO-X que eu te mando.**' }, fotos: { a: { url: A('board-a.jpg'), x: 60, y: 30, z: 1.18 }, b: { url: A('board-a.jpg'), x: 60, y: 30, z: 1.5 } } },

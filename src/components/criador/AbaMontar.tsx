@@ -14,12 +14,12 @@ import { Slider } from '@/components/ui/slider'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { TEMPLATES, TEMPLATE_POR_ID } from '@/data/criador/templates'
-import type { Campo, CarrosselDoc, FotoCampo, FotoSlide, SlideDoc, TemplateId } from '@/data/criador/tipos'
+import type { Campo, CarrosselDoc, FotoCampo, Formato, FotoSlide, SlideDoc, TemplateId } from '@/data/criador/tipos'
 import { lerJsonDoAgente, novoId, paraJsonDoAgente } from '@/lib/criador/contrato'
-import { focoPadrao, novoDoc, novoSlide, opcoesPadrao } from '@/lib/criador/doc'
+import { aceitaEstatico, focoPadrao, novoDoc, novoSlide, opcoesPadrao } from '@/lib/criador/doc'
 import { revisar, temBloqueio, type Achado } from '@/lib/criador/revisor'
 import { itens, textoLimpo } from '@/lib/criador/texto'
-import { exportarZip } from '@/lib/criador/exportar'
+import { exportarPngUnico, exportarZip } from '@/lib/criador/exportar'
 import { esperarFontes } from '@/lib/criador/fontes'
 import { carregarRascunho, excluirRascunho, listarRascunhos, salvarRascunho, subirFoto, urlsAssinadas } from '@/lib/criador/armazenamento'
 import { estiloZoom, FotoContext } from './templates/comum'
@@ -118,6 +118,7 @@ function LaminaEditor(props: {
   const def = tpl.slideTypes.find(t => t.tipo === slide.tipo)
   const total = doc.slides.length
   const bloqueios = achados.filter(a => a.nivel === 'bloqueia').length
+  const unica = doc.opcoes.formato === 'estatico'
   const trocarTipo = (tipo: string) => mudar(s => {
     const base = novoSlide(doc.template, tipo)
     const campos = { ...base.campos }
@@ -126,9 +127,9 @@ function LaminaEditor(props: {
   })
   return <section id={`lamina-${i}`} className="rounded-xl border bg-card p-3 sm:p-4 space-y-3 scroll-mt-20 min-w-0">
     <header className="flex flex-wrap items-center gap-2">
-      <span className="text-sm font-semibold">Lâmina {i + 1}</span>
+      <span className="text-sm font-semibold">{unica ? `Estático · ${tpl.estatico?.nome ?? ''}` : `Lâmina ${i + 1}`}</span>
       {bloqueios > 0 && <span className="text-[11px] rounded-full bg-destructive/15 text-destructive px-2 py-0.5">{bloqueios} bloqueio{bloqueios > 1 ? 's' : ''}</span>}
-      <div className="w-full sm:w-56 sm:ml-2 order-last sm:order-none">
+      {!unica && <><div className="w-full sm:w-56 sm:ml-2 order-last sm:order-none">
         <Select value={slide.tipo} onValueChange={trocarTipo}>
           <SelectTrigger className="h-9 w-full" aria-label="Tipo de lâmina"><SelectValue /></SelectTrigger>
           <SelectContent>{tpl.slideTypes.map(t => <SelectItem key={t.tipo} value={t.tipo}>{t.nome}</SelectItem>)}</SelectContent>
@@ -139,7 +140,7 @@ function LaminaEditor(props: {
         <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => mover(1)} disabled={i === total - 1} aria-label="Descer lâmina"><ArrowDown className="h-4 w-4" /></Button>
         <Button size="icon" variant="ghost" className="h-9 w-9" onClick={duplicar} aria-label="Duplicar lâmina"><CopyPlus className="h-4 w-4" /></Button>
         <Button size="icon" variant="ghost" className="h-9 w-9 text-destructive" onClick={remover} aria-label="Remover lâmina"><Trash2 className="h-4 w-4" /></Button>
-      </div>
+      </div></>}
     </header>
     {!def ? <p className="text-sm text-destructive">Tipo "{slide.tipo}" não existe no {tpl.codigo}. Escolha um tipo válido acima.</p> :
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
@@ -222,15 +223,29 @@ export function AbaMontar({ doc, setDoc, substituirDoc }: Props) {
       return antigo && antigo.tipo === s.tipo && r.doc.template === doc.template ? { ...s, fotos: antigo.fotos } : s
     })
     substituirDoc({ ...doc, template: r.doc.template, titulo: r.doc.titulo || doc.titulo, legenda: r.doc.legenda || doc.legenda, slides,
-      opcoes: r.doc.template === doc.template ? doc.opcoes : opcoesPadrao(r.doc.template) })
-    toast.success(`${slides.length} lâminas montadas no ${TEMPLATE_POR_ID[r.doc.template].codigo}.`)
+      opcoes: { ...(r.doc.template === doc.template ? doc.opcoes : opcoesPadrao(r.doc.template)), formato: r.doc.formato } })
+    toast.success(r.doc.formato === 'estatico' ? `Estático montado no ${TEMPLATE_POR_ID[r.doc.template].codigo}.` : `${slides.length} lâminas montadas no ${TEMPLATE_POR_ID[r.doc.template].codigo}.`)
   }
 
   const trocarTemplate = (id: TemplateId) => {
     if (id === doc.template) return
     const temConteudo = doc.slides.some(s => Object.values(s.campos).some(v => v.trim()))
     if (temConteudo && !window.confirm('Trocar o template começa um carrossel novo com a estrutura dele. O conteúdo atual some da tela (o que foi salvo continua nos rascunhos). Continuar?')) return
-    substituirDoc({ ...novoDoc(id), titulo: doc.titulo, legenda: doc.legenda })
+    substituirDoc({ ...novoDoc(id, doc.opcoes.formato === 'estatico' && aceitaEstatico(id) ? 'estatico' : 'carrossel'), titulo: doc.titulo, legenda: doc.legenda })
+  }
+
+  const trocarFormato = (formato: Formato) => {
+    if (formato === (doc.opcoes.formato ?? 'carrossel')) return
+    if (formato === 'estatico') {
+      // fica a lâmina do tipo do estático que já existir (com texto e fotos), senão uma nova
+      const tipo = tpl.estatico!.tipo
+      const aproveita = doc.slides.find(s => s.tipo === tipo)
+      if (doc.slides.length > 1 && !window.confirm('O estático tem uma lâmina só. As outras saem da tela (o que foi salvo continua nos rascunhos). Continuar?')) return
+      substituirDoc({ ...doc, slides: [aproveita ?? novoSlide(doc.template, tipo)], opcoes: { ...doc.opcoes, formato: 'estatico' } })
+    } else {
+      const extras = tpl.estrutura.slice(1).map(t => novoSlide(doc.template, t))
+      substituirDoc({ ...doc, slides: [...doc.slides, ...extras], opcoes: { ...doc.opcoes, formato: 'carrossel' } })
+    }
   }
 
   const subir = (i: number) => async (chave: string, file: File) => {
@@ -295,8 +310,13 @@ export function AbaMontar({ doc, setDoc, substituirDoc }: Props) {
         await Promise.all(nos.flatMap(n => Array.from(n.querySelectorAll('img')).map(img => (img.complete ? Promise.resolve() : new Promise(ok => { img.onload = img.onerror = () => ok(null) })))))
         await new Promise(r => setTimeout(r, 250))
         if (cancelado) return
-        await exportarZip(nos, doc.legenda, doc.titulo, (f, t) => setProgresso(`${f}/${t}`))
-        toast.success(`ZIP com ${nos.length} PNG em 1080x1350 e a legenda.`)
+        if (nos.length === 1) {
+          await exportarPngUnico(nos[0], doc.titulo)
+          toast.success('PNG 1080x1350 baixado. A legenda está no botão "Copiar legenda".')
+        } else {
+          await exportarZip(nos, doc.legenda, doc.titulo, (f, t) => setProgresso(`${f}/${t}`))
+          toast.success(`ZIP com ${nos.length} PNG em 1080x1350 e a legenda.`)
+        }
       } catch (e) {
         toast.error(`A exportação falhou: ${e instanceof Error ? e.message : 'erro'}`)
       } finally {
@@ -319,6 +339,11 @@ export function AbaMontar({ doc, setDoc, substituirDoc }: Props) {
             <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
             <SelectContent>{TEMPLATES.map(t => <SelectItem key={t.id} value={t.id}>{t.codigo} · {t.nome}</SelectItem>)}</SelectContent>
           </Select>
+          {tpl.estatico && <div role="radiogroup" aria-label="Formato" className="grid grid-cols-2 gap-1 rounded-md bg-muted p-1 text-xs">
+            {(['carrossel', 'estatico'] as Formato[]).map(f => <button key={f} type="button" role="radio" aria-checked={(doc.opcoes.formato ?? 'carrossel') === f}
+              onClick={() => trocarFormato(f)} className={`rounded px-2 py-1.5 min-h-9 ${(doc.opcoes.formato ?? 'carrossel') === f ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground'}`}>
+              {f === 'carrossel' ? 'Carrossel' : 'Estático'}</button>)}
+          </div>}
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="cz-titulo">Título interno</Label>
@@ -333,7 +358,7 @@ export function AbaMontar({ doc, setDoc, substituirDoc }: Props) {
         </div>
         <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-3">
           <Button onClick={salvar} disabled={salvando}>{salvando ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Save className="h-4 w-4 mr-1.5" />}{doc.id ? 'Salvar' : 'Salvar rascunho'}</Button>
-          <Button variant="outline" onClick={() => { if (window.confirm('Começar um carrossel novo? O que não foi salvo sai da tela.')) substituirDoc(novoDoc(doc.template)) }}><FilePlus2 className="h-4 w-4 mr-1.5" />Novo</Button>
+          <Button variant="outline" onClick={() => { if (window.confirm('Começar um carrossel novo? O que não foi salvo sai da tela.')) substituirDoc(novoDoc(doc.template, doc.opcoes.formato)) }}><FilePlus2 className="h-4 w-4 mr-1.5" />Novo</Button>
           <Button variant="outline" onClick={async () => { if (await copiarTexto(paraJsonDoAgente(doc))) toast.success('JSON copiado. Cole no Revisor ou no Diretor de foto.') }}><Copy className="h-4 w-4 mr-1.5" />Copiar JSON</Button>
           {doc.id && <Button variant="ghost" className="text-destructive" onClick={excluir}><Trash2 className="h-4 w-4 mr-1.5" />Excluir</Button>}
         </div>
@@ -379,10 +404,10 @@ export function AbaMontar({ doc, setDoc, substituirDoc }: Props) {
             remover={() => setDoc(x => ({ ...x, slides: x.slides.filter((_, k) => k !== i) }))}
             subir={subir(i)} />)}
 
-          <section className="rounded-xl border border-dashed p-3 flex flex-wrap items-center gap-2">
+          {doc.opcoes.formato !== 'estatico' && <section className="rounded-xl border border-dashed p-3 flex flex-wrap items-center gap-2">
             <span className="text-sm text-muted-foreground">Adicionar lâmina:</span>
             {tpl.slideTypes.map(t => <Button key={t.tipo} size="sm" variant="outline" onClick={() => setDoc(d => ({ ...d, slides: [...d.slides, novoSlide(d.template, t.tipo)] }))}>{t.nome}</Button>)}
-          </section>
+          </section>}
         </div>
 
         {/* revisor, exportação e legenda */}
@@ -409,7 +434,7 @@ export function AbaMontar({ doc, setDoc, substituirDoc }: Props) {
               {bloqueado && <label className="flex items-center gap-2 text-xs"><Checkbox checked={forcar} onCheckedChange={v => setForcar(v === true)} />Exportar mesmo assim</label>}
               <Button className="w-full" onClick={() => setExportando(true)} disabled={!podeExportar || exportando}>
                 {exportando ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Download className="h-4 w-4 mr-1.5" />}
-                {exportando ? `Exportando ${progresso}` : `Exportar ZIP (${doc.slides.length} PNG 1080x1350)`}
+                {exportando ? `Exportando ${progresso}` : doc.slides.length === 1 ? 'Baixar PNG 1080x1350' : `Exportar ZIP (${doc.slides.length} PNG 1080x1350)`}
               </Button>
               {bloqueado && !forcar && <p className="text-[11px] text-muted-foreground">A exportação fica travada enquanto houver bloqueio.</p>}
             </div>

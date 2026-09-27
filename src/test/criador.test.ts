@@ -30,6 +30,28 @@ describe('Criador de carrossel', () => {
     }
   })
 
+  it('estático: prompts sem travessão, exemplo em peça única, contrato ida e volta e erro amigável', () => {
+    for (const tpl of TEMPLATES.filter(t => t.estatico)) {
+      for (const a of AGENTES) {
+        const prompt = a.montar({ tema: 'teste', template: tpl, framework: FRAMEWORKS[0], laminas: 1, material: '', formato: 'estatico' })
+        expect(prompt, `${a.id} ${tpl.id}`).not.toMatch(/[\u2014\u2013;]/)
+        if (a.id === 'roteirista' || a.id === 'revisor') expect(prompt).toContain('"formato": "estatico"')
+      }
+      const doc = docDoExemplo(tpl.id, 'estatico')
+      expect(doc.slides).toHaveLength(1)
+      expect(doc.opcoes.formato).toBe('estatico')
+      const r = lerJsonDoAgente(paraJsonDoAgente(doc))
+      expect('doc' in r && r.doc.formato, tpl.id).toBe('estatico')
+      expect('doc' in r && r.doc.slides.length, tpl.id).toBe(1)
+      const bloqueios = revisar({ ...doc, legenda: 'Uma linha.\n\nVocê já pesquisou?\n\n#a #b #c' }).filter(x => x.nivel === 'bloqueia')
+      expect(bloqueios, `${tpl.id}: ${JSON.stringify(bloqueios)}`).toEqual([])
+    }
+    const doisSlides = lerJsonDoAgente('{"template":"t9","formato":"estatico","slides":[{"tipo":"quadros","campos":{}},{"tipo":"quadros","campos":{}}]}')
+    expect('erros' in doisSlides && doisSlides.erros[0]).toContain('peça única')
+    const semEstatico = lerJsonDoAgente('{"template":"t7","formato":"estatico","slides":[{"tipo":"frase","campos":{}}]}')
+    expect('erros' in semEstatico && semEstatico.erros[0]).toContain('não tem versão estática')
+  })
+
   it('explica em português o que está errado no JSON colado', () => {
     const r = lerJsonDoAgente('{"template":"t9","slides":[{"tipo":"capa"}]}')
     expect('erros' in r && r.erros[0]).toContain('não existe no T9')

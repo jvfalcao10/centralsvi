@@ -85,6 +85,14 @@ export function revisar(doc: CarrosselDoc): Achado[] {
   const out: Achado[] = []
   const tpl = TEMPLATE_POR_ID[doc.template]
   if (!doc.slides.length) out.push({ nivel: 'bloqueia', regra: 'Carrossel sem lâminas', onde: 'Carrossel' })
+  if (doc.opcoes?.formato === 'estatico') {
+    if (doc.slides.length !== 1) out.push({ nivel: 'bloqueia', regra: `Estático é peça única: tem ${doc.slides.length} lâminas`, onde: 'Estático' })
+    const s = doc.slides[0]
+    if (s && tpl.estatico && s.tipo !== tpl.estatico.tipo) out.push({ nivel: 'bloqueia', regra: `No estático do ${tpl.codigo} a lâmina é do tipo "${tpl.estatico.nome}"`, onde: 'Estático', lamina: 0 })
+    if (s && doc.template === 't9' && !/\*\*[^*]+\*\*/.test(`${s.campos.linhaA ?? ''} ${s.campos.linhaB ?? ''}`)) {
+      out.push({ nivel: 'aviso', regra: 'Estático sem trecho em **negrito**: marque o que carrega a frase', onde: 'Estático', lamina: 0 })
+    }
+  }
 
   const vistas = new Map<string, number>()
   let textoTodo = ''

@@ -68,7 +68,11 @@ export interface SlideDoc {
   fotos: Record<string, FotoSlide>
 }
 
+export type Formato = 'carrossel' | 'estatico'
+
 export interface OpcoesCarrossel {
+  /** Carrossel (várias lâminas) ou estático (peça única, exporta um PNG só). */
+  formato?: Formato
   /** T5 e T6: fundo do card. */
   fundo?: 'preto' | 'branco'
   /** Assinatura "Método AORTA" no pé de cada lâmina. */
@@ -100,4 +104,14 @@ export interface TemplateDef {
   assinaturaPadrao: boolean
   /** Conteúdo de exemplo para a galeria e para o botão "Carregar exemplo". */
   exemplo: Omit<SlideDoc, 'id'>[]
+  /** Peça única (estático) no mesmo visual, quando o template suporta. */
+  estatico?: EstaticoDef
+}
+
+export interface EstaticoDef {
+  nome: string
+  quandoUsar: string
+  /** Tipo de lâmina usado na peça única. */
+  tipo: string
+  exemplo: Omit<SlideDoc, 'id'>
 }
