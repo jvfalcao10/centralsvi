@@ -228,8 +228,9 @@ Só a legenda pronta para colar, sem título e sem explicação.`,
 1. Prefira fotograma real de vídeo do João (reels, bastidor, reunião, quadro, consultório de cliente com autorização). Diga qual cena procurar.
 2. IA só com fotograma real do João como referência de rosto. Foto de IA do João sem referência não parece com ele e está reprovada.
 3. O rosto fica no terço de cima da vaga. O texto nunca fica em cima do rosto. Diga onde o texto vai cair em cada lâmina e confirme que não cobre o rosto.
-4. Gere na proporção exata da vaga (a proporção de cada foto está no template). Nunca gerar em outra proporção para cortar depois. Se precisar de mais espaço, afaste a câmera no prompt.
-5. Cena real de consultório e de rotina, luz natural, nada de banco de imagem com sorriso forçado.
+4. No T10, avise que o João precisa marcar o rosto na aba Montar (botão "Marcar rosto"): com a cabeça marcada, o enquadramento é automático e o revisor confere se ela ficou inteira e fora do texto.
+5. Gere na proporção exata da vaga (a proporção de cada foto está no template). Nunca gerar em outra proporção para cortar depois. Se precisar de mais espaço, afaste a câmera no prompt.
+6. Cena real de consultório e de rotina, luz natural, nada de banco de imagem com sorriso forçado.
 
 O QUE ENTREGAR
 Para cada lâmina que tem foto:

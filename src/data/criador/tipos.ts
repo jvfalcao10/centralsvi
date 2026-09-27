@@ -50,6 +50,13 @@ export interface FotoSlide {
   y: number
   /** Zoom sobre o enquadramento (1 = foto inteira na vaga, até 2). Serve para o quadro fechado do T9. */
   z?: number
+  /** T10: cabeças marcadas pelo João (caixas normalizadas 0..1: x0, y0, x1, y1). Com elas o enquadramento é automático. */
+  cab?: [number, number, number, number][]
+  /** T10: área útil da foto (sem legenda ou letreiro gravado), normalizada. Padrão: a foto inteira. */
+  util?: [number, number, number, number]
+  /** Tamanho natural da foto (medido ao marcar o rosto). */
+  w?: number
+  h?: number
 }
 
 export interface SlideDoc {

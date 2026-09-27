@@ -207,11 +207,12 @@
 .cz .t10 .cnt{position:absolute;top:34px;right:36px;z-index:6;font-size:19px;font-weight:500;padding:6px 14px;border-radius:999px;background:rgba(0,0,0,.35);color:#FFFFFF}
 .cz.t10cla .t10 .cnt{background:#EDEDED;color:#555}
 .cz .t10 .ft{overflow:hidden;background:#1C1C1C}
-.cz .t10 .ft img,.cz .t10 .ft .foto-vazia{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover}
+.cz .t10 .ft img,.cz .t10 .ft .foto-vazia{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;max-width:none}
 .cz .t10 .ft.bg{position:absolute;inset:0;z-index:1;--tt:760px}
 .cz .t10 .ft.bg .gr{position:absolute;inset:0;z-index:2;background:linear-gradient(to bottom,rgba(0,0,0,0) 0,rgba(0,0,0,0) calc(var(--tt) - 300px),
   rgba(0,0,0,.62) calc(var(--tt) - 20px),rgba(0,0,0,.9) calc(var(--tt) + 160px),rgba(0,0,0,.94) 100%)}
 .cz .t10 .miolo{position:absolute;left:64px;right:64px;z-index:4}
+.cz .t10 .clara h1{font-size:58px;line-height:1.05;color:#111}
 .cz .t10 .col{position:absolute;left:64px;right:64px;top:100px;bottom:134px;display:flex;flex-direction:column;z-index:4}
 .cz .t10 .col .ft{position:relative;flex:1 1 auto;min-height:330px;border-radius:22px;box-shadow:0 14px 36px rgba(0,0,0,.16)}
 .cz .t10 .col .txt{flex:0 0 auto}
@@ -222,7 +223,8 @@
 .cz .t10 .col.so p{font-size:30px}
 .cz .t10 .pilha{position:absolute;left:0;right:0;top:0;bottom:134px;display:flex;flex-direction:column;z-index:4}
 .cz .t10 .pilha .ft{position:relative;flex:1 1 auto;min-height:380px}
-.cz .t10 .pilha .txt{flex:0 0 auto;padding:46px 64px 0}
+.cz .t10 .pilha .txt{flex:0 0 auto;padding:48px 64px 0}
+.cz .t10 .pilha .txt h1{font-size:62px}
 .cz .t10 .rodape{position:absolute;left:40px;right:40px;bottom:36px;height:66px;z-index:6;border-radius:999px;display:flex;align-items:center;
   gap:18px;padding:0 26px 0 12px;background:#F1F1F1;color:#222;font-size:15px;line-height:1.2}
 .cz.t10esc .t10 .rodape{background:rgba(245,245,245,.94)}
@@ -245,7 +247,6 @@
 .cz .t10 .txt h1{font-size:58px;line-height:1.05;color:#111}
 .cz .t10 .txt p{font-size:26px;line-height:1.46;color:#555;margin:22px 0 0}
 .cz .t10 .txt p.forte{color:#111;font-family:'Newsreader',Georgia,serif;font-size:32px;line-height:1.25;margin-top:24px}
-/* a lista herda a .lista da base do motor (sem marcador, 16 px de respiro e fio claro entre itens) */
-.cz .t10 .lista{margin:20px 0 0;padding:0 0 0 30px;list-style:none}
-.cz .t10 .lista li{font-size:26px;line-height:1.4;color:#333;font-weight:500;margin:0 0 12px;padding:16px 0;border-bottom:1px solid rgba(255,255,255,.14)}
-.cz .t10 .lista li:last-child{border-bottom:0}
+.cz .t10 .t10lista{margin:22px 0 0;padding:0;list-style:none;border-top:1px solid #E7E7E7}
+.cz .t10 .t10lista li{position:relative;font-size:30px;line-height:1.3;color:#222;font-weight:500;padding:18px 0 18px 36px;border-bottom:1px solid #E7E7E7}
+.cz .t10 .t10lista li:before{content:'';position:absolute;left:4px;top:32px;width:12px;height:12px;border-radius:50%;background:#D0B870}

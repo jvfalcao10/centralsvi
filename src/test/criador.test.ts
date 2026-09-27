@@ -44,3 +44,33 @@ describe('Criador de carrossel', () => {
     for (const termo of ['Travessão', 'Ponto e vírgula', 'A gente', 'não é X, é Y', '"lead"', '"funil"']) expect(regras).toContain(termo)
   })
 })
+
+describe('Enquadramento do T10 (porte do _T10_JS)', () => {
+  it('deixa a cabeça marcada inteira dentro da caixa com respiro', async () => {
+    const { enquadrar } = await import('@/lib/criador/enquadrar')
+    const r = enquadrar({ W: 952, H: 460, iw: 2560, ih: 1440, cab: [[0.4023, 0.0058, 0.6223, 0.6123]], modo: 'caixa' })
+    expect(r.ok).toBe(true)
+    for (const c of r.cabecas) {
+      expect(c[0]).toBeGreaterThanOrEqual(-1)
+      expect(c[2]).toBeLessThanOrEqual(953)
+      expect(c[3]).toBeLessThanOrEqual(461)
+    }
+    expect(r.largura).toBeGreaterThanOrEqual(952)
+    expect(r.altura).toBeGreaterThanOrEqual(460)
+  })
+
+  it('na foto cheia, a cabeça fica acima do texto ou a foto ancora no alto com máscara', async () => {
+    const { enquadrar } = await import('@/lib/criador/enquadrar')
+    const r = enquadrar({ W: 1080, H: 1350, iw: 1440, ih: 2560, cab: [[0.2141, 0.1559, 0.6734, 0.4997]], util: [0, 0, 1, 0.52], modo: 'bg', topoTexto: 820 })
+    expect(r.ok).toBe(true)
+    expect(r.tt).toBe(820)
+    for (const c of r.cabecas) expect(c[3]).toBeLessThanOrEqual(781)
+  })
+
+  it('sem cabeça marcada, centraliza e avisa que não há mapa', async () => {
+    const { enquadrar } = await import('@/lib/criador/enquadrar')
+    const r = enquadrar({ W: 952, H: 460, iw: 1000, ih: 1000, cab: [], modo: 'caixa' })
+    expect(r.mapa).toBe(false)
+    expect(Math.round(r.topo)).toBe(Math.round((460 - r.altura) / 2))
+  })
+})

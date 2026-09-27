@@ -50,6 +50,7 @@ function carregarImagem(src: string): Promise<HTMLImageElement> {
 
 /** Grava o recorte (object-fit cover + object-position) nos pixels, no tamanho exato da vaga. */
 async function assarFoto(img: HTMLImageElement): Promise<string | null> {
+  if (img.getAttribute('data-drawn') === '1') return assarDesenhada(img)
   const w = img.clientWidth
   const h = img.clientHeight
   if (!w || !h) return null
@@ -94,15 +95,63 @@ async function assarFoto(img: HTMLImageElement): Promise<string | null> {
   return canvas.toDataURL('image/jpeg', 0.93)
 }
 
+/**
+ * Foto do T10 enquadrada pela cabeça: a <img> já está no tamanho desenhado, com left/top do recorte,
+ * dentro da vaga com overflow hidden. Grava o recorte da vaga (e a máscara que dissolve no preto) nos pixels.
+ */
+async function assarDesenhada(img: HTMLImageElement): Promise<string | null> {
+  const vaga = img.parentElement
+  if (!vaga) return null
+  const cw = vaga.clientWidth
+  const ch = vaga.clientHeight
+  if (!cw || !ch) return null
+  const dado = await paraDataUrl(img.currentSrc || img.src)
+  if (!dado) return null
+  const fonte = await carregarImagem(dado)
+  const dw = parseFloat(img.style.width) || fonte.naturalWidth
+  const dh = parseFloat(img.style.height) || fonte.naturalHeight
+  const dx = parseFloat(img.style.left) || 0
+  const dy = parseFloat(img.style.top) || 0
+  const k = 2
+  const canvas = document.createElement('canvas')
+  canvas.width = cw * k
+  canvas.height = ch * k
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(fonte, dx * k, dy * k, dw * k, dh * k)
+  const mascara = img.getAttribute('data-mascara')
+  if (mascara) {
+    // a máscara é medida na própria imagem: começa opaca e some até o fim da área útil
+    const [a, b] = mascara.split(',').map(Number)
+    const g = ctx.createLinearGradient(0, (dy + a) * k, 0, (dy + b) * k)
+    g.addColorStop(0, 'rgba(0,0,0,1)')
+    g.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.globalCompositeOperation = 'destination-in'
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+  }
+  return canvas.toDataURL(mascara ? 'image/png' : 'image/jpeg', 0.93)
+}
+
 async function embutirImagens(no: HTMLElement): Promise<() => void> {
   const voltar: Array<() => void> = []
   await Promise.all(Array.from(no.querySelectorAll('img')).map(async img => {
     const src = img.getAttribute('src') || ''
     if (!src) return
-    const antes = { src, fit: img.style.objectFit, pos: img.style.objectPosition, tr: img.style.transform, cross: img.getAttribute('crossorigin') }
+    const antes = { src, fit: img.style.objectFit, pos: img.style.objectPosition, tr: img.style.transform, cross: img.getAttribute('crossorigin'), css: img.style.cssText }
     let novo: string | null = null
     if (img.getAttribute('data-foto') === '1') novo = await assarFoto(img).catch(() => null)
     if (novo) {
+      if (img.getAttribute('data-drawn') === '1') {
+        // o PNG assado já é do tamanho da vaga: a img volta a ocupar a vaga inteira, sem máscara
+        img.style.left = '0px'
+        img.style.top = '0px'
+        img.style.width = '100%'
+        img.style.height = '100%'
+        img.style.maskImage = 'none'
+        img.style.webkitMaskImage = 'none'
+      }
       img.style.objectFit = 'fill'
       img.style.objectPosition = '50% 50%'
       img.style.transform = 'none'
@@ -111,13 +160,14 @@ async function embutirImagens(no: HTMLElement): Promise<() => void> {
     }
     if (!novo) { await img.decode().catch(() => {}); return }
     img.removeAttribute('crossorigin')
+    // a foto assada tem outro tamanho natural: o T10 não pode reenquadrar em cima dela
+    img.setAttribute('data-assada', '1')
     img.setAttribute('src', novo)
     await img.decode().catch(() => {})
     voltar.push(() => {
       img.setAttribute('src', antes.src)
-      img.style.objectFit = antes.fit
-      img.style.objectPosition = antes.pos
-      img.style.transform = antes.tr
+      img.removeAttribute('data-assada')
+      img.style.cssText = antes.css
       if (antes.cross) img.setAttribute('crossorigin', antes.cross)
     })
   }))

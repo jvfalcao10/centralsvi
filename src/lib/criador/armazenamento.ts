@@ -41,7 +41,7 @@ export async function salvarRascunho(doc: CarrosselDoc): Promise<string> {
   const slides = doc.slides.map(s => ({
     ...s,
     fotos: Object.fromEntries(Object.entries(s.fotos).filter(([, f]) => f.path || (f.url && !f.url.startsWith('blob:')))
-      .map(([k, f]) => [k, f.path ? { path: f.path, x: f.x, y: f.y, z: f.z ?? 1 } : f])),
+      .map(([k, f]) => [k, f.path ? { ...f, url: undefined } : f])),
   }))
   const linha = { titulo: doc.titulo || null, template: doc.template, slides, legenda: doc.legenda || null, opcoes: doc.opcoes, atualizado_em: new Date().toISOString() }
   if (doc.id) {

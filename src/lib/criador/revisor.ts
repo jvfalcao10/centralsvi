@@ -126,10 +126,14 @@ export function revisar(doc: CarrosselDoc): Achado[] {
     for (const f of def.fotos) {
       const temFoto = !!(s.fotos[f.chave]?.path || s.fotos[f.chave]?.url)
       if (f.obrigatoria && !temFoto) out.push({ nivel: 'bloqueia', regra: `Falta a foto "${f.rotulo}" (${f.proporcao})`, onde, lamina: i })
+      // T10: sem cabeça marcada não há enquadramento automático (na Central não existe detector de rosto)
+      if (temFoto && doc.template === 't10' && !s.fotos[f.chave]?.cab?.length) {
+        out.push({ nivel: 'aviso', regra: `Marque o rosto na foto "${f.rotulo}" para o enquadramento automático (sem marcação, o foco é manual e ninguém confere a cabeça)`, onde, lamina: i })
+      }
       // Foto cheia com texto no pé: o rosto precisa ficar no terço de cima.
       const cheia = (doc.template === 't10' && ['capa', 'foto', 'fecho'].includes(s.tipo)) || doc.template === 't9'
       const foco = s.fotos[f.chave]
-      if (temFoto && cheia && foco && foco.y > 45) {
+      if (temFoto && cheia && foco && !foco.cab?.length && foco.y > 45) {
         out.push({ nivel: 'aviso', regra: `Foco vertical em ${foco.y}%: confira se o rosto ficou no terço de cima e fora da área do texto`, onde: `${onde} · ${f.rotulo}`, lamina: i })
       }
     }

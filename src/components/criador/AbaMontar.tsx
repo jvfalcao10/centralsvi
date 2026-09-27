@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
-  AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, ClipboardPaste, Copy, CopyPlus, Download, FilePlus2, ImagePlus,
+  AlertTriangle, ScanFace, ArrowDown, ArrowUp, CheckCircle2, ClipboardPaste, Copy, CopyPlus, Download, FilePlus2, ImagePlus,
   Loader2, Save, Trash2, X, XCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -25,6 +25,8 @@ import { carregarRascunho, excluirRascunho, listarRascunhos, salvarRascunho, sub
 import { estiloZoom, FotoContext } from './templates/comum'
 import { SlideCanvas, SlidePreview } from './templates'
 import { PreviewAjustado } from './PreviewAjustado'
+import { MarcarRosto } from './MarcarRosto'
+import { RelatorioT10Context, type RelatorioT10 } from './templates/T10Editorial'
 import { copiarTexto } from './AbaAgentes'
 
 interface Props {
@@ -66,12 +68,16 @@ function CampoEditor({ campo, valor, aoMudar }: { campo: Campo; valor: string; a
 }
 
 // ─────────── foto por vaga: subir, foco X/Y, remover ───────────
-function FotoEditor({ def, foto, src, subindo, aoSubir, aoMudar, aoRemover }: {
-  def: FotoCampo; foto?: FotoSlide; src?: string; subindo: boolean
+function FotoEditor({ def, foto, src, subindo, marcaRosto, aoSubir, aoMudar, aoRemover }: {
+  def: FotoCampo; foto?: FotoSlide; src?: string; subindo: boolean; marcaRosto: boolean
   aoSubir: (f: File) => void; aoMudar: (f: FotoSlide) => void; aoRemover: () => void
 }) {
   const input = useRef<HTMLInputElement>(null)
+  const [marcando, setMarcando] = useState(false)
+  const automatico = marcaRosto && !!foto?.cab?.length
   return <div className="rounded-lg border p-2.5 space-y-2">
+    {marcando && foto && src && <MarcarRosto aberto={marcando} aoFechar={() => setMarcando(false)} src={src} foto={foto}
+      aoSalvar={(cab, w, h) => aoMudar({ ...foto, cab: cab.length ? cab : undefined, w: w || foto.w, h: h || foto.h })} />}
     <div className="flex items-center justify-between gap-2">
       <p className="text-xs font-medium">{def.rotulo} <span className="text-muted-foreground font-normal">· {def.proporcao}{def.obrigatoria ? ' · obrigatória' : ''}</span></p>
       {foto && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={aoRemover} aria-label={`Remover ${def.rotulo}`}><X className="h-4 w-4" /></Button>}
@@ -83,12 +89,20 @@ function FotoEditor({ def, foto, src, subindo, aoSubir, aoMudar, aoRemover }: {
       </button>
       <input ref={input} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) aoSubir(f); e.target.value = '' }} />
       {foto ? <div className="flex-1 space-y-2.5 min-w-0">
+        {marcaRosto && <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" size="sm" variant={automatico ? 'outline' : 'default'} disabled={!src} onClick={() => setMarcando(true)}><ScanFace className="h-4 w-4 mr-1.5" />{automatico ? 'Remarcar rosto' : 'Marcar rosto'}</Button>
+          <span className={`text-[11px] ${automatico ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+            {automatico ? `${foto.cab!.length} cabeça${foto.cab!.length > 1 ? 's' : ''} marcada${foto.cab!.length > 1 ? 's' : ''}: enquadramento automático` : 'Sem rosto marcado: foco manual'}
+          </span>
+        </div>}
+        {!automatico && <>
         <div className="space-y-1"><div className="flex justify-between text-[11px] text-muted-foreground"><span>Foco horizontal</span><span className="tabular-nums">{foto.x}%</span></div>
           <Slider value={[foto.x]} min={0} max={100} step={1} onValueChange={([x]) => aoMudar({ ...foto, x })} aria-label="Foco horizontal" /></div>
         <div className="space-y-1"><div className="flex justify-between text-[11px] text-muted-foreground"><span>Foco vertical (rosto no terço de cima)</span><span className="tabular-nums">{foto.y}%</span></div>
           <Slider value={[foto.y]} min={0} max={100} step={1} onValueChange={([y]) => aoMudar({ ...foto, y })} aria-label="Foco vertical" /></div>
         <div className="space-y-1"><div className="flex justify-between text-[11px] text-muted-foreground"><span>Zoom (quadro fechado)</span><span className="tabular-nums">{Math.round((foto.z ?? 1) * 100)}%</span></div>
           <Slider value={[Math.round((foto.z ?? 1) * 100)]} min={100} max={200} step={5} onValueChange={([z]) => aoMudar({ ...foto, z: z / 100 })} aria-label="Zoom" /></div>
+        </>}
       </div> : <p className="text-xs text-muted-foreground self-center">Toque para escolher a foto. Gere ou recorte na proporção {def.proporcao}, com o rosto no terço de cima.</p>}
     </div>
   </div>
@@ -133,7 +147,7 @@ function LaminaEditor(props: {
           {def.campos.map(c => <CampoEditor key={c.chave} campo={c} valor={slide.campos[c.chave] ?? ''} aoMudar={v => mudar(s => ({ ...s, campos: { ...s.campos, [c.chave]: v } }))} />)}
           {def.usaFoto && <div className="space-y-2">
             {slide.foto && <p className="text-[11px] rounded-md bg-primary/10 text-foreground px-2.5 py-1.5"><b className="font-medium">Foto pedida:</b> {slide.foto}</p>}
-            {def.fotos.map(f => <FotoEditor key={f.chave} def={f} foto={slide.fotos[f.chave]} src={resolver(slide.fotos[f.chave])} subindo={!!subindo[`${slide.id}:${f.chave}`]}
+            {def.fotos.map(f => <FotoEditor key={f.chave} def={f} foto={slide.fotos[f.chave]} src={resolver(slide.fotos[f.chave])} subindo={!!subindo[`${slide.id}:${f.chave}`]} marcaRosto={doc.template === 't10'}
               aoSubir={file => subir(f.chave, file)}
               aoMudar={nova => mudar(s => ({ ...s, fotos: { ...s.fotos, [f.chave]: nova } }))}
               aoRemover={() => mudar(s => { const fotos = { ...s.fotos }; delete fotos[f.chave]; return { ...s, fotos } })} />)}
@@ -177,7 +191,20 @@ export function AbaMontar({ doc, setDoc, substituirDoc }: Props) {
   }, [paths, urls])
 
   const resolver = useCallback((f?: FotoSlide) => f?.url ?? (f?.path ? urls[f.path] : undefined), [urls])
-  const achados = useMemo(() => revisar(doc), [doc])
+  // T10: medições de layout feitas pela própria lâmina renderizada (porte do conferir_t10.py)
+  const [medicoes, setMedicoes] = useState<Record<string, RelatorioT10>>({})
+  const relatar = useCallback((id: string, r: RelatorioT10) => setMedicoes(m => (JSON.stringify(m[id]) === JSON.stringify(r) ? m : { ...m, [id]: r })), [])
+  const achados = useMemo(() => {
+    const base = revisar(doc)
+    if (doc.template !== 't10') return base
+    doc.slides.forEach((s, i) => {
+      const m = medicoes[s.id]
+      if (!m) return
+      for (const e of m.erros) base.push({ nivel: 'bloqueia', regra: e, onde: `Lâmina ${i + 1}`, lamina: i })
+      for (const a of m.avisos) base.push({ nivel: 'aviso', regra: a, onde: `Lâmina ${i + 1}`, lamina: i })
+    })
+    return base
+  }, [doc, medicoes])
   const bloqueios = achados.filter(a => a.nivel === 'bloqueia')
   const avisos = achados.filter(a => a.nivel === 'aviso')
   const bloqueado = temBloqueio(achados)
@@ -282,7 +309,7 @@ export function AbaMontar({ doc, setDoc, substituirDoc }: Props) {
   const podeExportar = doc.slides.length > 0 && (!bloqueado || forcar)
   const irPara = (i?: number) => { if (i !== undefined) document.getElementById(`lamina-${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
 
-  return <FotoContext.Provider value={resolver}>
+  return <FotoContext.Provider value={resolver}><RelatorioT10Context.Provider value={relatar}>
     <div className="space-y-4">
       {/* barra do carrossel */}
       <section className="rounded-xl border bg-card p-3 sm:p-4 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-[200px_minmax(0,1fr)_minmax(0,1fr)]">
@@ -421,5 +448,5 @@ export function AbaMontar({ doc, setDoc, substituirDoc }: Props) {
         {doc.slides.map((s, i) => <SlideCanvas key={s.id} ref={el => { palco.current[i] = el }} template={doc.template} slide={s} n={i + 1} total={doc.slides.length} opcoes={doc.opcoes} />)}
       </div>}
     </div>
-  </FotoContext.Provider>
+  </RelatorioT10Context.Provider></FotoContext.Provider>
 }
