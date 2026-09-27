@@ -4,7 +4,7 @@ import {MemoryRouter,useLocation} from 'react-router-dom'
 import Social from '@/pages/content/Social'
 import {type Card} from '@/lib/social-board'
 
-const mocks=vi.hoisted(()=>({mobile:false,api:vi.fn(),toast:vi.fn(),drop:null as null|((result:unknown)=>void)}))
+const mocks=vi.hoisted(()=>({mobile:false,api:vi.fn(),toast:vi.fn(),drop:null as null|((result:unknown)=>void),start:null as null|(()=>void)}))
 vi.mock('@/hooks/use-mobile',()=>({useIsMobile:()=>mocks.mobile}))
 vi.mock('@/lib/supabase',()=>({supabase:{}}))
 vi.mock('@/lib/social-board',async()=>({...await vi.importActual('@/lib/social-board'),socialApi:mocks.api}))
@@ -13,7 +13,7 @@ vi.mock('@/components/social/ClientApprovalLink',()=>({default:()=>null}))
 vi.mock('@/components/social/FeedbackRouting',()=>({default:()=>null}))
 vi.mock('@/components/social/VideoPreview',()=>({default:()=>null,VideoCover:()=>null}))
 vi.mock('@hello-pangea/dnd',()=>({
- DragDropContext:({children,onDragEnd}:any)=>{mocks.drop=onDragEnd;return children},
+ DragDropContext:({children,onDragEnd,onDragStart}:any)=>{mocks.drop=onDragEnd;mocks.start=onDragStart;return children},
  Droppable:({children}:any)=>children({innerRef:()=>{},droppableProps:{},placeholder:null}),
  Draggable:({children}:any)=>children({innerRef:()=>{},draggableProps:{},dragHandleProps:{}}),
 }))
@@ -35,6 +35,18 @@ beforeEach(()=>{
 })
 afterEach(()=>{cleanup();vi.unstubAllGlobals()})
 describe('direct staff movements',()=>{
+ it('keeps scrolling horizontally while the held pointer is near the board edge and stops after drop',async()=>{
+  show();await screen.findByRole('button',{name:'Abrir Vídeo QA'})
+  const board=screen.getByLabelText('Kanban de postagens'),frames:FrameRequestCallback[]=[]
+  const raf=vi.spyOn(window,'requestAnimationFrame').mockImplementation(cb=>{frames.push(cb);return frames.length})
+  const cancel=vi.spyOn(window,'cancelAnimationFrame').mockImplementation(()=>{})
+  vi.spyOn(board,'getBoundingClientRect').mockReturnValue({left:100,right:900,top:100,bottom:700,width:800,height:600,x:100,y:100,toJSON:()=>({})})
+  act(()=>mocks.start!());fireEvent.mouseMove(window,{clientX:910,clientY:300})
+  act(()=>frames.shift()!(16));const first=board.scrollLeft;act(()=>frames.shift()!(32))
+  expect(first).toBeGreaterThan(0);expect(board.scrollLeft).toBeGreaterThan(first)
+  await drop('conferir','CANCEL');expect(cancel).toHaveBeenCalled()
+  raf.mockRestore();cancel.mockRestore()
+ })
  it.each(['aguardando','aprovado','ajustes','agendado','postado','arquivado'])('moves to %s without asking for a form or opening the piece',async stage=>{
   show();await screen.findByRole('button',{name:'Abrir Vídeo QA'});await drop(stage)
   await waitFor(()=>expect(writes()).toEqual([['',{id:'piece-a',version:4,action:'mover',stage}]]))
