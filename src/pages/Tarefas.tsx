@@ -463,11 +463,11 @@ export default function Tarefas() {
           <div className="flex items-center gap-2 ml-auto">
             <div className="flex rounded-lg border border-border overflow-hidden">
               <button onClick={() => setModo('lista')} title="Ver como lista"
-                className={`px-2.5 py-1.5 ${modo === 'lista' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-muted/40'}`}>
+                className={`min-h-11 min-w-11 md:min-h-0 md:min-w-0 px-2.5 py-1.5 ${modo === 'lista' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-muted/40'}`}>
                 <LayoutList className="h-4 w-4" />
               </button>
               <button onClick={() => setModo('quadro')} title="Ver como quadro"
-                className={`px-2.5 py-1.5 ${modo === 'quadro' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-muted/40'}`}>
+                className={`min-h-11 min-w-11 md:min-h-0 md:min-w-0 px-2.5 py-1.5 ${modo === 'quadro' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-muted/40'}`}>
                 <Kanban className="h-4 w-4" />
               </button>
             </div>

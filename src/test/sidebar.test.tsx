@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { Link, MemoryRouter } from 'react-router-dom'
-import { SidebarProvider } from '@/components/ui/sidebar'
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/AppSidebar'
 
-const fake = vi.hoisted(() => ({ role: 'admin' }))
+const fake = vi.hoisted(() => ({ role: 'admin', mobile: false }))
+vi.mock('@/hooks/use-mobile', () => ({useIsMobile: () => fake.mobile}))
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({
   profile: { name: 'Pessoa de teste' }, role: fake.role, signOut: vi.fn(), isTraffic: fake.role === 'traffic', isClient: fake.role === 'client',
   can: (required: string) => {
@@ -17,11 +18,11 @@ vi.mock('@/hooks/useNavBadges', () => ({ useNavBadges: () => ({ approvals: 3, te
 
 function renderSidebar(path = '/dashboard', collapsed = false) {
   return render(<MemoryRouter initialEntries={[path]}><SidebarProvider defaultOpen={!collapsed}>
-    <AppSidebar /><Link to="/financial/previsao" data-testid="change-route">Ir para previsão</Link>
+    <AppSidebar /><SidebarTrigger/><Link to="/financial/previsao" data-testid="change-route">Ir para previsão</Link>
   </SidebarProvider></MemoryRouter>)
 }
 
-beforeEach(() => { fake.role = 'admin' })
+beforeEach(() => { fake.role = 'admin'; fake.mobile = false })
 afterEach(cleanup)
 
 describe('Sidebar compacto', () => {
@@ -64,7 +65,7 @@ describe('Sidebar compacto', () => {
     expect(screen.getByRole('link', { name: 'Scripts' })).toHaveAttribute('aria-current', 'page')
     expect(screen.queryByRole('link', { name: 'Pipeline comercial' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Operação' }))
-    expect(screen.getByRole('link', { name: 'Aprovações' })).toHaveAttribute('href', '/content/aprovacoes')
+    expect(screen.getByRole('link', { name: 'Social media · Postagens' })).toHaveAttribute('href', '/content/social')
     expect(screen.queryByRole('link', { name: 'Carga de demandas' })).not.toBeInTheDocument()
   })
 
@@ -78,13 +79,24 @@ describe('Sidebar compacto', () => {
     expect(admin.queryByLabelText('14 pendências')).not.toBeInTheDocument()
   })
 
-  it('preserva as duas entradas de tráfego e destaca apenas análises em uma conta', () => {
+  it('preserva as três entradas de tráfego e destaca apenas análises em uma conta', () => {
     fake.role = 'traffic'
     renderSidebar('/operacional/trafego/analises/conta-123')
     const main = within(screen.getByRole('navigation', { name: 'Navegação principal' }))
-    expect(main.getAllByRole('link')).toHaveLength(2)
+    expect(main.getAllByRole('link')).toHaveLength(3)
     expect(main.getByRole('link', { name: 'Análises' })).toHaveAttribute('aria-current', 'page')
     expect(main.getByRole('link', { name: 'Tráfego' })).not.toHaveAttribute('aria-current')
     expect(screen.queryByRole('button', { name: 'Administração' })).not.toBeInTheDocument()
   })
+  it('abre o menu móvel e o fecha ao escolher uma página', () => {
+    fake.mobile = true
+    renderSidebar('/tarefas')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    fireEvent.click(screen.getByRole('button', {name:'Alternar menu'}))
+    expect(screen.getByRole('dialog', {name:'Menu da Central'})).toBeVisible()
+    expect(screen.getByRole('button', {name:'Close'})).toBeVisible()
+    fireEvent.click(screen.getByRole('link', {name:'Social media · Postagens'}))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
 })

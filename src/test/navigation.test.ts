@@ -16,17 +16,18 @@ describe('Áreas de navegação', () => {
     expect(navigation.footer.map(area => area.title)).toEqual(['Administração'])
   })
 
-  it('mantém os destinos anteriores e torna acessíveis as páginas existentes previstas', () => {
+  it('mantém a operação principal e retira os nove atalhos solicitados', () => {
     const urls = urlsFor('admin')
-    const previous = ['/dashboard', '/acessos', '/tarefas', '/senhas', '/processos', '/catalogo', '/trackeamento', '/diretoria', '/inteligencia', '/documentos', '/content/aprovacoes', '/content/posts', '/content/pautas', '/content/datas', '/content/organizador', '/content/producao', 'https://postagens.svicompany.com.br', '/scripts', '/operacional/carga', '/clients', '/financial', '/reports/anuncios', '/reports/google', '/team']
-    expect(urls).toEqual(expect.arrayContaining([...previous, '/pipeline', '/onboarding', '/admin/approvals', '/financial/previsao', '/financial/conferencia']))
+    expect(urls).toEqual(expect.arrayContaining(['/content/social', '/tarefas', '/clients', '/content/datas', '/admin/approvals']))
+    for (const removed of ['/onboarding', '/documentos', '/content/organizador', '/content/aprovacoes', '/content/posts', '/content/pautas', '/content/reels', '/content/producao', 'https://postagens.svicompany.com.br']) {
+      expect(urls).not.toContain(removed)
+    }
     expect(new Set(urls).size).toBe(urls.length)
   })
 
-  it('não mostra páginas financeiras nem equipe ao gestor, mantendo solicitações e onboarding', () => {
+  it('não mostra páginas financeiras nem equipe ao gestor, mantendo solicitações de acesso', () => {
     const urls = urlsFor('manager')
     expect(urls).toContain('/admin/approvals')
-    expect(urls).toContain('/onboarding')
     expect(urls).not.toContain('/team')
     expect(urls.some(url => url.startsWith('/financial'))).toBe(false)
     expect(getVisibleNavigation({ can: canFor('manager') }).footer[0].items).toHaveLength(1)
@@ -35,7 +36,7 @@ describe('Áreas de navegação', () => {
   it('separa o acesso comercial do vendedor e do executor sem grupos vazios', () => {
     expect(urlsFor('seller')).toContain('/pipeline')
     const executor = urlsFor('executor')
-    expect(executor).toEqual(expect.arrayContaining(['/scripts', '/tarefas', '/content/organizador', '/clients']))
+    expect(executor).toEqual(expect.arrayContaining(['/scripts', '/tarefas', '/content/social', '/clients']))
     for (const forbidden of ['/pipeline', '/catalogo', '/onboarding', '/dashboard', '/operacional/carga', '/team', '/admin/approvals']) expect(executor).not.toContain(forbidden)
     const navigation = getVisibleNavigation({ can: canFor('executor') })
     expect(navigation.footer).toEqual([])
@@ -43,7 +44,7 @@ describe('Áreas de navegação', () => {
   })
 
   it('preserva o menu exclusivo de tráfego e não entrega navegação staff a clientes ou usuários sem permissão', () => {
-    expect(urlsFor('traffic')).toEqual(['/operacional/trafego', '/operacional/trafego/analises'])
+    expect(urlsFor('traffic')).toEqual(['/operacional/trafego', '/content/social', '/operacional/trafego/analises'])
     expect(getVisibleNavigation({ can: () => true, isClient: true })).toEqual({ main: [], footer: [] })
     expect(getVisibleNavigation({ can: canFor('user') })).toEqual({ main: [], footer: [] })
   })

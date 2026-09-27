@@ -25,21 +25,12 @@ export const NAV_AREAS: NavigationArea[] = [
   ] },
   { id: 'clientes', title: 'Clientes', icon: 'clients', items: [
     { title: 'Carteira de clientes', url: '/clients', minRole: 'executor', badgeKey: 'clients' },
-    { title: 'Onboarding', url: '/onboarding', minRole: 'manager' },
-    { title: 'Documentos', url: '/documentos', minRole: 'executor' },
   ] },
   { id: 'operacao', title: 'Operação', icon: 'operations', items: [
     { title: 'Tarefas', url: '/tarefas', minRole: 'executor', section: 'Demandas' },
     { title: 'Carga de demandas', url: '/operacional/carga', minRole: 'manager', section: 'Demandas' },
     { title: 'Social media · Postagens', url: '/content/social', minRole: 'executor', section: 'Conteúdo' },
-    { title: 'Organizador de postagens', url: '/content/organizador', minRole: 'executor', section: 'Conteúdo' },
-    { title: 'Aprovações', url: '/content/aprovacoes', minRole: 'executor', section: 'Conteúdo' },
-    { title: 'Pipeline de conteúdo', url: '/content/posts', minRole: 'executor', section: 'Conteúdo' },
-    { title: 'Banco de pautas', url: '/content/pautas', minRole: 'executor', section: 'Conteúdo' },
-    { title: 'Reels em alta', url: '/content/reels', minRole: 'executor', section: 'Conteúdo' },
     { title: 'Datas estratégicas', url: '/content/datas', minRole: 'executor', section: 'Conteúdo' },
-    { title: 'Referência de produção', url: '/content/producao', minRole: 'executor', section: 'Conteúdo' },
-    { title: 'Central de postagens ↗', url: 'https://postagens.svicompany.com.br', minRole: 'executor', section: 'Conteúdo' },
   ] },
   { id: 'comercial', title: 'Comercial', icon: 'commercial', items: [
     { title: 'Pipeline comercial', url: '/pipeline', minRole: 'seller' },
@@ -119,6 +110,13 @@ export function navigationBadgeCount(area: NavigationArea, badges: Partial<Recor
 }
 
 const CONTEXTUAL_BREADCRUMBS: { path: string; breadcrumb: string[] }[] = [
+  { path: '/onboarding', breadcrumb: ['Clientes', 'Onboarding'] },
+  { path: '/documentos', breadcrumb: ['Clientes', 'Documentos'] },
+  { path: '/content/organizador', breadcrumb: ['Operação', 'Organizador de postagens'] },
+  { path: '/content/aprovacoes', breadcrumb: ['Operação', 'Aprovações'] },
+  { path: '/content/posts', breadcrumb: ['Operação', 'Pipeline de conteúdo'] },
+  { path: '/content/pautas', breadcrumb: ['Operação', 'Banco de pautas'] },
+  { path: '/content/producao', breadcrumb: ['Operação', 'Referência de produção'] },
   { path: '/operacional/trafego/analises', breadcrumb: ['Operação', 'Tráfego', 'Análises'] },
   { path: '/operacional/trafego/plano-semana', breadcrumb: ['Operação', 'Tráfego', 'Plano da semana'] },
   { path: '/operacional/trafego/brief', breadcrumb: ['Operação', 'Tráfego', 'Briefing'] },

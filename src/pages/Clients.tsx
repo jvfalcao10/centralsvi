@@ -285,7 +285,7 @@ export default function Clients() {
     <div className="space-y-4 animate-fade-in">
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-48">
+        <div className="relative flex-1 min-w-0 sm:min-w-48">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Buscar clientes..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
@@ -304,8 +304,32 @@ export default function Clients() {
         </Button>
       </div>
 
-      {/* Table */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="grid grid-cols-1 gap-3 md:hidden" aria-label="Carteira no celular">
+        {filtered.map(client => <article key={client.id} className="rounded-xl border bg-card p-4 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <Link to={clientPath(client.id)} className="block py-1 font-semibold break-words hover:text-primary">{client.name}</Link>
+              <p className="text-sm text-muted-foreground break-words">{client.company}</p>
+            </div>
+            <Badge variant="outline" className={`shrink-0 ${STATUS_CONFIG[client.status]?.className}`}>{STATUS_CONFIG[client.status]?.label || client.status}</Badge>
+          </div>
+          <dl className="grid grid-cols-2 gap-3 text-sm">
+            <div><dt className="text-muted-foreground">Mensalidade</dt><dd className="font-semibold text-success">{formatCurrency(mrrBRL(client.mrr, client.currency, usdRate))}{client.currency === 'USD' && ' · USD'}</dd></div>
+            <div><dt className="text-muted-foreground">Saúde do cliente</dt><dd>{client.health_score}/100</dd></div>
+            <div><dt className="text-muted-foreground">Início</dt><dd>{formatDate(client.inicio_contrato)}</dd></div>
+            {client.permuta && <div><dt className="text-muted-foreground">Contrato</dt><dd>Permuta{client.permuta_ate ? ` até ${formatDate(client.permuta_ate)}` : ''}</dd></div>}
+          </dl>
+          {client.instagram && <a href={`https://instagram.com/${client.instagram.replace('@', '')}`} target="_blank" rel="noreferrer" className="flex min-h-11 items-center gap-2 text-sm text-primary break-all"><Instagram className="h-4 w-4 shrink-0"/>{client.instagram}</a>}
+          <div className="grid grid-cols-2 gap-2 border-t pt-3">
+            <Button asChild variant="outline"><Link to={clientPath(client.id)}>Gestão</Link></Button>
+            <Button variant="secondary" onClick={() => openClient(client)}>Ver detalhes</Button>
+          </div>
+        </article>)}
+        {!filtered.length && <p className="py-10 text-center text-muted-foreground">Nenhum cliente com esses filtros.</p>}
+      </div>
+
+      {/* Desktop table; phone cards keep the key information together. */}
+      <div className="hidden md:block bg-card border border-border rounded-xl overflow-hidden">
         <div className="overflow-x-auto"><Table>
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
@@ -447,7 +471,7 @@ export default function Clients() {
               {formErrors.name && <p className="text-xs text-destructive">{formErrors.name}</p>}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="cf-company">Empresa <span className="text-destructive">*</span></Label>
                 <Input id="cf-company" placeholder="Nome da empresa" value={form.company} onChange={e => setField('company', e.target.value)} className={formErrors.company ? 'border-destructive' : ''} maxLength={100} />
@@ -459,7 +483,7 @@ export default function Clients() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="cf-email">Email</Label>
                 <Input id="cf-email" type="email" placeholder="email@empresa.com" value={form.email} onChange={e => setField('email', e.target.value)} className={formErrors.email ? 'border-destructive' : ''} maxLength={255} />
@@ -471,7 +495,7 @@ export default function Clients() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="cf-instagram">Instagram</Label>
                 <div className="relative">
@@ -486,7 +510,7 @@ export default function Clients() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Status</Label>
                 <Select value={form.status} onValueChange={v => setField('status', v)}>
@@ -500,7 +524,7 @@ export default function Clients() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Moeda</Label>
                 <Select value={form.currency} onValueChange={v => setField('currency', v)}>
@@ -518,7 +542,7 @@ export default function Clients() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="cf-inicio">Início do Contrato <span className="text-destructive">*</span></Label>
                 <Input id="cf-inicio" type="date" value={form.inicio_contrato} onChange={e => setField('inicio_contrato', e.target.value)} className={formErrors.inicio_contrato ? 'border-destructive' : ''} />
@@ -668,15 +692,15 @@ export default function Clients() {
       <Dialog open={!!selectedClient} onOpenChange={() => setSelectedClient(null)}>
         <DialogContent className="max-w-2xl bg-card border-border max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
                 <Avatar className="h-9 w-9">
                   <AvatarFallback className={`font-bold ${selectedClient && isClienteMedico(selectedClient) ? 'bg-info/15 text-info' : 'bg-primary/15 text-primary'}`}>
                     {selectedClient?.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <DialogTitle className="flex items-center gap-2">
+                  <DialogTitle className="flex flex-wrap items-center gap-2 break-words">
                     {selectedClient?.name}
                     {selectedClient && isClienteMedico(selectedClient) && (
                       <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-info/10 text-info border-info/30">Saúde</Badge>
@@ -697,7 +721,7 @@ export default function Clients() {
           </DialogHeader>
           {selectedClient && (
             <Tabs defaultValue="info">
-              <TabsList className="w-full bg-muted">
+              <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 bg-muted">
                 <TabsTrigger value="info" className="flex-1 text-xs">Informações</TabsTrigger>
                 <TabsTrigger value="history" className="flex-1 text-xs">
                   Histórico {clientInteractions.length > 0 && <span className="ml-1 bg-primary/20 text-primary text-xs rounded-full px-1.5">{clientInteractions.length}</span>}
@@ -708,7 +732,7 @@ export default function Clients() {
               </TabsList>
 
               <TabsContent value="info" className="space-y-3 mt-4">
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   {[
                     { label: 'Email', value: selectedClient.email || '—' },
                     { label: 'Telefone', value: selectedClient.phone || '—' },

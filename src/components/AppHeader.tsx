@@ -88,7 +88,7 @@ export function AppHeader() {
   }, [location.pathname])
 
   return (
-    <header className="h-14 flex items-center gap-4 px-4 border-b border-border bg-background/95 backdrop-blur-sm sticky top-0 z-30">
+    <header className="h-14 flex items-center gap-2 px-3 sm:gap-4 sm:px-4 border-b border-border bg-background/95 backdrop-blur-sm sticky top-0 z-30">
       <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
 
       {/* Breadcrumb */}
@@ -108,7 +108,7 @@ export function AppHeader() {
       {/* Notifications */}
       <Popover open={openNotif} onOpenChange={setOpenNotif}>
         <PopoverTrigger asChild>
-          <button className="relative text-muted-foreground hover:text-foreground transition-colors p-2 rounded-lg hover:bg-accent">
+          <button aria-label="Notificações" className="relative h-11 w-11 md:h-8 md:w-8 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors p-2 rounded-lg hover:bg-accent">
             <Bell className="h-4 w-4" />
             {alerts.length > 0 && (
               <span className="absolute top-1 right-1 min-w-[16px] h-4 flex items-center justify-center bg-danger text-danger-foreground text-[10px] font-bold rounded-full px-0.5">
@@ -117,7 +117,7 @@ export function AppHeader() {
             )}
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-80 p-0 bg-card border-border" align="end" sideOffset={8}>
+        <PopoverContent className="w-80 max-w-[calc(100vw-1.5rem)] p-0 bg-card border-border" align="end" sideOffset={8}>
           <div className="px-4 py-3 border-b border-border">
             <p className="font-semibold text-sm">Alertas</p>
             <p className="text-xs text-muted-foreground">{alerts.length > 0 ? `${alerts.length} item(s) requer(em) atenção` : 'Tudo em ordem'}</p>
@@ -155,17 +155,17 @@ export function AppHeader() {
 
       <Popover>
         <PopoverTrigger asChild>
-          <Avatar className="h-8 w-8 cursor-pointer">
+          <button aria-label="Minha conta" className="flex h-11 w-11 md:h-8 md:w-8 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Avatar className="h-8 w-8">
             <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
               {initials}
             </AvatarFallback>
-          </Avatar>
+          </Avatar></button>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-56 p-2">
           <p className="px-2 py-1.5 text-sm font-medium">{profile?.name || 'Você'}</p>
           <button
             onClick={() => setTrocandoSenha(true)}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground">
+            className="w-full min-h-11 md:min-h-0 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground">
             <KeyRound className="h-4 w-4" /> Alterar minha senha
           </button>
         </PopoverContent>

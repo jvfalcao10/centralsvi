@@ -18,15 +18,13 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { title: 'Minha Área',    url: '/minha-area',      icon: LayoutDashboard },
-  { title: 'Banco de Pautas', url: '/content/pautas',  icon: Lightbulb },
-  { title: 'Reels em alta', url: '/content/reels',    icon: Flame },
   { title: 'Radar',         url: '/content/radar',    icon: TrendingUp },
   { title: 'Referências',   url: '/content/monitor',  icon: Users2 },
 ]
 
 export function ClientSidebar() {
-  const { state } = useSidebar()
-  const collapsed = state === 'collapsed'
+  const { state, isMobile, setOpenMobile } = useSidebar()
+  const collapsed = state === 'collapsed' && !isMobile
   const location = useLocation()
   const { profile, signOut } = useAuth()
   const { theme, toggleTheme } = useTheme()
@@ -62,12 +60,12 @@ export function ClientSidebar() {
                 asChild
                 isActive={isActive(item.url)}
                 tooltip={item.title}
-                className={`transition-all duration-150 ${isActive(item.url)
+                className={`h-12 text-base md:h-8 md:text-sm transition-all duration-150 ${isActive(item.url)
                   ? 'bg-primary/15 text-primary font-medium border border-primary/20'
                   : 'hover:bg-accent hover:text-accent-foreground'
                 }`}
               >
-                <Link to={item.url} className="flex items-center gap-3">
+                <Link to={item.url} onClick={() => { if (isMobile) setOpenMobile(false) }} className="flex items-center gap-3">
                   <item.icon className="h-4 w-4 shrink-0" />
                   {!collapsed && <span>{item.title}</span>}
                   {!collapsed && isActive(item.url) && (
@@ -83,7 +81,7 @@ export function ClientSidebar() {
       <SidebarFooter className="p-3 space-y-2">
         <button
           onClick={toggleTheme}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-sm ${collapsed ? 'justify-center' : ''}`}
+          className={`w-full flex items-center gap-3 px-3 py-2 min-h-11 md:min-h-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-sm ${collapsed ? 'justify-center' : ''}`}
           title="Alternar tema"
         >
           {theme === 'dark' ? <Sun className="h-4 w-4 shrink-0" /> : <Moon className="h-4 w-4 shrink-0" />}
@@ -103,7 +101,7 @@ export function ClientSidebar() {
             </div>
           )}
           {!collapsed && (
-            <button onClick={signOut} title="Sair" className="text-muted-foreground hover:text-destructive transition-colors">
+            <button onClick={signOut} title="Sair" className="flex h-11 w-11 md:h-7 md:w-7 shrink-0 items-center justify-center text-muted-foreground hover:text-destructive transition-colors">
               <LogOut className="h-4 w-4" />
             </button>
           )}

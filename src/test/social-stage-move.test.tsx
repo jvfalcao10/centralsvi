@@ -4,7 +4,8 @@ import {MemoryRouter,useLocation} from 'react-router-dom'
 import Social from '@/pages/content/Social'
 import {type Card} from '@/lib/social-board'
 
-const mocks=vi.hoisted(()=>({api:vi.fn(),toast:vi.fn(),drop:null as null|((result:unknown)=>Promise<void>)}))
+const mocks=vi.hoisted(()=>({mobile:false,api:vi.fn(),toast:vi.fn(),drop:null as null|((result:unknown)=>Promise<void>)}))
+vi.mock('@/hooks/use-mobile',()=>({useIsMobile:()=>mocks.mobile}))
 vi.mock('@/lib/supabase',()=>({supabase:{}}))
 vi.mock('@/lib/social-board',async()=>({...await vi.importActual('@/lib/social-board'),socialApi:mocks.api}))
 vi.mock('@/hooks/use-toast',()=>({useToast:()=>({toast:mocks.toast})}))
@@ -23,7 +24,7 @@ const show=()=>render(<MemoryRouter initialEntries={['/content/social']}><Social
 const drop=async(target:string,reason='DROP')=>act(async()=>{await mocks.drop!({draggableId:'piece-a',source:{droppableId:current.stage,index:0},destination:{droppableId:target,index:0},reason})})
 const writes=()=>mocks.api.mock.calls.filter(args=>args[1])
 beforeEach(()=>{
- current=structuredClone(initial);mocks.api.mockReset();mocks.toast.mockReset();mocks.drop=null
+ mocks.mobile=false;current=structuredClone(initial);mocks.api.mockReset();mocks.toast.mockReset();mocks.drop=null
  mocks.api.mockImplementation(async(query='',body)=>{
   if(body){const stages:Record<string,string>={solicitar:'aguardando',aprovar:'aprovado',ajustes:'ajustes',agendar:'agendado',postar:'postado',arquivar:'arquivado',conferir:'conferir'};current={...current,stage:stages[body.action],version:current.version+1};return {ok:true}}
   if(query==='?sync=status')return {sources:[],pending:0,issues:[]}
@@ -83,5 +84,40 @@ describe('moving a Social card stays on the board',()=>{
   show();const button=await screen.findByRole('button',{name:'Abrir Vídeo QA'});await drop('conferir');await drop('aprovado','CANCEL');expect(writes()).toHaveLength(0);expect(screen.queryByRole('dialog')).toBeNull()
   const click=createEvent.click(button);click.preventDefault();fireEvent(button,click);expect(screen.queryByRole('dialog')).toBeNull()
   fireEvent.click(button);await screen.findByRole('dialog',{name:'Vídeo QA'});expect(screen.getByLabelText('Endereço atual')).toHaveTextContent('peca=piece-a')
+ })
+})
+
+
+describe('moving Social cards by touch',()=>{
+ it('shows a single-stage list and moves without opening the detail panel',async()=>{
+  mocks.mobile=true;show();await screen.findByRole('button',{name:'Abrir Vídeo QA'})
+  expect(screen.getByRole('region',{name:'Postagens no celular'})).toBeVisible()
+  expect(screen.queryByLabelText('Kanban de postagens')).toBeNull()
+  fireEvent.change(screen.getByRole('combobox',{name:'Mudar etapa de Vídeo QA'}),{target:{value:'aguardando'}})
+  await waitFor(()=>expect(writes()).toHaveLength(1))
+  expect(writes()[0][1]).toEqual({id:'piece-a',version:4,action:'solicitar'})
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(screen.getByLabelText('Endereço atual')).not.toHaveTextContent('peca=')
+  fireEvent.change(screen.getByRole('combobox',{name:'Etapa'}),{target:{value:'aguardando'}})
+  expect(await screen.findByRole('button',{name:'Abrir Vídeo QA'})).toBeVisible()
+ })
+ it('requires approval evidence on mobile and leaves the card unchanged when canceled',async()=>{
+  mocks.mobile=true;show();await screen.findByRole('button',{name:'Abrir Vídeo QA'})
+  fireEvent.change(screen.getByRole('combobox',{name:'Mudar etapa de Vídeo QA'}),{target:{value:'aprovado'}})
+  const dialog=screen.getByRole('dialog',{name:'Registrar aprovação'})
+  expect(within(dialog).getByLabelText('Onde e quando foi aprovado?')).toBeRequired()
+  expect(writes()).toHaveLength(0)
+  fireEvent.click(within(dialog).getByRole('button',{name:'Cancelar'}))
+  expect(screen.queryByRole('dialog')).toBeNull();expect(writes()).toHaveLength(0)
+  expect(screen.getByRole('button',{name:'Abrir Vídeo QA'})).toBeVisible()
+ })
+ it('reveals optional filters and opens details only by tapping the piece',async()=>{
+  mocks.mobile=true;show();await screen.findByRole('button',{name:'Abrir Vídeo QA'})
+  expect(screen.queryByRole('combobox',{name:'Responsável'})).toBeNull()
+  fireEvent.click(screen.getByRole('button',{name:'Filtros'}))
+  expect(screen.getByRole('combobox',{name:'Responsável'})).toBeVisible()
+  fireEvent.click(screen.getByRole('button',{name:'Abrir Vídeo QA'}))
+  expect(await screen.findByRole('dialog',{name:'Vídeo QA'})).toBeVisible()
+  expect(screen.getByLabelText('Endereço atual')).toHaveTextContent('peca=piece-a')
  })
 })
