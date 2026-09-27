@@ -1,7 +1,7 @@
 import type { UserRole } from '@/contexts/AuthContext'
 
 export type NavigationBadge = 'approvals' | 'team' | 'invoices' | 'clients'
-export type NavigationIcon = 'home' | 'clients' | 'operations' | 'commercial' | 'financial' | 'results' | 'resources' | 'admin' | 'traffic'
+export type NavigationIcon = 'home' | 'clients' | 'operations' | 'commercial' | 'financial' | 'results' | 'resources' | 'admin' | 'traffic' | 'carousel'
 
 export interface NavigationItem {
   title: string
@@ -31,6 +31,7 @@ export const NAV_AREAS: NavigationArea[] = [
     { title: 'Carga de demandas', url: '/operacional/carga', minRole: 'manager', section: 'Demandas' },
     { title: 'Social media · Postagens', url: '/content/social', minRole: 'executor', section: 'Conteúdo' },
     { title: 'Datas estratégicas', url: '/content/datas', minRole: 'executor', section: 'Conteúdo' },
+    { title: 'Criador de carrossel', url: '/conteudo/criador-carrossel', minRole: 'admin', section: 'Conteúdo' },
   ] },
   { id: 'comercial', title: 'Comercial', icon: 'commercial', items: [
     { title: 'Pipeline comercial', url: '/pipeline', minRole: 'seller' },
@@ -117,6 +118,7 @@ const CONTEXTUAL_BREADCRUMBS: { path: string; breadcrumb: string[] }[] = [
   { path: '/content/posts', breadcrumb: ['Operação', 'Pipeline de conteúdo'] },
   { path: '/content/pautas', breadcrumb: ['Operação', 'Banco de pautas'] },
   { path: '/content/producao', breadcrumb: ['Operação', 'Referência de produção'] },
+  { path: '/conteudo/criador-carrossel', breadcrumb: ['Operação', 'Conteúdo', 'Criador de carrossel'] },
   { path: '/operacional/trafego/analises', breadcrumb: ['Operação', 'Tráfego', 'Análises'] },
   { path: '/operacional/trafego/plano-semana', breadcrumb: ['Operação', 'Tráfego', 'Plano da semana'] },
   { path: '/operacional/trafego/brief', breadcrumb: ['Operação', 'Tráfego', 'Briefing'] },

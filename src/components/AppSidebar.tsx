@@ -2,7 +2,7 @@ import { Fragment, useEffect, useState } from 'react'
 import { useLocation, Link } from 'react-router-dom'
 import {
   LayoutDashboard, Users, ClipboardCheck, Briefcase, DollarSign, PieChart,
-  Compass, ShieldCheck, Activity, Sun, Moon, LogOut, ChevronDown, ExternalLink,
+  Compass, ShieldCheck, Activity, Sun, Moon, LogOut, ChevronDown, ExternalLink, GalleryHorizontalEnd,
 } from 'lucide-react'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
@@ -24,6 +24,7 @@ import logoSvi from '@/assets/logo-svi.png'
 const ICONS: Record<NavigationIcon, typeof LayoutDashboard> = {
   home: LayoutDashboard, clients: Users, operations: ClipboardCheck, commercial: Briefcase,
   financial: DollarSign, results: PieChart, resources: Compass, admin: ShieldCheck, traffic: Activity,
+  carousel: GalleryHorizontalEnd,
 }
 
 function Badge({ count }: { count: number }) {

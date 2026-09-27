@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -84,6 +85,9 @@ import TrafegoApprove from "@/pages/r/TrafegoApprove";
 import ConteudoApprove from "@/pages/r/ConteudoApprove";
 
 import NotFound from "./pages/NotFound";
+
+// Criador de Carrossel: carrega sob demanda (exportador de PNG, zip e a base de conhecimento pesam)
+const CriadorCarrossel = lazy(() => import("@/pages/content/CriadorCarrossel"));
 
 const queryClient = new QueryClient();
 
@@ -244,6 +248,9 @@ const App = () => (
                 <ProtectedRoute requiredRole="executor">
                   <AutoLayout><Producao /></AutoLayout>
                 </ProtectedRoute>
+              } />
+              <Route path="/conteudo/criador-carrossel" element={
+                <ProtectedRoute requiredRole="admin"><AppLayout><Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando o Criador de carrossel…</div>}><CriadorCarrossel /></Suspense></AppLayout></ProtectedRoute>
               } />
               <Route path="/content/social" element={<ProtectedRoute requiredRole="executor" allowTraffic><AppLayout><Social /></AppLayout></ProtectedRoute>} />
               <Route path="/content/organizador" element={
