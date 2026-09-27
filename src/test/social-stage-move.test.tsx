@@ -5,7 +5,7 @@ import Social from '@/pages/content/Social'
 import {type Card} from '@/lib/social-board'
 
 const mocks=vi.hoisted(()=>({mobile:false,api:vi.fn(),toast:vi.fn(),drop:null as null|((result:unknown)=>void),start:null as null|(()=>void)}))
-vi.mock('@/hooks/use-mobile',()=>({useIsMobile:()=>mocks.mobile}))
+vi.mock('@/hooks/use-social-touch-layout',()=>({useSocialTouchLayout:()=>mocks.mobile}))
 vi.mock('@/lib/supabase',()=>({supabase:{}}))
 vi.mock('@/lib/social-board',async()=>({...await vi.importActual('@/lib/social-board'),socialApi:mocks.api}))
 vi.mock('@/hooks/use-toast',()=>({useToast:()=>({toast:mocks.toast})}))

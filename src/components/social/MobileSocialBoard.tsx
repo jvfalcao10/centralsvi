@@ -1,4 +1,5 @@
-import {CardContextMenu,CardActionsButton,StageSelect} from './CardActions'
+import {CardActionsButton,StageSelect} from './CardActions'
+import TouchStageMove,{TouchMoveCard} from './TouchStageMove'
 import {useEffect, useState} from 'react'
 import {ChevronRight} from 'lucide-react'
 import {Button} from '@/components/ui/button'
@@ -14,15 +15,17 @@ export default function MobileSocialBoard({cards, stage, filterKey, busy, onOpen
  useEffect(()=>setLimit(12),[stage,filterKey])
  const visible=cards.filter(c=>stage==='all'||c.stage===stage)
  const current=SOCIAL_STAGES.find(s=>s.id===stage)
- return <section aria-label="Postagens no celular" className="space-y-3">
+ return <TouchStageMove cards={cards} busy={busy} onMove={onMove}><section aria-label="Postagens no celular" className="space-y-3">
   <div className="flex items-center justify-between gap-3">
    <h2 className="font-semibold">{current?.label||'Todas as etapas'}</h2>
    <span className="shrink-0 rounded-full bg-muted px-3 py-1 text-sm tabular-nums">{visible.length}</span>
   </div>
   {current&&<p className="text-sm text-muted-foreground">{current.hint}</p>}
+  <p className="text-sm text-muted-foreground">Deslize pela imagem ou pelo texto para rolar. Para mudar de etapa, use a alça ou o seletor da peça.</p>
+  <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
   {visible.slice(0,limit).map(card=>{
    const status=SOCIAL_STAGES.find(s=>s.id===card.stage)
-   return <CardContextMenu key={card.id} card={card} busy={busy} onOpen={onOpen} onMove={onMove} onCopy={onCopy}><article className="overflow-hidden rounded-xl border bg-card">
+   return <TouchMoveCard key={card.id} card={card} busy={busy}>
     <button className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary" aria-label={`Abrir ${card.title}`} onClick={()=>onOpen(card.id)}>
      <VideoCover asset={card.assets.find(a=>a.id===card.selected_assets[0])||card.assets[0]} preview={card.preview}/>
      <div className="space-y-2 p-4">
@@ -40,9 +43,10 @@ export default function MobileSocialBoard({cards, stage, filterKey, busy, onOpen
     <div className="flex items-center gap-2 border-t px-4 py-3">
      <StageSelect card={card} busy={busy} onMove={onMove}/><CardActionsButton card={card} busy={busy} onOpen={onOpen} onMove={onMove} onCopy={onCopy}/>
     </div>
-   </article></CardContextMenu>
+   </TouchMoveCard>
   })}
+  </div>
   {!visible.length&&<p className="rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">Nenhuma peça nesta etapa com os filtros escolhidos.</p>}
   {visible.length>limit&&<Button variant="outline" className="w-full" onClick={()=>setLimit(n=>n+12)}>Mostrar mais peças ({visible.length-limit})</Button>}
- </section>
+ </section></TouchStageMove>
 }

@@ -1,5 +1,5 @@
 import MobileSocialBoard from '@/components/social/MobileSocialBoard'
-import {useIsMobile} from '@/hooks/use-mobile'
+import {useSocialTouchLayout} from '@/hooks/use-social-touch-layout'
 import ClientApprovalLink from '@/components/social/ClientApprovalLink'
 import ApprovalLink from '@/components/social/ApprovalLink'
 import FeedbackRouting, { type FeedbackContext } from '@/components/social/FeedbackRouting'
@@ -23,7 +23,7 @@ const cleanTitle=(s:string)=>s.replace(/^(HOJE|AMANHÃ|QUA|QUI|SEX|SEG|TER|SÁB|
 
 export default function Social() {
  const [params,setParams]=useSearchParams(); const {toast}=useToast()
- const isMobile=useIsMobile();const [showFilters,setShowFilters]=useState(false)
+ const isMobile=useSocialTouchLayout();const [showFilters,setShowFilters]=useState(false)
  const [sync,setSync]=useState<{sources:{id:string;label:string;enabled:boolean;last_success_at:string|null;error:string|null}[];pending:number;issues:{key:string;title:string;source_url:string;reason:string}[]}|null>(null);
  const [feedback,setFeedback]=useState<FeedbackContext|null>(null);const [routeDirty,setRouteDirty]=useState(false);
  const [editClient,setEditClient]=useState('');const [editTitle,setEditTitle]=useState('');
@@ -74,7 +74,7 @@ export default function Social() {
  const reorder=(id:string,delta:number)=>setSelected(previous=>{const i=previous.indexOf(id),j=i+delta;if(i<0||j<0||j>=previous.length)return previous;const next=[...previous];[next[i],next[j]]=[next[j],next[i]];return next})
  return <main className="space-y-4 md:space-y-6 min-w-0">
   <header className="flex flex-wrap items-start justify-between gap-4">
-   <div className="flex-1 min-w-0"><p className="text-[11px] font-semibold tracking-[.22em] text-primary uppercase">Conteúdo · Central SVI</p><h1 className="mt-1 text-2xl sm:text-3xl font-semibold tracking-tight">O que vamos postar?</h1><p className="hidden md:block mt-2 text-sm text-muted-foreground max-w-2xl">A arte, o vídeo, a legenda e a aprovação no mesmo lugar. Mude a etapa pelo card ou pelo botão direito. Abra a peça para editar os detalhes.</p></div>
+   <div className="flex-1 min-w-0"><p className="text-[11px] font-semibold tracking-[.22em] text-primary uppercase">Conteúdo · Central SVI</p><h1 className="mt-1 text-2xl sm:text-3xl font-semibold tracking-tight">O que vamos postar?</h1><p className="hidden md:block mt-2 text-sm text-muted-foreground max-w-2xl">A arte, o vídeo, a legenda e a aprovação no mesmo lugar. {isMobile?'Deslize para rolar e use a alça para mover a peça.':'Mude a etapa pelo card ou pelo botão direito.'} Abra a peça para editar os detalhes.</p></div>
    <div className="flex gap-2"><Button variant="outline" size="sm" aria-label="Atualizar quadro" onClick={()=>void load()}><RefreshCw className="w-4 h-4"/><span className="hidden sm:inline">Atualizar</span></Button></div>
   </header>
   <div className="grid grid-cols-2 xl:grid-cols-4 gap-2 sm:gap-3">

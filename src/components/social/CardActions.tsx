@@ -22,10 +22,10 @@ export function CardContextMenu({children,...props}:Actions&{children:ReactEleme
  return <ContextMenu><ContextMenuTrigger asChild>{children}</ContextMenuTrigger><ContextMenuContent className="w-64 max-h-[85dvh] overflow-y-auto" onClick={e=>e.stopPropagation()}><Items kind="context" {...props}/></ContextMenuContent></ContextMenu>
 }
 export function CardActionsButton(props:Actions) {
- return <DropdownMenu><DropdownMenuTrigger asChild><Button size="icon" variant="ghost" disabled={props.busy} aria-label={`Opções de ${props.card.title}`} onPointerDown={e=>e.stopPropagation()} onMouseDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}><MoreHorizontal className="h-5 w-5"/></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-64 max-h-[85dvh] overflow-y-auto" onClick={e=>e.stopPropagation()}><Items kind="dropdown" {...props}/></DropdownMenuContent></DropdownMenu>
+ return <DropdownMenu><DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-11 w-11 min-w-11 md:h-11 md:w-11 md:min-w-11" disabled={props.busy} aria-label={`Opções de ${props.card.title}`} onPointerDown={e=>e.stopPropagation()} onMouseDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}><MoreHorizontal className="h-5 w-5"/></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-64 max-h-[85dvh] overflow-y-auto" onClick={e=>e.stopPropagation()}><Items kind="dropdown" {...props}/></DropdownMenuContent></DropdownMenu>
 }
 export function StageSelect({card,busy,onMove}:{card:Card;busy:boolean;onMove:Actions['onMove']}) {
- return <select aria-label={`Mudar etapa de ${card.title}`} value={card.stage} disabled={busy} onMouseDown={e=>e.stopPropagation()} onTouchStart={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()} onChange={e=>onMove(card.id,e.target.value)} className="h-11 md:h-9 w-full min-w-0 rounded-lg border bg-background px-3 text-base md:text-sm disabled:opacity-50">
+ return <select aria-label={`Mudar etapa de ${card.title}`} value={card.stage} disabled={busy} onMouseDown={e=>e.stopPropagation()} onTouchStart={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()} onChange={e=>onMove(card.id,e.target.value)} className="h-11 w-full min-w-0 rounded-lg border bg-background px-3 text-base md:text-sm disabled:opacity-50">
   {SOCIAL_STAGES.map(stage=><option key={stage.id} value={stage.id}>{stage.label}</option>)}
  </select>
 }
