@@ -11,8 +11,46 @@ export class SocialError extends Error { constructor(public status: number, mess
 const reject = (message: string): never => { throw new SocialError(400, message) }
 const text = (value: unknown, max = 10000) => typeof value === 'string' ? value.trim().slice(0, max) : ''
 const cleared = { approved_revision: null, approved_by: null, approved_at: null, approval_evidence: null, token_hash: null, token_expires_at: null, scheduled_at: null }
+/** A staff member explicitly moving a card is the decision; optional details never block it. */
+export function socialMovePatch(c: SocialCard, target: unknown, actor: string, now = new Date()): Record<string, unknown> {
+ const stage = text(target, 30)
+ if (!['conferir','aguardando','ajustes','aprovado','agendado','postado','arquivado'].includes(stage)) reject('Etapa inválida.')
+ if (!actor.trim()) reject('Entre na Central novamente.')
+ if (['aguardando','aprovado','agendado','postado'].includes(stage)) {
+  if (c.ingest_pending) reject('Aguarde a importação dos arquivos para continuar.')
+  if (!c.selected_assets.length) reject('Selecione ao menos um arquivo final.')
+  if (c.client === 'Identificar cliente') reject('Identifique o cliente desta peça para continuar.')
+ }
+ const patch: Record<string, unknown> = {stage, token_hash:null, token_expires_at:null}
+ // Moving back corrects the current board; the earlier publication stays in the event history.
+ if (stage !== 'postado') Object.assign(patch,{posted_at:null,posted_url:null})
+ if (['conferir','aguardando','ajustes','arquivado'].includes(stage)) Object.assign(patch,cleared)
+ if (stage === 'aprovado') {
+  patch.scheduled_at=null
+  if (c.approved_revision !== c.revision || !c.approved_at || !c.approved_by) Object.assign(patch,{
+   approved_revision:c.revision, approved_by:actor, approved_at:now.toISOString(),
+   approval_evidence:'Liberação interna pela equipe ao mover para Aprovado para postar na Central.',
+  })
+ }
+ // Do not invent a planned date or a customer approval for a manual stage change.
+ if (stage === 'agendado') patch.scheduled_at=c.scheduled_at || null
+ if (stage === 'postado') patch.posted_at=c.posted_at || now.toISOString()
+ return patch
+}
 export function socialPatch(c: SocialCard, body: Record<string, unknown>, now = new Date()) {
  const action = text(body.action, 40)
+ if (action === 'informacoes') {
+  const date=(value:unknown)=>{if(!value)return null;const parsed=new Date(text(value,50));if(!Number.isFinite(parsed.getTime()))reject('Data inválida.');return parsed.toISOString()}
+  const url=text(body.posted_url,2000)
+  if(url){try{if(new URL(url).protocol!=='https:')reject('Use um link HTTPS.')}catch{reject('Link de publicação inválido.')}}
+  const patch:Record<string,unknown>={scheduled_at:date(body.scheduled_at),channel:text(body.channel,100)||null,posted_url:url||null}
+  if(c.stage==='postado'){
+   const posted=date(body.posted_at)||c.posted_at
+   if(!posted||Date.parse(posted)>now.getTime()+60000)reject('Informe uma data de publicação válida.')
+   patch.posted_at=posted
+  }
+  return patch
+ }
  if (c.posted_at || c.stage === 'postado') reject('Peça já postada. Preserve o histórico; use uma nova tarefa para outra publicação.')
  const requireAssets = () => { if(c.ingest_pending) reject('Aguarde a importação dos novos arquivos antes de aprovar.'); if(c.client==='Identificar cliente') reject('Identifique o cliente antes de solicitar ou registrar aprovação.'); if (!c.selected_assets.length) reject('Selecione ao menos um arquivo final.') }
  const requireApproved = () => { if(c.ingest_pending) reject('Há uma entrega nova pendente de conferência.'); if (c.approved_revision !== c.revision || !c.approved_at || !c.approved_by) reject('Registre a aprovação desta versão antes de continuar.') }

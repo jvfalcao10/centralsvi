@@ -1,10 +1,10 @@
 import {afterEach,beforeEach,describe,it,expect,vi} from 'vitest'
-import {act,cleanup,fireEvent,render,screen,waitFor,within,createEvent} from '@testing-library/react'
+import {act,cleanup,fireEvent,render,screen,waitFor,createEvent} from '@testing-library/react'
 import {MemoryRouter,useLocation} from 'react-router-dom'
 import Social from '@/pages/content/Social'
 import {type Card} from '@/lib/social-board'
 
-const mocks=vi.hoisted(()=>({mobile:false,api:vi.fn(),toast:vi.fn(),drop:null as null|((result:unknown)=>Promise<void>)}))
+const mocks=vi.hoisted(()=>({mobile:false,api:vi.fn(),toast:vi.fn(),drop:null as null|((result:unknown)=>void)}))
 vi.mock('@/hooks/use-mobile',()=>({useIsMobile:()=>mocks.mobile}))
 vi.mock('@/lib/supabase',()=>({supabase:{}}))
 vi.mock('@/lib/social-board',async()=>({...await vi.importActual('@/lib/social-board'),socialApi:mocks.api}))
@@ -21,103 +21,71 @@ const initial={id:'piece-a',client:'Cliente QA',title:'Vídeo QA',author:'Math',
 let current:Card
 const Location=()=>{const l=useLocation();return <output aria-label="Endereço atual">{l.pathname+l.search}</output>}
 const show=()=>render(<MemoryRouter initialEntries={['/content/social']}><Social/><Location/></MemoryRouter>)
-const drop=async(target:string,reason='DROP')=>act(async()=>{await mocks.drop!({draggableId:'piece-a',source:{droppableId:current.stage,index:0},destination:{droppableId:target,index:0},reason})})
+const drop=async(target:string,reason='DROP')=>act(async()=>{mocks.drop!({draggableId:'piece-a',source:{droppableId:current.stage,index:0},destination:{droppableId:target,index:0},reason})})
 const writes=()=>mocks.api.mock.calls.filter(args=>args[1])
 beforeEach(()=>{
+ if(!globalThis.DOMRect)vi.stubGlobal('DOMRect',class {static fromRect(r:any){return {...r,top:r.y,left:r.x,right:r.x+r.width,bottom:r.y+r.height,toJSON:()=>r}}})
  mocks.mobile=false;current=structuredClone(initial);mocks.api.mockReset();mocks.toast.mockReset();mocks.drop=null
  mocks.api.mockImplementation(async(query='',body)=>{
-  if(body){const stages:Record<string,string>={solicitar:'aguardando',aprovar:'aprovado',ajustes:'ajustes',agendar:'agendado',postar:'postado',arquivar:'arquivado',conferir:'conferir'};current={...current,stage:stages[body.action],version:current.version+1};return {ok:true}}
+  if(body){current={...current,stage:body.stage||current.stage,version:current.version+1};return {ok:true}}
   if(query==='?sync=status')return {sources:[],pending:0,issues:[]}
   if(query.startsWith('?id='))return {card:current,events:[],feedback:null}
   return {cards:[current]}
  })
 })
-afterEach(cleanup)
-describe('moving a Social card stays on the board',()=>{
- it('moves to awaiting client without opening the full piece or changing its URL',async()=>{
-  show();await screen.findByRole('button',{name:'Abrir Vídeo QA'});await drop('aguardando')
-  expect(writes()).toEqual([['',{id:'piece-a',version:4,action:'solicitar'}]])
-  expect(screen.queryByRole('dialog')).toBeNull();expect(screen.getByLabelText('Endereço atual')).toHaveTextContent('/content/social');expect(screen.getByLabelText('Endereço atual')).not.toHaveTextContent('peca=')
+afterEach(()=>{cleanup();vi.unstubAllGlobals()})
+describe('direct staff movements',()=>{
+ it.each(['aguardando','aprovado','ajustes','agendado','postado','arquivado'])('moves to %s without asking for a form or opening the piece',async stage=>{
+  show();await screen.findByRole('button',{name:'Abrir Vídeo QA'});await drop(stage)
+  await waitFor(()=>expect(writes()).toEqual([['',{id:'piece-a',version:4,action:'mover',stage}]]))
+  expect(screen.queryByRole('dialog')).toBeNull();expect(screen.getByLabelText('Endereço atual')).not.toHaveTextContent('peca=')
   expect(mocks.api.mock.calls.some(([q])=>q?.startsWith('?id='))).toBe(false)
-  fireEvent.change(screen.getByRole('combobox',{name:'Etapa'}),{target:{value:'aguardando'}})
-  expect(await screen.findByRole('button',{name:'Abrir Vídeo QA'})).toBeVisible();expect(screen.queryByRole('dialog')).toBeNull()
  })
- it('requests only the adjustment reason, saves it and returns to the board',async()=>{
-  show();await screen.findByRole('button',{name:'Abrir Vídeo QA'});await drop('ajustes')
-  const dialog=screen.getByRole('dialog',{name:'Mover para Ajustes'});expect(writes()).toHaveLength(0);expect(within(dialog).queryByText('Arquivos da peça')).toBeNull()
-  fireEvent.change(within(dialog).getByLabelText('O que precisa mudar?'),{target:{value:'Corrigir a legenda aos 15 segundos.'}})
-  fireEvent.click(within(dialog).getByRole('button',{name:'Salvar etapa'}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull())
-  expect(writes()[0][1]).toMatchObject({id:'piece-a',version:4,action:'ajustes',reason:'Corrigir a legenda aos 15 segundos.'})
-  expect(screen.getByLabelText('Endereço atual')).not.toHaveTextContent('peca=')
+ it('can move a posted card back to review',async()=>{
+  current.stage='postado';show();await screen.findByRole('button',{name:'Abrir Vídeo QA'});await drop('conferir')
+  await waitFor(()=>expect(writes()[0][1]).toMatchObject({stage:'conferir'}));expect(screen.queryByRole('dialog')).toBeNull()
  })
- it('does not treat dragging or canceling as approval',async()=>{
-  show();await screen.findByRole('button',{name:'Abrir Vídeo QA'});await drop('aprovado')
-  const dialog=screen.getByRole('dialog',{name:'Registrar aprovação'})
-  expect(within(dialog).getByLabelText('Quem aprovou?')).toBeRequired();expect(within(dialog).getByLabelText('Onde e quando foi aprovado?')).toBeRequired();expect(writes()).toHaveLength(0)
-  fireEvent.click(within(dialog).getByRole('button',{name:'Cancelar'}));expect(screen.queryByRole('dialog')).toBeNull();expect(writes()).toHaveLength(0)
+ it('does not duplicate writes while a move is pending',async()=>{
+  let finish!:()=>void
+  const base=mocks.api.getMockImplementation()!;mocks.api.mockImplementation(async(q,b)=>{if(b)await new Promise<void>(resolve=>{finish=resolve});return base(q,b)})
+  show();await screen.findByRole('button',{name:'Abrir Vídeo QA'});await drop('postado');await drop('ajustes');expect(writes()).toHaveLength(1)
+  await act(async()=>{finish()})
  })
- it('requires date and explicit publication confirmation before marking posted',async()=>{
-  current.stage='aprovado';show();await screen.findByRole('button',{name:'Abrir Vídeo QA'});await drop('postado')
-  const dialog=screen.getByRole('dialog',{name:'Marcar como postado'})
-  expect(within(dialog).getByLabelText('Quando foi publicado?')).toBeRequired();expect(within(dialog).getByRole('checkbox')).toBeRequired();expect(writes()).toHaveLength(0)
+ it('leaves a failed move in place and reports a conflict',async()=>{
+  const base=mocks.api.getMockImplementation()!;mocks.api.mockImplementation(async(q,b)=>{if(b)throw new Error('Esta peça mudou em outra tela.');return base(q,b)})
+  show();await screen.findByRole('button',{name:'Abrir Vídeo QA'});await drop('postado')
+  expect(current.stage).toBe('conferir');expect(screen.queryByRole('dialog')).toBeNull();expect(mocks.toast).toHaveBeenCalledWith({description:'Esta peça mudou em outra tela.'})
  })
- it('keeps scheduling on a small form with a required date',async()=>{
-  current.stage='aprovado';show();await screen.findByRole('button',{name:'Abrir Vídeo QA'});await drop('agendado')
-  const dialog=screen.getByRole('dialog',{name:'Agendar postagem'});expect(within(dialog).getByLabelText('Data planejada')).toBeRequired();expect(within(dialog).getByLabelText('Rede e formato')).toHaveValue('Instagram · Feed');expect(writes()).toHaveLength(0)
- })
- it('archives using the valid server action without opening the piece',async()=>{
-  show();await screen.findByRole('button',{name:'Abrir Vídeo QA'});await drop('arquivado')
-  expect(writes()[0][1]).toMatchObject({action:'arquivar'});expect(screen.queryByRole('dialog')).toBeNull();expect(screen.queryByRole('button',{name:'Abrir Vídeo QA'})).toBeNull()
- })
- it('leaves a rejected move in place and reports the error',async()=>{
-  const base=mocks.api.getMockImplementation()!;mocks.api.mockImplementation(async(q,b)=>{if(b)throw new Error('Esta peça mudou em outra tela. Reabra antes de salvar.');return base(q,b)})
-  show();await screen.findByRole('button',{name:'Abrir Vídeo QA'});await drop('aguardando')
-  expect(current.stage).toBe('conferir');expect(screen.queryByRole('dialog')).toBeNull();expect(mocks.toast).toHaveBeenCalledWith({description:'Esta peça mudou em outra tela. Reabra antes de salvar.'})
- })
- it('keeps form values on save failure and does not falsely finish the move',async()=>{
-  const base=mocks.api.getMockImplementation()!;mocks.api.mockImplementation(async(q,b)=>{if(b)throw new Error('Não foi possível salvar.');return base(q,b)})
-  show();await screen.findByRole('button',{name:'Abrir Vídeo QA'});await drop('ajustes')
-  fireEvent.change(screen.getByLabelText('O que precisa mudar?'),{target:{value:'Trocar o início.'}});fireEvent.click(screen.getByRole('button',{name:'Salvar etapa'}))
-  expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível salvar.');expect(screen.getByLabelText('O que precisa mudar?')).toHaveValue('Trocar o início.');expect(current.stage).toBe('conferir')
- })
- it('ignores canceled/same-column drags and suppressed drop clicks but preserves deliberate opening',async()=>{
-  show();const button=await screen.findByRole('button',{name:'Abrir Vídeo QA'});await drop('conferir');await drop('aprovado','CANCEL');expect(writes()).toHaveLength(0);expect(screen.queryByRole('dialog')).toBeNull()
+ it('ignores canceled/same-column drags and suppressed clicks',async()=>{
+  show();const button=await screen.findByRole('button',{name:'Abrir Vídeo QA'});await drop('conferir');await drop('postado','CANCEL');expect(writes()).toHaveLength(0)
   const click=createEvent.click(button);click.preventDefault();fireEvent(button,click);expect(screen.queryByRole('dialog')).toBeNull()
-  fireEvent.click(button);await screen.findByRole('dialog',{name:'Vídeo QA'});expect(screen.getByLabelText('Endereço atual')).toHaveTextContent('peca=piece-a')
+  fireEvent.click(button);await screen.findByRole('dialog',{name:'Vídeo QA'})
+ })
+ it('uses the same one-step move in the opened detail',async()=>{
+  show();fireEvent.click(await screen.findByRole('button',{name:'Abrir Vídeo QA'}));await screen.findByRole('dialog',{name:'Vídeo QA'})
+  fireEvent.change(screen.getByRole('combobox',{name:'Mudar etapa de Vídeo QA'}),{target:{value:'postado'}})
+  await waitFor(()=>expect(writes()[0][1]).toMatchObject({action:'mover',stage:'postado'}))
+  expect(screen.queryByLabelText('Comprovante da aprovação')).toBeNull()
+ })
+ it('right-click offers stages without opening details and executes the selected move',async()=>{
+  show();fireEvent.contextMenu(await screen.findByRole('button',{name:'Abrir Vídeo QA'}))
+  expect(await screen.findByRole('menuitem',{name:'Copiar legenda'})).toBeVisible();expect(screen.queryByRole('dialog')).toBeNull()
+  fireEvent.click(screen.getByRole('menuitem',{name:'Postado'}))
+  await waitFor(()=>expect(writes()[0][1]).toMatchObject({action:'mover',stage:'postado'}));expect(screen.queryByRole('dialog')).toBeNull()
  })
 })
-
-
-describe('moving Social cards by touch',()=>{
- it('shows a single-stage list and moves without opening the detail panel',async()=>{
+describe('touch controls',()=>{
+ it('moves directly by the stage selector on mobile',async()=>{
   mocks.mobile=true;show();await screen.findByRole('button',{name:'Abrir Vídeo QA'})
   expect(screen.getByRole('region',{name:'Postagens no celular'})).toBeVisible()
-  expect(screen.queryByLabelText('Kanban de postagens')).toBeNull()
-  fireEvent.change(screen.getByRole('combobox',{name:'Mudar etapa de Vídeo QA'}),{target:{value:'aguardando'}})
-  await waitFor(()=>expect(writes()).toHaveLength(1))
-  expect(writes()[0][1]).toEqual({id:'piece-a',version:4,action:'solicitar'})
-  expect(screen.queryByRole('dialog')).toBeNull()
-  expect(screen.getByLabelText('Endereço atual')).not.toHaveTextContent('peca=')
-  fireEvent.change(screen.getByRole('combobox',{name:'Etapa'}),{target:{value:'aguardando'}})
-  expect(await screen.findByRole('button',{name:'Abrir Vídeo QA'})).toBeVisible()
+  fireEvent.change(screen.getByRole('combobox',{name:'Mudar etapa de Vídeo QA'}),{target:{value:'postado'}})
+  await waitFor(()=>expect(writes()).toHaveLength(1));expect(writes()[0][1]).toMatchObject({action:'mover',stage:'postado'});expect(screen.queryByRole('dialog')).toBeNull()
  })
- it('requires approval evidence on mobile and leaves the card unchanged when canceled',async()=>{
+ it('opens the three-dot menu without opening the piece',async()=>{
   mocks.mobile=true;show();await screen.findByRole('button',{name:'Abrir Vídeo QA'})
-  fireEvent.change(screen.getByRole('combobox',{name:'Mudar etapa de Vídeo QA'}),{target:{value:'aprovado'}})
-  const dialog=screen.getByRole('dialog',{name:'Registrar aprovação'})
-  expect(within(dialog).getByLabelText('Onde e quando foi aprovado?')).toBeRequired()
-  expect(writes()).toHaveLength(0)
-  fireEvent.click(within(dialog).getByRole('button',{name:'Cancelar'}))
-  expect(screen.queryByRole('dialog')).toBeNull();expect(writes()).toHaveLength(0)
-  expect(screen.getByRole('button',{name:'Abrir Vídeo QA'})).toBeVisible()
- })
- it('reveals optional filters and opens details only by tapping the piece',async()=>{
-  mocks.mobile=true;show();await screen.findByRole('button',{name:'Abrir Vídeo QA'})
-  expect(screen.queryByRole('combobox',{name:'Responsável'})).toBeNull()
-  fireEvent.click(screen.getByRole('button',{name:'Filtros'}))
-  expect(screen.getByRole('combobox',{name:'Responsável'})).toBeVisible()
-  fireEvent.click(screen.getByRole('button',{name:'Abrir Vídeo QA'}))
-  expect(await screen.findByRole('dialog',{name:'Vídeo QA'})).toBeVisible()
-  expect(screen.getByLabelText('Endereço atual')).toHaveTextContent('peca=piece-a')
+  fireEvent.keyDown(screen.getByRole('button',{name:'Opções de Vídeo QA'}),{key:'Enter'})
+  expect(await screen.findByRole('menuitem',{name:'Agendado'})).toBeVisible();expect(screen.queryByRole('dialog')).toBeNull()
+  fireEvent.click(screen.getByRole('menuitem',{name:'Agendado'}))
+  await waitFor(()=>expect(writes()[0][1]).toMatchObject({stage:'agendado'}))
  })
 })

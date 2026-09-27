@@ -1,5 +1,5 @@
 import { describe,it,expect } from 'vitest'
-import { socialPatch,publicCard,type SocialCard } from '../../api/_lib/social-domain'
+import { socialPatch,socialMovePatch,publicCard,type SocialCard } from '../../api/_lib/social-domain'
 const now=new Date('2026-09-25T19:30:00Z')
 const card=(patch:Partial<SocialCard>={}):SocialCard=>({id:'qa',client:'Cliente A',title:'Peça A',author:'José',source_url:'https://app.clickup.com/t/qa',source_status:'feito',source_description:'Briefing interno',source_updated:null,assets:[{id:'a',path:'qa/a.jpg',name:'Final',type:'image/jpeg'},{id:'b',path:'qa/b.jpg',name:'Rascunho',type:'image/jpeg'}],selected_assets:['a'],caption:'Legenda',note:'Nota interna',stage:'conferir',revision:1,version:1,approved_revision:null,approved_by:null,approved_at:null,approval_evidence:null,scheduled_at:null,posted_at:null,posted_url:null,channel:null,token_hash:'secret-hash',token_expires_at:'2026-10-25',updated_at:now.toISOString(),...patch})
 const approved=()=>card({stage:'aprovado',approved_revision:1,approved_by:'Maria',approved_at:now.toISOString()})
@@ -21,4 +21,19 @@ describe('Aprovação de uma versão exata',()=>{
  it('permite stories confirmados sem link permanente',()=>expect(socialPatch(approved(),{action:'postar',posted_at:now.toISOString(),channel:'Stories',confirmed:true},now)).toMatchObject({stage:'postado',posted_url:null,token_hash:null}))
  it('cliente recebe apenas arquivos selecionados e nenhum dado interno',()=>{const out=publicCard(card());expect(out.assets.map(a=>a.id)).toEqual(['a']);for(const field of ['source_description','source_url','note','approval_evidence','token_hash','token_expires_at'])expect(out).not.toHaveProperty(field)})
  it('arquivos aprovados aparecem na ordem do carrossel',()=>expect(publicCard(card({selected_assets:['b','a']})).assets.map(a=>a.id)).toEqual(['b','a']))
+})
+
+
+describe('movimentação interna direta',()=>{
+ it.each(['conferir','aguardando','ajustes','aprovado','agendado','postado','arquivado'])('aceita %s sem formulário',stage=>expect(socialMovePatch(card(),stage,'João',now).stage).toBe(stage))
+ it('atribui liberação interna ao operador, sem inventar resposta de cliente',()=>expect(socialMovePatch(card(),'aprovado','João',now)).toMatchObject({approved_by:'João',approval_evidence:'Liberação interna pela equipe ao mover para Aprovado para postar na Central.'}))
+ it('preserva a aprovação já registrada da mesma versão',()=>{expect(socialMovePatch(approved(),'aprovado','João',now)).not.toHaveProperty('approved_by')})
+ it('não inventa aprovação nem data planejada ao agendar',()=>{const p=socialMovePatch(card(),'agendado','João',now);expect(p.scheduled_at).toBeNull();expect(p).not.toHaveProperty('approved_by')})
+ it('marca postado com a hora do registro, sem inventar canal ou aprovação',()=>{const p=socialMovePatch(card(),'postado','João',now);expect(p.posted_at).toBe(now.toISOString());expect(p).not.toHaveProperty('approved_by');expect(p).not.toHaveProperty('channel')})
+ it('reabre uma publicação e limpa os campos do estado atual',()=>expect(socialMovePatch(card({stage:'postado',posted_at:now.toISOString()}),'conferir','João',now)).toMatchObject({posted_at:null,posted_url:null,approved_at:null}))
+ it('mantém observações existentes ao mover para ajuste sem motivo novo',()=>expect(socialMovePatch(card(),'ajustes','João',now)).not.toHaveProperty('note'))
+ it('recusa etapa desconhecida e operador vazio',()=>{expect(()=>socialMovePatch(card(),'outro','João',now)).toThrow('Etapa');expect(()=>socialMovePatch(card(),'postado','',now)).toThrow('Entre')})
+ it('continua bloqueando arquivos incompletos e importações pendentes',()=>{expect(()=>socialMovePatch(card({selected_assets:[]}),'postado','João',now)).toThrow('arquivo');expect(()=>socialMovePatch(card({ingest_pending:true}),'postado','João',now)).toThrow('importação')})
+ it('permite detalhes opcionais sem mudar etapa nem aprovação',()=>{const p=socialPatch(card({stage:'agendado'}),{action:'informacoes',channel:'Reels',scheduled_at:null},now);expect(p).toMatchObject({channel:'Reels',scheduled_at:null});expect(p).not.toHaveProperty('stage');expect(p).not.toHaveProperty('approved_by')})
+ it('permite completar a publicação depois e valida links/datas',()=>{const c=card({stage:'postado',posted_at:now.toISOString()});expect(socialPatch(c,{action:'informacoes',posted_url:'https://instagram.com/p/qa',posted_at:now.toISOString()},now)).toMatchObject({posted_url:'https://instagram.com/p/qa'});expect(()=>socialPatch(c,{action:'informacoes',posted_url:'javascript:alert(1)'},now)).toThrow('inválido');expect(()=>socialPatch(c,{action:'informacoes',posted_at:'2027-01-01'},now)).toThrow('válida')})
 })

@@ -8,7 +8,7 @@ import { handleSocialSync, socialSyncStatus } from './social-sync.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createHash } from 'node:crypto'
 import { createAdminClient } from './supabase.js'
-import { publicCard, socialPatch, SocialError, type SocialCard } from './social-domain.js'
+import { publicCard, socialPatch, socialMovePatch, SocialError, type SocialCard } from './social-domain.js'
 
 const fail = (status: number, message: string): never => { throw new SocialError(status, message) }
 const hash = (value: string) => createHash('sha256').update(value).digest('hex')
@@ -95,9 +95,10 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
   } else if (action.startsWith('cliente_')) fail(403, 'Use o registro de aprovação da equipe.')
   if(!publicAccess&&action==='destino') {await saveFeedbackRoute(db,card,body,actor,actorId);return res.json({ok:true})}
   if(action==='solicitar'&&!body.renew&&card.stage==='aguardando') {const existing=await approvalLink(db,card);if(existing)return res.json({ok:true,approval_url:existing})}
-  const patch: Record<string, unknown> = socialPatch(card, body)
+  if(action==='mover'&&body.stage===card.stage)return res.json({ok:true})
+  const patch: Record<string, unknown> = action==='mover' ? socialMovePatch(card,body.stage,actor) : socialPatch(card, body)
   let approvalUrl: string | undefined; let sealed: string | undefined
-  if (action === 'solicitar') {
+  if (action === 'solicitar' || (action==='mover'&&patch.stage==='aguardando')) {
    const link=newApprovalLink(card.id)
    patch.token_hash=link.hash;patch.token_expires_at=new Date(Date.now()+30*86400000).toISOString()
    approvalUrl=link.url;sealed=link.ciphertext
