@@ -1,3 +1,6 @@
+import {generateSocialCaption} from './social-caption.js'
+import {publicationContext,publicationPlayback,uploadPublicationCover,enqueuePublication,publicationDatabaseError} from './social-publication.js'
+import {publicPublication} from './social-publication-domain.js'
 import {moveManyCards} from './social-bulk.js'
 import { approvalLink, newApprovalLink } from './social-approval-link.js'
 import {clientReview,clientReviewCard,getClientLink,pendingClientCards} from './social-client.js'
@@ -14,6 +17,7 @@ import { publicCard, socialPatch, socialMovePatch, staffMoveState, SocialError, 
 const fail = (status: number, message: string): never => { throw new SocialError(status, message) }
 const hash = (value: string) => createHash('sha256').update(value).digest('hex')
 export async function handleSocial(req: VercelRequest, res: VercelResponse) {
+ if(req.query.publication_stream)return publicationPlayback(req,res)
  if(req.query.stream==='1')return handleSocialPlayback(req,res)
  if (req.query.sync === 'run') return handleSocialSync(req,res)
  res.setHeader('Cache-Control', 'private, no-store')
@@ -40,6 +44,7 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
    actorId = data.user.id; actor = profile?.name || data.user.email || 'Equipe SVI'
   } else if (!/^[a-f0-9]{64}$/.test(token||bundle)) fail(404, 'Este link não está disponível.')
 
+  if(!publicAccess&&req.method==='POST'&&req.body?.action==='publication_cover')return res.json(await uploadPublicationCover(db,req.body,actorId!))
   if(!publicAccess&&req.method==='POST'&&req.body?.action==='mover_lote')return res.json(await moveManyCards(db,req.body,actor,actorId!))
 
   const media=<T extends {id:string;assets:SocialCard['assets']}>(card:T)=>socialMedia(db,card,{token,bundle})
@@ -65,6 +70,7 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
    if (!publicAccess && req.query.sync === 'status') return res.json(await socialSyncStatus(db))
    if (card && token) return res.json({ card: await media(publicCard(card)) })
+   if(card&&!publicAccess&&req.query.publication==='1')return res.json(await publicationContext(db,card))
    if (card) {
     const { data: events, error } = await db.from('central_social_events').select('*').eq('card_id', card.id).order('created_at', { ascending: false }).limit(100)
     if (error) throw error
@@ -91,6 +97,7 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
   if (!card) fail(400, 'Selecione uma peça.')
   const body = req.body
   if (!body || typeof body !== 'object' || !Number.isInteger(body.version)) fail(400, 'Reabra a peça antes de salvar.')
+  if(!publicAccess&&body.action==='publication_enqueue')return res.json(await enqueuePublication(db,card,body,actor,actorId!))
   if (body.version !== card.version) fail(409, 'Esta peça mudou em outra tela. Reabra antes de salvar.')
   let action = typeof body.action === 'string' ? body.action : ''
   if (publicAccess) {
@@ -99,6 +106,11 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
    if (typeof body.name !== 'string' || body.name.trim().length < 2) fail(400, 'Informe seu nome para registrar a resposta.')
    actor = body.name.trim().slice(0,120)
   } else if (action.startsWith('cliente_')) fail(403, 'Use o registro de aprovação da equipe.')
+  if(!publicAccess&&action==='caption_generate')return res.json(await generateSocialCaption(db,card,body,actorId!))
+  if(!publicAccess&&action==='publication_cancel'){
+   const {data:job}=await db.from('central_social_publications').select('id').eq('id',body.job_id).eq('card_id',card.id).maybeSingle();if(!job)fail(404,'Programação não encontrada.')
+   const {data,error}=await db.rpc('central_social_publication_cancel',{p_job:job.id,p_actor:actor,p_actor_id:actorId});if(error)throw publicationDatabaseError(error.message);return res.json({ok:true,publication:publicPublication(data)})
+  }
   if(!publicAccess&&action==='destino') {await saveFeedbackRoute(db,card,body,actor,actorId);return res.json({ok:true})}
   if(action==='solicitar'&&!body.renew&&card.stage==='aguardando') {const existing=await approvalLink(db,card);if(existing)return res.json({ok:true,approval_url:existing})}
   if(action==='mover'&&body.stage===card.stage)return res.json({ok:true,card:staffMoveState(card)})
@@ -116,6 +128,7 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
   return res.json({ ok:true, approval_url: approvalUrl })
  } catch (error) {
   if (error instanceof SocialError) return res.status(error.status).json({ error:error.message })
+  if(error instanceof Error&&error.message.includes('publication_in_progress'))return res.status(409).json({error:'Esta peça está sendo publicada. Aguarde a confirmação do Instagram.'})
   console.error('Central social request failed', error instanceof Error ? error.message : 'database_error')
   return res.status(500).json({ error:'Não foi possível salvar ou carregar. Tente novamente.' })
  }

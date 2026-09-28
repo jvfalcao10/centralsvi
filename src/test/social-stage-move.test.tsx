@@ -28,6 +28,7 @@ beforeEach(()=>{
  mocks.mobile=false;current=structuredClone(initial);mocks.api.mockReset();mocks.toast.mockReset();mocks.drop=null
  mocks.api.mockImplementation(async(query='',body)=>{
   if(body){current={...current,stage:body.stage||current.stage,version:current.version+1};return {ok:true,card:{...current}}}
+  if(query.startsWith('?publication=1'))return {card:current,accounts:[{id:'123',username:'qa',name:'QA'}],publication:null}
   if(query==='?sync=status')return {sources:[],pending:0,issues:[]}
   if(query.startsWith('?id='))return {card:current,events:[],feedback:null}
   return {cards:[current]}
@@ -50,7 +51,7 @@ describe('direct staff movements',()=>{
  it.each(['aguardando','aprovado','ajustes','para_anuncio','agendado','postado','arquivado'])('moves to %s without asking for a form or opening the piece',async stage=>{
   show();await screen.findByRole('button',{name:'Abrir Vídeo QA'});await drop(stage)
   await waitFor(()=>expect(writes()).toEqual([['',{id:'piece-a',version:4,action:'mover',stage}]]))
-  expect(screen.queryByRole('dialog')).toBeNull();expect(screen.getByLabelText('Endereço atual')).not.toHaveTextContent('peca=')
+  if(['aprovado','agendado'].includes(stage)){expect(screen.getByRole('dialog')).toBeInTheDocument();fireEvent.click(screen.getByRole('button',{name:'Agora não'}));expect(writes()).toHaveLength(1)}else expect(screen.queryByRole('dialog')).toBeNull();expect(screen.getByLabelText('Endereço atual')).not.toHaveTextContent('peca=')
   expect(mocks.api.mock.calls.some(([q])=>q?.startsWith('?id='))).toBe(false)
  })
  it('can move a posted card back to review',async()=>{

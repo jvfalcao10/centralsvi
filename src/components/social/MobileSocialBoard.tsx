@@ -8,9 +8,9 @@ import {VideoCover} from '@/components/social/VideoPreview'
 import {SOCIAL_STAGES, socialDate, type Card} from '@/lib/social-board'
 
 /** Trello-style columns on phones and tablets; scrolling never starts a card drag. */
-export default function MobileSocialBoard({cards, columns, filterKey, busy, onOpen, onMove, onCopy,selectedIds,onSelect}: CardSelectionProps&{
+export default function MobileSocialBoard({cards, columns, filterKey, busy, onOpen, onMove, onCopy,selectedIds,onSelect,onPublish}: CardSelectionProps&{
  cards: Card[]; columns:typeof SOCIAL_STAGES; filterKey: string; busy: boolean
- onCopy: (value: string) => void; onOpen: (id: string) => void; onMove: (id: string, stage: string) => void
+ onPublish?: (id:string)=>void; onCopy: (value: string) => void; onOpen: (id: string) => void; onMove: (id: string, stage: string) => void
 }) {
  const board=useRef<HTMLDivElement>(null)
  const [limits,setLimits]=useState<Record<string,number>>({})
@@ -43,7 +43,7 @@ export default function MobileSocialBoard({cards, columns, filterKey, busy, onOp
      </div>
     </button>
     <div className="flex items-center gap-2 border-t px-2 py-2">
-     <StageSelect card={card} busy={busy} onMove={onMove}/><CardActionsButton card={card} busy={busy} onOpen={onOpen} onMove={onMove} onCopy={onCopy}/>
+     <StageSelect card={card} busy={busy} onMove={onMove}/><CardActionsButton card={card} busy={busy} onOpen={onOpen} onMove={onMove} onCopy={onCopy} onPublish={onPublish}/>
     </div>
    </TouchMoveCard>
   })}

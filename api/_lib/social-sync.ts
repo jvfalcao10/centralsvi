@@ -1,3 +1,4 @@
+import {processPublications} from './social-publication-worker.js'
 import { refreshVideoPreviews } from './social-preview.js'
 import { processFeedback } from './social-feedback.js'
 import { socialIntake } from './social-intake.js'
@@ -177,6 +178,7 @@ export async function handleSocialSync(req:VercelRequest,res:VercelResponse) {
  if(req.method!=='POST')return res.status(405).json({error:'Method not allowed'})
  try {
   const db=createAdminClient(),mode=req.body?.mode
+  if(mode==='publish')return res.json(await processPublications(db))
   if(mode==='feedback')return res.json(await processFeedback(db))
   if(mode==='previews')return res.json(await refreshVideoPreviews(db,3))
   if(mode==='intake')return res.json(await socialIntake(db,req.body?.message||{}))
