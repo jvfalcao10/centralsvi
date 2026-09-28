@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
-import { socialApi, SOCIAL_STAGES, socialDate, type Card } from '@/lib/social-board'
+import { socialApi, SOCIAL_STAGES, socialDate, newestSocialFirst, type Card } from '@/lib/social-board'
 import { useToast } from '@/hooks/use-toast'
 
 type Event = {id:number; action:string; actor:string; revision:number; created_at:string; details:{from:string;to:string;evidence?:string;note?:string}}
@@ -34,6 +34,8 @@ export default function Social() {
  const [approvalUrl,setApprovalUrl]=useState('')
  const detailRequest=useRef(0);const historyRequest=useRef(0);const moving=useRef(false);const boardEpoch=useRef(0);const boardRead=useRef(0)
  const [pendingStage,setPendingStage]=useState('')
+ const [selectedCards,setSelectedCards]=useState<Set<string>>(new Set())
+ const [batchErrors,setBatchErrors]=useState<{id:string;title:string;error:string}[]>([])
  const notify=(message:string)=>toast({description:message})
  const load=useCallback(async()=>{
   const epoch=boardEpoch.current,request=++boardRead.current;setError('')
@@ -51,9 +53,12 @@ export default function Social() {
  const close=()=>{if(busy)return;detailRequest.current++;setCard(null);setParams(p=>{p.delete('peca');return p})}
  const clients=useMemo(()=>[...new Set(cards.map(c=>c.client))].sort((a,b)=>a.localeCompare(b)),[cards])
  const authors=useMemo(()=>[...new Set(cards.map(c=>c.author))].sort(),[cards])
- const filtered=cards.filter(c=>(!client||c.client===client)&&(!author||c.author===author)&&(!query||`${c.title} ${c.client} ${c.note}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()))&&(archived||c.stage!=='arquivado'))
- const mobileStage=stage||'conferir'
+ const filtered=cards.filter(c=>(!client||c.client===client)&&(!author||c.author===author)&&(!query||`${c.title} ${c.client} ${c.note}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()))&&(archived||c.stage!=='arquivado')).sort(newestSocialFirst)
  const columns=SOCIAL_STAGES.filter(s=>(archived||s.id!=='arquivado')&&(!stage||stage==='all'||s.id===stage))
+ const selectionScope=filtered.filter(c=>columns.some(s=>s.id===c.stage))
+ const selectedRows=selectionScope.filter(c=>selectedCards.has(c.id))
+ useEffect(()=>{setSelectedCards(new Set());setBatchErrors([])},[query,client,author,stage,archived,isMobile])
+ const toggleSelected=(id:string)=>setSelectedCards(previous=>{const next=new Set(previous);next.has(id)?next.delete(id):next.add(id);return next})
  const contentDirty=card&&(editClient!==card.client||editTitle!==card.title||caption!==card.caption||note!==card.note||JSON.stringify(selected)!==JSON.stringify(card.selected_assets))
  const dirty=contentDirty||routeDirty
  const copy=async(text:string)=>{try{await navigator.clipboard.writeText(text);notify('Copiado.')}catch{notify('Não foi possível copiar. Selecione o texto e copie.')}}
@@ -77,6 +82,7 @@ export default function Social() {
   if(cardId&&dirty){notify('Salve suas alterações na peça antes de mudar a etapa.');return}
   const label=SOCIAL_STAGES.find(s=>s.id===target)?.label,previousLink=approvalUrl,detail=detailRequest.current
   moving.current=true;boardEpoch.current++;setBusy(true);setPendingStage(label||target)
+  setSelectedCards(previous=>new Set([...previous].filter(value=>value!==id)))
   setCards(previous=>previous.map(c=>c.id===id?{...c,stage:target}:c))
   if(cardId===id){setCard(c=>c?.id===id?{...c,stage:target}:c);setApprovalUrl('')}
   try{
@@ -99,6 +105,28 @@ export default function Social() {
    moving.current=false;void load();if(cardId===id&&detail===detailRequest.current)void open(id)
   }finally{moving.current=false;setBusy(false);setPendingStage('')}
  }
+ const moveSelected=async(target:string)=>{
+  if(busy||moving.current||cardId||!selectedRows.length)return
+  if(selectedRows.length>250){notify('Mova até 250 peças por vez.');return}
+  const originals=new Map(selectedRows.map(c=>[c.id,c])),label=SOCIAL_STAGES.find(s=>s.id===target)?.label
+  moving.current=true;boardEpoch.current++;setBusy(true);setPendingStage(`${label} · ${selectedRows.length} peças`);setBatchErrors([])
+  setCards(previous=>previous.map(c=>originals.has(c.id)?{...c,stage:target}:c))
+  try{
+   const response=await socialApi('',{action:'mover_lote',stage:target,items:selectedRows.map(c=>({id:c.id,version:c.version}))})
+   const results=new Map<string,{ok:boolean;card?:Partial<Card>;error?:string}>(response.results.map((r:{id:string})=>[r.id,r]))
+   const confirmed=(id:string)=>{const r=results.get(id);return r?.ok&&r.card?.id===id&&Number.isInteger(r.card.version)}
+   const failures=[...originals].filter(([id])=>!confirmed(id)).map(([id,c])=>({id,title:c.title,error:results.get(id)?.error||'Não foi possível confirmar. Atualize o quadro.'}))
+   boardEpoch.current++
+   setCards(previous=>previous.map(c=>{if(!originals.has(c.id))return c;return confirmed(c.id)?{...c,...results.get(c.id)!.card}:originals.get(c.id)!}))
+   setSelectedCards(new Set(failures.map(f=>f.id)));setBatchErrors(failures)
+   const count=originals.size-failures.length
+   notify(`${count} peça${count===1?'':'s'} em ${label}.${failures.length?` ${failures.length} não foram movidas; confira abaixo.`:''}`)
+   if(failures.length){moving.current=false;void load()}
+  }catch(e){
+   boardEpoch.current++;setCards(previous=>previous.map(c=>originals.get(c.id)||c));notify((e as Error).message)
+   moving.current=false;void load()
+  }finally{moving.current=false;setBusy(false);setPendingStage('')}
+ }
  const reorder=(id:string,delta:number)=>setSelected(previous=>{const i=previous.indexOf(id),j=i+delta;if(i<0||j<0||j>=previous.length)return previous;const next=[...previous];[next[i],next[j]]=[next[j],next[i]];return next})
  return <main className="space-y-4 md:space-y-6 min-w-0">
   <header className="flex flex-wrap items-start justify-between gap-4">
@@ -106,13 +134,13 @@ export default function Social() {
    <div className="flex gap-2"><Button variant="outline" size="sm" aria-label="Atualizar quadro" onClick={()=>void load()}><RefreshCw className="w-4 h-4"/><span className="hidden sm:inline">Atualizar</span></Button></div>
   </header>
   <div className="grid grid-cols-2 xl:grid-cols-4 gap-2 sm:gap-3">
-   {[{id:'aprovado',label:'Prontos para postar',icon:CheckCircle2},{id:'aguardando',label:'Esperando resposta',icon:Clock3},{id:'ajustes',label:'Precisam de ajuste',icon:ImageIcon},{id:'agendado',label:'Na agenda',icon:Check}].map(item=><button key={item.id} onClick={()=>setStage(stage===item.id?'':item.id)} className={`text-left rounded-xl border p-3 sm:p-4 flex items-center justify-between gap-2 transition-colors ${(isMobile?mobileStage:stage)===item.id?'border-primary bg-primary/10':'bg-card hover:border-primary/50'}`}><div><p className="text-xs text-muted-foreground">{item.label}</p><p className="text-xl sm:text-3xl font-semibold mt-1">{filtered.filter(c=>c.stage===item.id).length}</p></div><item.icon className="h-5 w-5 text-primary/80"/></button>)}
+   {[{id:'aprovado',label:'Prontos para postar',icon:CheckCircle2},{id:'aguardando',label:'Esperando resposta',icon:Clock3},{id:'ajustes',label:'Precisam de ajuste',icon:ImageIcon},{id:'agendado',label:'Na agenda',icon:Check}].map(item=><button key={item.id} onClick={()=>setStage(stage===item.id?'':item.id)} className={`text-left rounded-xl border p-3 sm:p-4 flex items-center justify-between gap-2 transition-colors ${stage===item.id?'border-primary bg-primary/10':'bg-card hover:border-primary/50'}`}><div><p className="text-xs text-muted-foreground">{item.label}</p><p className="text-xl sm:text-3xl font-semibold mt-1">{filtered.filter(c=>c.stage===item.id).length}</p></div><item.icon className="h-5 w-5 text-primary/80"/></button>)}
   </div>
   <section className="grid grid-cols-1 md:flex md:flex-wrap md:items-center gap-2" aria-label="Filtros do quadro">
    <div className="relative min-w-0 md:flex-1 md:min-w-[190px]"><Search className="absolute left-3 top-3.5 md:top-3 h-4 w-4 text-muted-foreground"/><Input aria-label="Buscar peça" placeholder="Buscar peça ou assunto" className="pl-9" value={query} onChange={e=>setQuery(e.target.value)}/></div>
    <select aria-label="Cliente" className="h-11 md:h-10 w-full md:w-auto min-w-0 max-w-full rounded-md border bg-background px-3 text-base md:text-sm" value={client} onChange={e=>{setClient(e.target.value);setParams(p=>{e.target.value?p.set('cliente',e.target.value):p.delete('cliente');return p})}}><option value="">Todos os clientes</option>{clients.map(c=><option key={c}>{c}</option>)}</select>
    <div className="flex min-w-0 gap-2">
-    <select aria-label="Etapa" className="h-11 md:h-10 w-full md:w-auto min-w-0 rounded-md border bg-background px-3 text-base md:text-sm" value={isMobile?mobileStage:stage==='all'?'':stage} onChange={e=>{setStage(e.target.value);if(e.target.value==='arquivado')setArchived(true)}}><option value={isMobile?'all':''}>Todas as etapas</option>{SOCIAL_STAGES.map(s=><option value={s.id} key={s.id}>{s.label}</option>)}</select>
+    <select aria-label="Etapa" className="h-11 md:h-10 w-full md:w-auto min-w-0 rounded-md border bg-background px-3 text-base md:text-sm" value={stage==='all'?'':stage} onChange={e=>{setStage(e.target.value);if(e.target.value==='arquivado')setArchived(true)}}><option value="">Todas as etapas</option>{SOCIAL_STAGES.map(s=><option value={s.id} key={s.id}>{s.label}</option>)}</select>
     {isMobile&&<Button variant="outline" aria-expanded={showFilters} aria-controls="social-extra-filters" onClick={()=>setShowFilters(v=>!v)}>Filtros{(author||archived)?' •':''}</Button>}
    </div>
    {(!isMobile||showFilters)&&<div id="social-extra-filters" className="grid grid-cols-1 md:flex md:items-center gap-2">
@@ -120,11 +148,18 @@ export default function Social() {
     <label className="flex min-h-11 items-center gap-3 px-2 text-sm text-muted-foreground"><input type="checkbox" className="h-5 w-5 md:h-4 md:w-4" checked={archived} onChange={e=>{setArchived(e.target.checked);if(!e.target.checked&&stage==='arquivado')setStage('')}}/>Mostrar arquivo</label>
    </div>}
   </section>
+  <section aria-label="Mover várias peças" className="sticky top-16 z-20 flex flex-wrap items-center gap-2 rounded-xl border bg-background/95 p-3 backdrop-blur">
+   <label className="flex min-h-11 cursor-pointer items-center gap-3 pr-2 text-sm"><input type="checkbox" aria-label="Selecionar todos os resultados" className="h-5 w-5 accent-primary" checked={selectionScope.length>0&&selectionScope.every(c=>selectedCards.has(c.id))} disabled={busy||!!cardId||!selectionScope.length} onChange={e=>setSelectedCards(e.target.checked?new Set(selectionScope.map(c=>c.id)):new Set())}/>Selecionar todos ({selectionScope.length})</label>
+   <span className="text-sm text-muted-foreground">{selectedRows.length} selecionada{selectedRows.length===1?'':'s'}</span>
+   <div className="flex w-full min-w-0 gap-2 sm:w-auto sm:flex-1"><select aria-label="Mover selecionadas para" value="" disabled={busy||!!cardId||!selectedRows.length} onChange={e=>{if(e.target.value)void moveSelected(e.target.value)}} className="h-11 min-w-0 flex-1 rounded-lg border bg-background px-3 text-base disabled:opacity-50"><option value="">Mover selecionadas para…</option>{SOCIAL_STAGES.map(s=><option value={s.id} key={s.id}>{s.label}</option>)}</select>
+   {selectedRows.length>0&&<Button variant="ghost" className="min-h-11" aria-label="Limpar seleção" disabled={busy} onClick={()=>setSelectedCards(new Set())}>Limpar</Button>}</div>
+  </section>
+  {!!batchErrors.length&&<div role="alert" className="rounded-lg border border-orange-400/40 p-3 text-sm"><p className="font-semibold">Estas peças precisam de conferência:</p><ul className="mt-2 space-y-1">{batchErrors.map(f=><li key={f.id}>{f.title}: {f.error}</li>)}</ul></div>}
   {(!isMobile||client)&&<details key={client} className="rounded-xl border bg-card px-4 py-3"><summary className="cursor-pointer text-sm font-medium py-1">Link de aprovação do cliente{client?` · ${client}`:''}</summary><ClientApprovalLink client={client} pendingCount={cards.filter(c=>c.client===client&&c.stage==='aguardando').length}/></details>}
-  <div className="flex min-h-6 flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span>{filtered.length} peças · {filtered.reduce((n,c)=>n+c.assets.length,0)} arquivos · acervo da equipe</span><span role="status" aria-live="polite" className="flex items-center gap-2">{pendingStage?<><Loader2 className="h-3 w-3 animate-spin"/>Salvando em {pendingStage}…</>:<span className="hidden md:inline">Mudanças de etapa ficam no histórico.</span>}</span></div>
+  <div className="flex min-h-6 flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span>{filtered.length} peças · {filtered.reduce((n,c)=>n+c.assets.length,0)} arquivos · mais recentes primeiro</span><span role="status" aria-live="polite" className="flex items-center gap-2">{pendingStage?<><Loader2 className="h-3 w-3 animate-spin"/>Salvando em {pendingStage}…</>:<span className="hidden md:inline">Mudanças de etapa ficam no histórico.</span>}</span></div>
   {sync&&<details className="rounded-lg border bg-card p-3 text-xs"><summary className="min-h-8 cursor-pointer flex flex-wrap items-center gap-2"><RefreshCw className="w-3 h-3"/>Entrada automática · ClickUp, grupos e Sofia{sync.pending>0&&<span className="text-muted-foreground">{sync.pending} na fila</span>}{(sync.issues.length>0||sync.sources.some(s=>s.error||!s.last_success_at||Date.now()-Date.parse(s.last_success_at)>15*60000))&&<span className="text-orange-400">Conferir sincronização</span>}</summary><div className="mt-3 space-y-3"><p className="text-muted-foreground">Novos uploads de José, Laís e Math no ClickUp. Consulta a cada 2 minutos; o quadro se atualiza a cada minuto. Nos respectivos grupos, Math e Sarah podem identificar o vídeo com CLIENTE | TÍTULO | V1. Uma correção usa o mesmo título e V2. Envie como documento para preservar o arquivo. Entrega nova exige conferência. No privado da Sofia, vídeo enviado como arquivo/documento vai para a Central; vídeo enviado normalmente vai para transcrição. Ela pergunta se faltar identificar o cliente. Pastas: ano / mês / cliente. Para indicar outro mês, use POSTAR | CLIENTE | OUTUBRO na legenda do documento. APROVADO registra a liberação quando informado por João ou Letícia.</p><div className="flex flex-wrap gap-3">{sync.sources.map(s=><p key={s.id}>{s.label}: <span className={s.error?'text-orange-400':'text-muted-foreground'}>{s.error?'consulta pendente':s.last_success_at?socialDate(s.last_success_at):'primeira consulta pendente'}</span></p>)}</div>{sync.issues.map(i=><div key={i.key} className="border-l-2 border-orange-400 pl-3"><p className="font-medium">{i.title}</p><p className="text-muted-foreground">{i.reason}</p><a className="underline text-primary" href={i.source_url} target="_blank" rel="noreferrer">Conferir na origem</a></div>)}</div></details>}
   {error&&<div role="alert" className="p-4 rounded-lg border border-destructive/40 text-destructive">{error}<Button variant="ghost" size="sm" onClick={()=>void load()}>Tentar novamente</Button></div>}
-  {loading?<div className="flex gap-2 items-center py-16 text-muted-foreground"><Loader2 className="animate-spin h-5 w-5"/>Carregando o quadro…</div>:isMobile?<MobileSocialBoard cards={filtered} stage={mobileStage} filterKey={`${client}|${author}|${query}|${archived}`} busy={busy||!!cardId} onOpen={choose} onMove={(id,target)=>void moveStage(id,target)} onCopy={text=>void copy(text)}/>:<DesktopSocialBoard cards={filtered} columns={columns} busy={busy||!!cardId} onOpen={choose} onMove={(id,target)=>void moveStage(id,target)} onCopy={text=>void copy(text)}/>}
+  {loading?<div className="flex gap-2 items-center py-16 text-muted-foreground"><Loader2 className="animate-spin h-5 w-5"/>Carregando o quadro…</div>:isMobile?<MobileSocialBoard selectedIds={selectedCards} onSelect={toggleSelected} cards={filtered} columns={columns} filterKey={`${client}|${author}|${query}|${archived}`} busy={busy||!!cardId} onOpen={choose} onMove={(id,target)=>void moveStage(id,target)} onCopy={text=>void copy(text)}/>:<DesktopSocialBoard selectedIds={selectedCards} onSelect={toggleSelected} cards={filtered} columns={columns} busy={busy||!!cardId} onOpen={choose} onMove={(id,target)=>void moveStage(id,target)} onCopy={text=>void copy(text)}/>}
   <Sheet open={!!cardId} onOpenChange={value=>{if(!value)close()}}><SheetContent className="[&>button]:hidden w-full h-dvh sm:max-w-5xl overflow-y-auto overscroll-contain p-4 sm:p-8 pb-[max(1.5rem,env(safe-area-inset-bottom))] break-words">
    <div className="sticky -top-4 sm:-top-8 z-20 -mx-4 sm:-mx-8 -mt-4 sm:-mt-8 mb-4 flex justify-end border-b bg-background/95 backdrop-blur px-2 py-1"><Button size="sm" variant="ghost" onClick={close} disabled={busy} aria-label="Fechar peça"><X className="h-4 w-4"/>Fechar</Button></div>
    {!card?<SheetHeader><SheetTitle>{detailLoading?'Carregando peça…':'Peça indisponível'}</SheetTitle><SheetDescription>Arquivos e histórico da publicação.</SheetDescription></SheetHeader>:<>

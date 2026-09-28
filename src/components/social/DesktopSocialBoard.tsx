@@ -3,10 +3,11 @@ import {DragDropContext,Droppable,Draggable} from '@hello-pangea/dnd'
 import {ArrowLeft,ArrowRight,GripVertical} from 'lucide-react'
 import {Button} from '@/components/ui/button'
 import {CardActionsButton,CardContextMenu,StageSelect} from './CardActions'
+import CardSelection,{type CardSelectionProps} from './CardSelection'
 import {VideoCover} from './VideoPreview'
 import {SOCIAL_STAGES,socialDate,type Card} from '@/lib/social-board'
 
-export default function DesktopSocialBoard({cards,columns,busy,onOpen,onMove,onCopy}:{
+export default function DesktopSocialBoard({cards,columns,busy,onOpen,onMove,onCopy,selectedIds,onSelect}:CardSelectionProps&{
  cards:Card[];columns:typeof SOCIAL_STAGES;busy:boolean;onOpen:(id:string)=>void;onMove:(id:string,stage:string)=>void;onCopy:(text:string)=>void
 }) {
  const board=useRef<HTMLDivElement>(null)
@@ -51,8 +52,8 @@ export default function DesktopSocialBoard({cards,columns,busy,onOpen,onMove,onC
       <div className="sticky top-0 z-10 rounded-t-xl bg-background"><div className="h-1 rounded-t-xl" style={{background:stage.color}}/><div className="p-4 border-b"><div className="flex items-center justify-between gap-2"><h2 className="text-sm font-semibold">{stage.label}</h2><span className="text-xs rounded-md bg-muted px-2 py-1">{group.length}</span></div><p className="mt-1 text-xs text-muted-foreground">{stage.hint}</p></div></div>
       <Droppable droppableId={stage.id}>{provided=><div ref={provided.innerRef} {...provided.droppableProps} className={`flex-1 p-3 min-h-[260px] ${single?'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 content-start items-start gap-3':'space-y-3'}`}>
        {group.map((card,index)=><Draggable key={card.id} draggableId={card.id} index={index} isDragDisabled={busy}>{p=><CardContextMenu card={card} busy={busy} onOpen={onOpen} onMove={onMove} onCopy={onCopy}>
-        <article ref={p.innerRef} {...p.draggableProps} className="rounded-lg border bg-card hover:border-primary/60 transition-colors overflow-hidden">
-         <div className="flex items-center justify-between border-b pl-3 pr-1"><div {...p.dragHandleProps} aria-label={`Arrastar ${card.title}`} className="flex min-h-9 flex-1 cursor-grab items-center gap-2 text-xs text-muted-foreground"><GripVertical className="h-4 w-4"/>Arrastar peça</div><CardActionsButton card={card} busy={busy} onOpen={onOpen} onMove={onMove} onCopy={onCopy}/></div>
+        <article ref={p.innerRef} {...p.draggableProps} className={`rounded-lg border bg-card hover:border-primary/60 transition-colors overflow-hidden ${selectedIds?.has(card.id)?'border-primary ring-1 ring-primary/40':''}`}>
+         <div className="flex items-center justify-between border-b pl-2 pr-1">{onSelect&&<CardSelection card={card} checked={!!selectedIds?.has(card.id)} busy={busy} onSelect={onSelect}/>}<div {...p.dragHandleProps} aria-label={`Arrastar ${card.title}`} className="flex min-h-9 flex-1 cursor-grab items-center gap-2 text-xs text-muted-foreground"><GripVertical className="h-4 w-4"/>Arrastar peça</div><CardActionsButton card={card} busy={busy} onOpen={onOpen} onMove={onMove} onCopy={onCopy}/></div>
          <button className="block w-full text-left" aria-label={`Abrir ${card.title}`} onClick={e=>{if(!e.defaultPrevented)onOpen(card.id)}}>
           <VideoCover key={`${card.id}:${card.preview||''}`} asset={card.assets.find(a=>a.id===card.selected_assets[0])||card.assets[0]} preview={card.preview}/>
           <div className="p-3 space-y-2"><p className="text-xs font-semibold uppercase tracking-wide text-primary">{card.client}</p><h3 className="text-sm leading-snug line-clamp-3 font-medium">{card.title}</h3>

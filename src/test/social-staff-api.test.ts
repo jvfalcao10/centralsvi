@@ -19,6 +19,7 @@ describe('authenticated direct staff stage changes',()=>{
  it('uses the sealed approval transaction when moved to waiting',async()=>{expect((await call({id:'qa',version:4,action:'mover',stage:'aguardando'})).code).toBe(200);expect(m.rpc.mock.calls[0][0]).toBe('central_social_request_link')})
  it('rejects missing login',async()=>{expect((await call({id:'qa',version:4,action:'mover',stage:'postado'},'')).code).toBe(401);expect(m.rpc).not.toHaveBeenCalled()})
  it('rejects users outside the team',async()=>{role='client';expect((await call({id:'qa',version:4,action:'mover',stage:'postado'})).code).toBe(403);expect(m.rpc).not.toHaveBeenCalled()})
+ it('requires team authentication for bulk moves too',async()=>{const body={action:'mover_lote',stage:'postado',items:[{id:'qa',version:4}]};expect((await call(body,'')).code).toBe(401);role='client';expect((await call(body)).code).toBe(403);expect(m.rpc).not.toHaveBeenCalled()})
  it('rejects a stale card version',async()=>{expect((await call({id:'qa',version:3,action:'mover',stage:'postado'})).code).toBe(409);expect(m.rpc).not.toHaveBeenCalled()})
  it('ignores same-stage movement without a second history entry',async()=>{expect((await call({id:'qa',version:4,action:'mover',stage:'conferir'})).code).toBe(200);expect(m.rpc).not.toHaveBeenCalled()})
 })

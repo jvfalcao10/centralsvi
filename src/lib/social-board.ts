@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase'
 export type Asset = { id:string; name:string; path:string; storage?:'drive'; drive_id?:string; folder_url?:string; folder_label?:string; thumbnail?:string; duration_ms?:number; width?:number; height?:number; preview_retry_at?:string; playback_url?:string; type:string; bytes?:number; url?:string; preview?:string }
 export type Card = {
  ingest_pending?:boolean; id:string; client:string; title:string; author:string; source_url:string; source_status:string; source_description?:string;
- source_updated:string; assets:Asset[]; selected_assets:string[]; caption:string; note:string; stage:string; revision:number; version:number;
+ source_updated:string; created_at?:string; assets:Asset[]; selected_assets:string[]; caption:string; note:string; stage:string; revision:number; version:number;
  approved_by:string|null; approved_at:string|null; approval_evidence:string|null; scheduled_at:string|null; posted_at:string|null; posted_url:string|null; channel:string|null; preview?:string;
 }
 export const SOCIAL_STAGES = [
@@ -24,3 +24,9 @@ export async function socialApi(query = '', body?:Record<string,unknown>) {
 }
 export const socialDate=(date?:string|null)=>date?new Date(date).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''
 export const localInput=(date=new Date())=>new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,16)
+
+// Stage changes never change the order in which deliveries appear.
+export function newestSocialFirst(a:Card,b:Card) {
+ const time=(card:Card)=>Date.parse(card.source_updated)||Date.parse(card.created_at||'')||0
+ return time(b)-time(a)||a.id.localeCompare(b.id)
+}

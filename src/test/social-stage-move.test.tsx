@@ -89,7 +89,7 @@ describe('direct staff movements',()=>{
 describe('touch controls',()=>{
  it('moves directly by the stage selector on mobile',async()=>{
   mocks.mobile=true;show();await screen.findByRole('button',{name:'Abrir Vídeo QA'})
-  expect(screen.getByRole('region',{name:'Postagens no celular'})).toBeVisible()
+  expect(screen.getByRole('region',{name:'Kanban de postagens no toque'})).toBeVisible()
   fireEvent.change(screen.getByRole('combobox',{name:'Mudar etapa de Vídeo QA'}),{target:{value:'postado'}})
   await waitFor(()=>expect(writes()).toHaveLength(1));expect(writes()[0][1]).toMatchObject({action:'mover',stage:'postado'});expect(screen.queryByRole('dialog')).toBeNull()
  })
@@ -135,5 +135,56 @@ describe('fast stage feedback',()=>{
   expect(screen.getByRole('combobox',{name:'Mudar etapa de Vídeo QA'})).toHaveValue('postado')
   await act(async()=>fail(new Error('Sem conexão.')))
   expect(screen.getByRole('combobox',{name:'Mudar etapa de Vídeo QA'})).toHaveValue('conferir');expect(mocks.toast).toHaveBeenCalledWith({description:'Sem conexão.'})
+ })
+})
+
+describe('bulk selection',()=>{
+ let rows:Card[]
+ beforeEach(()=>{
+  rows=[structuredClone(initial),{...structuredClone(initial),id:'piece-b',title:'Segunda peça'}]
+  mocks.api.mockImplementation(async(q='',body)=>{
+   if(body?.action==='mover_lote'){
+    const ids=body.items.map((r:{id:string})=>r.id);rows=rows.map(c=>ids.includes(c.id)?{...c,stage:body.stage,version:c.version+1}:c)
+    return {results:rows.filter(c=>ids.includes(c.id)).map(c=>({id:c.id,ok:true,card:c}))}
+   }
+   if(q==='?sync=status')return {sources:[],issues:[],pending:0}
+   return {cards:structuredClone(rows)}
+  })
+ })
+ it.each([false,true])('selects two pieces without opening details and moves with one request (touch %s)',async mobile=>{
+  mocks.mobile=mobile;show();await screen.findByRole('checkbox',{name:'Selecionar Vídeo QA'})
+  fireEvent.click(screen.getByRole('checkbox',{name:'Selecionar Vídeo QA'}));fireEvent.click(screen.getByRole('checkbox',{name:'Selecionar Segunda peça'}))
+  expect(screen.getByText('2 selecionadas')).toBeVisible();expect(screen.queryByRole('dialog')).toBeNull()
+  fireEvent.change(screen.getByRole('combobox',{name:'Mover selecionadas para'}),{target:{value:'para_anuncio'}})
+  await waitFor(()=>expect(writes()).toHaveLength(1));expect(writes()[0][1]).toEqual({action:'mover_lote',stage:'para_anuncio',items:[{id:'piece-a',version:4},{id:'piece-b',version:4}]})
+  await waitFor(()=>expect(screen.getByText('0 selecionadas')).toBeVisible());expect(rows.every(c=>c.stage==='para_anuncio')).toBe(true)
+ })
+ it('selects all matching results, including more cards in each touch column, and clears when filters change',async()=>{
+  mocks.mobile=true;rows=Array.from({length:14},(_,i)=>({...structuredClone(initial),id:'p'+i,title:'Peça '+i,source_updated:new Date(Date.UTC(2026,8,27)-i*60000).toISOString()}));show()
+  await screen.findByRole('checkbox',{name:'Selecionar Peça 0'});expect(screen.queryByRole('checkbox',{name:'Selecionar Peça 13'})).toBeNull()
+  fireEvent.click(screen.getByRole('checkbox',{name:'Selecionar todos os resultados'}));expect(screen.getByText('14 selecionadas')).toBeVisible()
+  fireEvent.change(screen.getByRole('textbox',{name:'Buscar peça'}),{target:{value:'Peça 13'}});expect(screen.getByText('0 selecionadas')).toBeVisible()
+  fireEvent.click(screen.getByRole('checkbox',{name:'Selecionar todos os resultados'}));expect(screen.getByText('1 selecionada')).toBeVisible()
+ })
+ it('shows newest deliveries first in each column, including after a move',async()=>{
+  rows[0].source_updated='2026-09-24T10:00:00Z';rows[1].source_updated='2026-09-27T10:00:00Z'
+  show();await screen.findByRole('checkbox',{name:'Selecionar Vídeo QA'})
+  const titles=()=>screen.getAllByRole('button',{name:/^Abrir /}).map(el=>el.getAttribute('aria-label'))
+  expect(titles()).toEqual(['Abrir Segunda peça','Abrir Vídeo QA'])
+  fireEvent.click(screen.getByRole('checkbox',{name:'Selecionar todos os resultados'}))
+  fireEvent.change(screen.getByRole('combobox',{name:'Mover selecionadas para'}),{target:{value:'postado'}})
+  await waitFor(()=>expect(screen.getByText('0 selecionadas')).toBeVisible())
+  expect(titles()).toEqual(['Abrir Segunda peça','Abrir Vídeo QA'])
+ })
+ it('keeps failed cards selected and explains why, preserving successful moves',async()=>{
+  const base=mocks.api.getMockImplementation()!;mocks.api.mockImplementation(async(q,b)=>{
+   if(b?.action==='mover_lote'){rows[0]={...rows[0],stage:b.stage,version:5};return {results:[{id:'piece-a',ok:true,card:rows[0]},{id:'piece-b',ok:false,error:'Esta peça mudou em outra tela.'}]}}
+   return base(q,b)
+  })
+  show();await screen.findByRole('checkbox',{name:'Selecionar todos os resultados'});await screen.findByRole('checkbox',{name:'Selecionar Vídeo QA'})
+  fireEvent.click(screen.getByRole('checkbox',{name:'Selecionar todos os resultados'}));fireEvent.change(screen.getByRole('combobox',{name:'Mover selecionadas para'}),{target:{value:'postado'}})
+  await screen.findByText('Segunda peça: Esta peça mudou em outra tela.')
+  expect(screen.getByRole('combobox',{name:'Mudar etapa de Vídeo QA'})).toHaveValue('postado');expect(screen.getByRole('combobox',{name:'Mudar etapa de Segunda peça'})).toHaveValue('conferir')
+  expect(screen.getByRole('checkbox',{name:'Selecionar Segunda peça'})).toBeChecked();expect(screen.getByRole('checkbox',{name:'Selecionar Vídeo QA'})).not.toBeChecked()
  })
 })

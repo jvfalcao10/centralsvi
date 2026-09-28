@@ -1,3 +1,4 @@
+import {moveManyCards} from './social-bulk.js'
 import { approvalLink, newApprovalLink } from './social-approval-link.js'
 import {clientReview,clientReviewCard,getClientLink,pendingClientCards} from './social-client.js'
 import {socialMedia} from './social-media.js'
@@ -8,15 +9,10 @@ import { handleSocialSync, socialSyncStatus } from './social-sync.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createHash } from 'node:crypto'
 import { createAdminClient } from './supabase.js'
-import { publicCard, socialPatch, socialMovePatch, SocialError, type SocialCard } from './social-domain.js'
+import { publicCard, socialPatch, socialMovePatch, staffMoveState, SocialError, type SocialCard } from './social-domain.js'
 
 const fail = (status: number, message: string): never => { throw new SocialError(status, message) }
 const hash = (value: string) => createHash('sha256').update(value).digest('hex')
-// Return only the persisted movement fields, without signing all media again.
-export function staffMoveState(card:SocialCard) {
- const {id,stage,version,revision,approved_revision,approved_by,approved_at,approval_evidence,scheduled_at,posted_at,posted_url,channel}=card
- return {id,stage,version,revision,approved_revision,approved_by,approved_at,approval_evidence,scheduled_at,posted_at,posted_url,channel}
-}
 export async function handleSocial(req: VercelRequest, res: VercelResponse) {
  if(req.query.stream==='1')return handleSocialPlayback(req,res)
  if (req.query.sync === 'run') return handleSocialSync(req,res)
@@ -43,6 +39,8 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
    if (roleError || !roles?.some(r => ['admin','manager','seller','executor','traffic'].includes(r.role))) fail(403, 'Acesso restrito à equipe SVI.')
    actorId = data.user.id; actor = profile?.name || data.user.email || 'Equipe SVI'
   } else if (!/^[a-f0-9]{64}$/.test(token||bundle)) fail(404, 'Este link não está disponível.')
+
+  if(!publicAccess&&req.method==='POST'&&req.body?.action==='mover_lote')return res.json(await moveManyCards(db,req.body,actor,actorId!))
 
   const media=<T extends {id:string;assets:SocialCard['assets']}>(card:T)=>socialMedia(db,card,{token,bundle})
   if(!publicAccess&&(req.query.bundle_link==='1'||req.body?.action==='client_link')){
