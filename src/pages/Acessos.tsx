@@ -22,6 +22,7 @@ const GROUPS: Group[] = [
     ['Câmera na Mão', 'camera.svicompany.com.br', 'público · /admin.html interno'],
   ]},
   { title: 'Centrais & Painéis internos', items: [
+    ['Gestor de tráfego · deck e carteira do teste', 'gestor.svicompany.com.br', 'noindex · tem gasto por cliente · /carteira'],
     ['Mídias — artes prontas por cliente (Alpha, Felipe...)', 'midia.svicompany.com.br', 'público · 1080x1920 · baixar e postar'],
     ['Central SVI (esta central)', 'central.svicompany.com.br', 'interno'],
     ['Central de Postagens (Instagram)', 'postagens.svicompany.com.br', 'mesma senha da Central'],
