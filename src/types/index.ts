@@ -34,6 +34,8 @@ export interface Client {
   phone: string
   email: string | null
   segment: string
+  /** O que o cliente contratou: assessoria, google, crm, agente_ia. Vazio conta como assessoria. */
+  servicos: string[] | null
   plano: string
   mrr: number
   currency: string
@@ -61,6 +63,17 @@ export interface Client {
  * copy (CFM 2.336/2023). Casa por segmento ("Saude · ...") e, como rede de
  * seguranca, pelo nome (CLINICA LIV vivia com segmento vazio).
  */
+/**
+ * O que o cliente contratou. Nem todo cliente da base é de assessoria: a Médic
+ * Fácil fechou o CRM e recebe o Google de cortesia, então ela precisa aparecer
+ * no Relatório Google sem sujar a lista de Clientes nem a cobrança.
+ * Cadastro antigo sem o campo conta como assessoria.
+ */
+export function temServico(c: { servicos?: string[] | null }, servico: string): boolean {
+  const lista = c.servicos && c.servicos.length ? c.servicos : ['assessoria']
+  return lista.includes(servico)
+}
+
 export function isClienteMedico(c: { segment?: string | null; name?: string | null }): boolean {
   const norm = (v: string | null | undefined) =>
     (v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')

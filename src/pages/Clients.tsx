@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
-import { Client, Delivery, Invoice, Interaction, STATUS_CONFIG, formatCurrency, formatDate, isClienteMedico, clienteAtivo } from '@/types'
+import { Client, Delivery, Invoice, Interaction, STATUS_CONFIG, formatCurrency, formatDate, isClienteMedico, clienteAtivo, temServico } from '@/types'
 import { useUsdRate, mrrBRL } from '@/hooks/useUsdRate'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -266,6 +266,9 @@ export default function Clients() {
   }
 
   const filtered = clients.filter(c => {
+    // Cliente de outro escopo (so CRM, so Google) nao entra na lista da
+    // assessoria: ele aparece na tela do servico que contratou.
+    if (!temServico(c, 'assessoria')) return false
     // "Todos status" quer dizer toda a carteira VIVA. Ex-cliente so aparece
     // quando alguem pede de proposito, senao a lista mente sobre o tamanho da casa.
     if (statusFilter === 'all' ? !clienteAtivo(c) : statusFilter === 'encerrado' ? clienteAtivo(c) : c.status !== statusFilter) return false
