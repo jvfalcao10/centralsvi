@@ -1,5 +1,5 @@
 {
-  "atualizado": "2026-09-11",
+  "atualizado": "2026-09-28",
   "faixas": {
     "Agosto": [
       "<b>Agosto Dourado</b> (mês do aleitamento materno) · leva da <b>Dra. Ésia</b> (pediatria). Semana Mundial do Aleitamento 01 a 07/08."
@@ -794,18 +794,6 @@
       ]
     },
     {
-      "dm": "27/09",
-      "mes": "Setembro",
-      "cat": "sau",
-      "nome": "Dia Nacional do Idoso",
-      "ty": "Conscientização",
-      "cli": [
-        "Dra. Erika",
-        "Dr. Brenno"
-      ],
-      "note": "Erika = autonomia; Brenno = dor/artrose."
-    },
-    {
       "dm": "29/09",
       "mes": "Setembro",
       "cat": "sau",
@@ -833,13 +821,13 @@
       "dm": "01/10",
       "mes": "Outubro",
       "cat": "sau",
-      "nome": "Dia Internacional do Idoso",
+      "nome": "Dia Nacional e Internacional da Pessoa Idosa",
       "ty": "Saúde do idoso",
       "cli": [
         "Dra. Erika",
         "Dr. Brenno"
       ],
-      "note": "Complementa o 27/09 (Dia Nacional). Avatar: o filho que cuida do pai idoso."
+      "note": "Data oficial no Brasil desde a Lei 11.433/2006 (o 27/09 é a data antiga, não usar). Erika = autonomia; Brenno = dor e artrose. Avatar: o filho que cuida do pai idoso."
     },
     {
       "dm": "04/10",

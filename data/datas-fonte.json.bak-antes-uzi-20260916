@@ -36,9 +36,7 @@
     "*med": [
       "TODOS os médicos"
     ],
-    "maquiagem": [
-      "Uzi"
-    ],
+    "maquiagem": [],
     "moda": [
       "Espaço Soraia"
     ],
@@ -168,7 +166,6 @@
       "cli": [
         "Todos (institucional)",
         "Alpha",
-        "Uzi",
         "Espaço Soraia"
       ],
       "note": "⚠️ data MÓVEL, conferir o ano. Maquiagem e corpo puxam Uzi e Alpha."
@@ -213,7 +210,6 @@
       "cli": [
         "Todos (comércio)",
         "Espaço Soraia",
-        "Uzi",
         "Spa Nature",
         "Vanessa Back"
       ],
@@ -387,7 +383,6 @@
       "cli": [
         "Todos (comércio)",
         "Espaço Soraia",
-        "Uzi",
         "Spa Nature",
         "Vanessa Back",
         "Dra. Ésia"
@@ -454,7 +449,6 @@
       "cli": [
         "Todos (comércio)",
         "Espaço Soraia",
-        "Uzi",
         "Spa Nature",
         "Vanessa Back"
       ],
@@ -608,7 +602,6 @@
       "cat": "pop",
       "ty": "Pop · engajamento",
       "cli": [
-        "Uzi",
         "Espaço Soraia",
         "Spa Nature"
       ]
@@ -765,7 +758,6 @@
       "ty": "Pop · renovação",
       "cli": [
         "Espaço Soraia",
-        "Uzi",
         "Spa Nature"
       ],
       "note": "Confirmar 22 ou 23/09."
@@ -788,6 +780,17 @@
       "esp": [
         "veiculos"
       ]
+    },
+    {
+      "dm": "27/09",
+      "nome": "Dia Nacional do Idoso",
+      "cat": "sau",
+      "ty": "Conscientização",
+      "esp": [
+        "idoso",
+        "orto"
+      ],
+      "note": "Erika = autonomia; Brenno = dor/artrose."
     },
     {
       "dm": "27/09",
@@ -824,14 +827,14 @@
     },
     {
       "dm": "01/10",
-      "nome": "Dia Nacional e Internacional da Pessoa Idosa",
+      "nome": "Dia Internacional do Idoso",
       "cat": "sau",
       "ty": "Saúde do idoso",
       "esp": [
         "idoso",
         "orto"
       ],
-      "note": "Data oficial no Brasil desde a Lei 11.433/2006 (o 27/09 é a data antiga, não usar). Erika = autonomia; Brenno = dor e artrose. Avatar: o filho que cuida do pai idoso."
+      "note": "Complementa o 27/09 (Dia Nacional). Avatar: o filho que cuida do pai idoso."
     },
     {
       "dm": "04/10",
@@ -947,7 +950,6 @@
       "ty": "Pop · altíssimo engajamento",
       "cli": [
         "Alpha",
-        "Uzi",
         "Espaço Soraia",
         "Spa Nature",
         "Todos (comércio)"
@@ -971,7 +973,6 @@
         "estetica"
       ],
       "cli": [
-        "Uzi",
         "Espaço Soraia"
       ]
     },
@@ -1137,7 +1138,6 @@
       "ty": "Comercial",
       "cli": [
         "Espaço Soraia",
-        "Uzi",
         "Spa Nature"
       ]
     }

@@ -791,17 +791,6 @@
   },
   {
    "dm": "27/09",
-   "nome": "Dia Nacional do Idoso",
-   "cat": "sau",
-   "ty": "Conscientização",
-   "esp": [
-    "idoso",
-    "orto"
-   ],
-   "note": "Erika = autonomia; Brenno = dor/artrose."
-  },
-  {
-   "dm": "27/09",
    "nome": "Dia Mundial do Turismo",
    "cat": "pop",
    "ty": "Pop · engajamento",
@@ -835,14 +824,14 @@
   },
   {
    "dm": "01/10",
-   "nome": "Dia Internacional do Idoso",
+   "nome": "Dia Nacional e Internacional da Pessoa Idosa",
    "cat": "sau",
    "ty": "Saúde do idoso",
    "esp": [
     "idoso",
     "orto"
    ],
-   "note": "Complementa o 27/09 (Dia Nacional). Avatar: o filho que cuida do pai idoso."
+   "note": "Data oficial no Brasil desde a Lei 11.433/2006 (o 27/09 é a data antiga, não usar). Erika = autonomia; Brenno = dor e artrose. Avatar: o filho que cuida do pai idoso."
   },
   {
    "dm": "04/10",

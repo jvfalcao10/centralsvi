@@ -1,5 +1,5 @@
 import { describe,it,expect } from 'vitest'
-import { intakeCommand,intakeClient,intakeSource,socialIntake } from '../../api/_lib/social-intake'
+import { intakeCommand,intakeClient,intakeSource,socialIntake,resolveClient,asksSomething } from '../../api/_lib/social-intake'
 import { validDriveSession } from '../../api/_lib/social-drive'
 describe('Sofia destination confirmation',()=>{
  it('does not route bare approval into publishing',()=>expect(intakeCommand('Aprovado')).toMatchObject({command:'approve',approved:true}))
@@ -16,7 +16,7 @@ describe('Sofia destination confirmation',()=>{
 
 function intakeDB(){
  const calls:any[]=[]
- const db={from:()=>({select:()=>({limit:async()=>({data:[{client:'DRA ERIKA FIGUEIREDO'},{client:'Dra Enia'}],error:null})})}),rpc:async(_:string,args:any)=>{calls.push(args.p_event);return {data:{route:'reply'},error:null}}}
+ const db={from:(table:string)=>({select:()=>({limit:async()=>({data:table==='clients'?[{name:'Dra Erika Figueredo'},{name:'Colégio Christo Rei'}]:[{client:'DRA ERIKA FIGUEIREDO'},{client:'Dra Enia'}],error:null})})}),rpc:async(_:string,args:any)=>{calls.push(args.p_event);return {data:{route:'reply'},error:null}}}
  return {db,calls}
 }
 const incoming={id:'test-real-shape',messageid:'test-real-shape',chatid:'559492404033@s.whatsapp.net',sender:'43229013668067@lid',fromMe:false,messageTimestamp:1790382237000,content:{fileName:'Dra Érika 2.MOV',mimetype:'video/quicktime',fileLength:1000}}
@@ -27,4 +27,53 @@ describe('João routing rule by WhatsApp sending format',()=>{
  it('does not confuse delivery with approval',async()=>{const {db,calls}=intakeDB();await socialIntake(db as any,{...incoming,messageType:'DocumentMessage',text:'APROVADO'});expect(calls[0]).toMatchObject({command:'post',approved:true,can_approve:true})})
  it('accepts a plain client name to identify a waiting file',async()=>{const {db,calls}=intakeDB();await socialIntake(db as any,{...incoming,content:{},messageType:'Conversation',text:'Ênia'});expect(calls[0]).toMatchObject({command:'post',client:'Dra Enia'})})
  it('resolves numbered client files and title variants against the catalog',()=>{for(const name of ['DOUTORA ÉRIKA','Dra Érika 2','Dra.Érika'])expect(intakeClient(name,['DRA ERIKA FIGUEIREDO'])).toBe('DRA ERIKA FIGUEIREDO');expect(intakeClient('Dra Enia 04',['Dra Enia'])).toBe('Dra Enia')})
+})
+
+describe('reconhece o cliente pelo nome do arquivo sem travar a equipe',()=>{
+ const quadro=['COLÉGIO CHRISTO REI','DR. DANIEL PERALBA','DRA ERIKA FIGUEIREDO']
+ it('identifica por nome parcial, que foi o caso real do Christo Rei',()=>{
+  expect(intakeClient('Christo Rei',quadro,true)).toBe('COLÉGIO CHRISTO REI')
+  expect(intakeClient('Christo Rei',quadro)).toBe('Identificar cliente') // estrito segue estrito
+ })
+ it('nao deixa conversa solta virar cliente',()=>{
+  expect(intakeClient('esse e do Daniel, acho',quadro)).toBe('Identificar cliente')
+  expect(intakeClient('arquivo 1',quadro,true)).toBe('Identificar cliente')
+  expect(intakeClient('video final',quadro,true)).toBe('Identificar cliente')
+ })
+ it('nao chuta quando dois clientes servem',()=>{
+  expect(intakeClient('Silva',['CLINICA SILVA','DR. SILVA NETO'],true)).toBe('Identificar cliente')
+  expect(intakeClient('Silva',['CLINICA SILVA'],true)).toBe('CLINICA SILVA')
+ })
+ it('usa o cadastro quando o cliente ainda nao tem peca no quadro',()=>{
+  expect(resolveClient('Geraldo',quadro,['Dr. Geraldo Cecílio'])).toBe('Dr. Geraldo Cecílio')
+  expect(resolveClient('Christo Rei',quadro,['Colégio Christo Rei'])).toBe('COLÉGIO CHRISTO REI') // quadro tem prioridade
+ })
+ it('separa entrega de duvida',()=>{
+  for(const t of ['ficou bom assim?','o que acha desse corte','da uma olhada ai','tá bom?','será que posso usar'])
+   expect(asksSomething(t)).toBe(true)
+  for(const t of ['Christo Rei - interclasse','Dr Daniel 05','segue o video','POSTAR | Dr Felipe | SETEMBRO',''])
+   expect(asksSomething(t)).toBe(false)
+ })
+})
+
+describe('video com duvida nao vira postagem sozinho',()=>{
+ it('pergunta o destino em vez de criar o card',async()=>{
+  const {db,calls}=intakeDB()
+  await socialIntake(db as any,{...incoming,messageType:'DocumentMessage',text:'ficou bom assim?'})
+  expect(calls[0].command).toBe('unknown')
+ })
+ it('entrega normal continua indo direto pra Central',async()=>{
+  const {db,calls}=intakeDB()
+  await socialIntake(db as any,{...incoming,messageType:'DocumentMessage',text:''})
+  expect(calls[0]).toMatchObject({command:'post',delivery:{client:'DRA ERIKA FIGUEIREDO'}})
+ })
+})
+
+describe('cliente no meio do titulo',()=>{
+ it('reconhece quando o nome nao esta no comeco',()=>
+  expect(intakeClient('🎬 Editar reel Alice Salazar: Outubro Rosa',['Alice salazar','ESPAÇO SORAIA'],true)).toBe('Alice salazar'))
+ it('exige dois termos do cliente, senao palavra comum arrasta peca errada',()=>{
+  expect(intakeClient('campanha do dia da mulher',['TE Mulher'],true)).toBe('Identificar cliente')
+  expect(intakeClient('outubro rosa alpha fitness',['ALPHA FITNESS'],true)).toBe('ALPHA FITNESS')
+ })
 })

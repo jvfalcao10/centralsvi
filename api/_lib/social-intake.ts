@@ -12,11 +12,42 @@ export function intakeCommand(raw:string) {
 export function intakeSource(m:Record<string,any>) {
  return Object.values(SOCIAL_WHATSAPP_SOURCES).find(s=>s.id.startsWith('direct:')&&(s.group===m.chatid||s.senders.has(m.chatid))&&[m.sender,m.sender_pn,m.sender_lid].some(v=>s.senders.has(v)))
 }
-export function intakeClient(raw:string,catalog:string[]) {
+// Palavras que nao distinguem um cliente do outro: casar por elas acerta o cliente errado.
+const GENERIC=new Set(['dr','dra','doutor','doutora','colegio','escola','clinica','hospital','instituto','espaco','centro','video','videos','final','corte','cortes','reels','reel','story','stories','feed','post','edit','bruto','svi'])
+
+export function intakeClient(raw:string,catalog:string[],fuzzy=false) {
  const clean=normalized(raw).replace(/\s+(?:v)?\d{1,3}$/, '').replace(/^doutora /,'dra ').replace(/^doutor /,'dr ')
  const candidate=taskClient({name:`[${clean==='enia'?'dra enia':clean}]`})
- return catalog.find(c=>normalized(c)===normalized(candidate))||'Identificar cliente'
+ const exact=catalog.find(c=>normalized(c)===normalized(candidate))
+ if(exact)return exact
+ // Nome parcial so vale pro NOME DO ARQUIVO, nunca pra conversa solta: "Christo Rei"
+ // identifica "COLÉGIO CHRISTO REI", mas "esse e do Daniel, acho" nao vira entrega.
+ if(!fuzzy)return 'Identificar cliente'
+ const words=(s:string)=>normalized(s).split(' ').filter(t=>t.length>2&&!GENERIC.has(t))
+ const tokens=words(candidate)
+ if(!tokens.length)return 'Identificar cliente'
+ const text=' '+normalized(candidate)+' '
+ const hits=catalog.filter(c=>{
+  const n=' '+normalized(c)+' '
+  if(tokens.every(t=>n.includes(' '+t)))return true
+  // Caminho inverso: o cliente aparece no MEIO do titulo ("Editar reel Alice Salazar: Outubro Rosa").
+  // Exige dois termos proprios do cliente, senao uma palavra comum arrastaria a peca errada.
+  const seus=words(c)
+  return seus.length>1&&seus.every(t=>text.includes(' '+t))
+ })
+ // Dois clientes possiveis e um chute: quem decide e a pessoa, nao o palpite.
+ return hits.length===1?hits[0]:'Identificar cliente'
 }
+
+/** Catalogo do quadro primeiro, cadastro depois: cliente novo e reconhecido na 1a peca. */
+export function resolveClient(raw:string,catalog:string[],roster:string[]) {
+ const fromBoard=intakeClient(raw,catalog,true)
+ return fromBoard!=='Identificar cliente'?fromBoard:intakeClient(raw,roster,true)
+}
+
+// Entrega e afirmacao. Pergunta e duvida, e duvida nao vira postagem sozinha.
+const DUVIDA=/\b(?:ficou bom|ficou legal|ficou assim|ficou ruim|ta bom|esta bom|pode ser|pode usar|posso usar|que ach\w*|qual (?:e )?(?:a )?melhor|da uma olhada|de uma olhada|olha ai|olha so|ve se|veja se|vc ach\w*|voce ach\w*|duvida|sera que|me diz\w*|nao sei se|assim mesmo|certo assim|ta certo|prefere)\b/
+export const asksSomething=(text:string)=>DUVIDA.test(normalized(text))||/\?/.test(text)
 export async function socialIntake(db:ReturnType<typeof createAdminClient>,m:Record<string,any>) {
  const clientApproval=await clientGroupApproval(db,m)
  if(clientApproval)return clientApproval
@@ -30,18 +61,22 @@ export async function socialIntake(db:ReturnType<typeof createAdminClient>,m:Rec
  if(delivery||cmd.client||(!cmd.command&&text.length<100)){
 
   const {data,error}=await db.from('central_social_cards').select('client').limit(1000);if(error)throw new Error('database_failed')
-  const catalog=[...new Set((data||[]).map(c=>c.client))]
+  const catalog=[...new Set((data||[]).map(c=>c.client))].filter(c=>c&&c!=='Identificar cliente')
+  const {data:rows}=await db.from('clients').select('name').limit(1000)
+  const roster=[...new Set((rows||[]).map((c:Record<string,any>)=>String(c.name||'')))].filter(Boolean)
   if(!delivery&&!cmd.command&&intakeClient(text,catalog)!=='Identificar cliente'){cmd.command='post';cmd.client=text;event.command='post'}
   if(delivery){
    const name=delivery.payload.name.replace(/\.[^.]+$/,'').trim(),prefix=name.split(/\s+-\s+/)[0]
-   const client=intakeClient(delivery.client==='Identificar cliente'?prefix:delivery.client,catalog)
+   const client=resolveClient(delivery.client==='Identificar cliente'?prefix:delivery.client,catalog,roster)
    delivery.client=client;delivery.title=delivery.title===source.unidentifiedTitle?name.replace(/\s+v\d{1,3}$/i,'').trim():delivery.title
    if(client!=='Identificar cliente')delivery.card_id='wa-'+digest(`${source.group}|${normalized(client)}|${normalized(delivery.title)}`).slice(0,24)
    delivery.delivery_version=delivery.delivery_version??Number(name.match(/\s+v(\d{1,3})$/i)?.[1]||1)
    event.delivery={...delivery,payload:{...delivery.payload,wa_message_id:m.messageid,year,month,client,title:delivery.title}}
    // João's explicit routing rule: a video document is a Central delivery; native video is transcription.
    const explicit=['post','transcribe','cancel','other'].includes(cmd.command)
-   event.command=explicit?cmd.command:String(m.messageType||'').toLowerCase().includes('document')?'post':'transcribe'
+   // Arquivo de video era postagem automatica. Quando vem com pergunta junto, nao e
+   // entrega: e duvida, e virava card sozinho. Agora a Sofia pergunta o destino.
+   event.command=explicit?cmd.command:asksSomething(text)?'unknown':String(m.messageType||'').toLowerCase().includes('document')?'post':'transcribe'
    event.quoted=String(m.id) // The new file never acts on other pending deliveries in this chat.
    event.at=delivery.payload.at
   }

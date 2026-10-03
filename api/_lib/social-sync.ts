@@ -35,7 +35,9 @@ async function discover(db:DB,source:string) {
    const config=SOCIAL_WHATSAPP_SOURCES[source]
    if(!process.env.SOCIAL_UAZ_TOKEN)throw new SyncError('configuration_missing')
    const {data:catalogRows}=checked(await db.from('central_social_cards').select('client').limit(1000))
-   const catalog=[...new Set((catalogRows||[]).map(c=>c.client))]
+   const catalog=[...new Set((catalogRows||[]).map(c=>c.client))].filter(c=>c&&c!=='Identificar cliente')
+   const {data:clientRows}=await db.from('clients').select('name').limit(1000)
+   const roster=[...new Set((clientRows||[]).map((c:Record<string,any>)=>String(c.name||'')))].filter(Boolean)
    // Full pagination to the saved watermark. No cursor advance on an incomplete scan.
    let ended=false
    for(let offset=0;offset<2000;offset+=100){
@@ -46,7 +48,7 @@ async function discover(db:DB,source:string) {
      const raw=Number(message.messageTimestamp),timestamp=raw<1e12?raw*1000:raw
      if(timestamp<since)continue
      const parsed=whatsappVideo(message,config)
-     const delivery=parsed?identifyGroupDelivery(parsed,catalog):null
+     const delivery=parsed?identifyGroupDelivery(parsed,catalog,roster):null
      if(delivery){rows.push({key:delivery.key,provider:delivery.provider,source_id:delivery.source_id,card_id:delivery.card_id,payload:{...delivery.payload,client:delivery.client,title:delivery.title,delivery_version:delivery.delivery_version}});count++}
     }
     await queue(db,rows)
