@@ -1,5 +1,6 @@
 import { digest, normalized, taskClient, whatsappVideo, SOCIAL_WHATSAPP_SOURCES } from './social-sync-domain.js'
 import type { createAdminClient } from './supabase.js'
+import { clientGroupApproval } from './social-client-approval.js'
 export const MONTHS=['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO']
 export function intakeCommand(raw:string) {
  const parts=raw.split('|').map(s=>s.trim()),text=normalized(parts[0])
@@ -17,6 +18,8 @@ export function intakeClient(raw:string,catalog:string[]) {
  return catalog.find(c=>normalized(c)===normalized(candidate))||'Identificar cliente'
 }
 export async function socialIntake(db:ReturnType<typeof createAdminClient>,m:Record<string,any>) {
+ const clientApproval=await clientGroupApproval(db,m)
+ if(clientApproval)return clientApproval
  const source=intakeSource(m)
  if(!source||m.fromMe||m.wasSentByApi||!m.id)return {route:'pass'}
  const text=String(m.text||m.content?.caption||'').slice(0,3000),cmd=intakeCommand(text)
