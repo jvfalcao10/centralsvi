@@ -8,6 +8,7 @@ import {socialMedia} from './social-media.js'
 import { previewPath } from './social-preview.js'
 import { feedbackContext, saveFeedbackRoute } from './social-feedback.js'
 import { handleSocialPlayback } from './social-playback.js'
+import { handleSocialRobot } from './social-robot.js'
 import { handleSocialSync, socialSyncStatus } from './social-sync.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createHash } from 'node:crypto'
@@ -17,6 +18,7 @@ import { publicCard, socialPatch, socialMovePatch, staffMoveState, SocialError, 
 const fail = (status: number, message: string): never => { throw new SocialError(status, message) }
 const hash = (value: string) => createHash('sha256').update(value).digest('hex')
 export async function handleSocial(req: VercelRequest, res: VercelResponse) {
+ if(req.query.robot==='1')return handleSocialRobot(req,res)
  if(req.query.publication_stream)return publicationPlayback(req,res)
  if(req.query.stream==='1')return handleSocialPlayback(req,res)
  if (req.query.sync === 'run') return handleSocialSync(req,res)
