@@ -1,5 +1,5 @@
 import {beforeEach,afterEach,describe,it,expect,vi} from 'vitest'
-import {clientPending,clientReviewCard,clientReview,getClientLink,clientTokenHash,pendingClientCards} from '../../api/_lib/social-client'
+import {clientPending,clientReviewCard,clientReview,getClientLink,clientTokenHash,pendingClientCards,formatoValido} from '../../api/_lib/social-client'
 import {clientShareMeta,socialShareHTML} from '../../api/_lib/social-share'
 import {sealApprovalToken} from '../../api/_lib/social-approval-link'
 import type {SocialCard} from '../../api/_lib/social-domain'
@@ -25,4 +25,26 @@ describe('one client, one approval link',()=>{
  it('new waiting pieces join the existing link',async()=>{const r=rows();const db=database(r);r.central_social_cards.push({...card,id:'new'});expect((await pendingClientCards(db as never,'Cliente A')).map(c=>c.id)).toEqual(['a','new']);expect(await getClientLink(db as never,'Cliente A',true)).toBe('https://aprovar.svicompany.com.br/cliente-a/'+token)})
  it('does not create a link for an empty or unidentified client',async()=>{const r=rows();r.central_social_client_links=[];const db=database(r);await expect(getClientLink(db as never,'Missing',true)).rejects.toMatchObject({status:400});await expect(getClientLink(db as never,'Identificar cliente',true)).rejects.toMatchObject({status:400});expect(db.rpc).not.toHaveBeenCalled()})
  it('empty pages have no stale/private thumbnail and preserve the app shell',()=>{const meta=clientShareMeta('Cliente A',[],token),html=socialShareHTML('<head><title>Generic</title></head><script src="/app.js"></script>',meta);expect(meta.image).toBeUndefined();expect(html).not.toContain('og:image');expect(html).toContain('/app.js')})
+})
+
+// O código encurtou para 12 caracteres, mas a validação de formato estava
+// repetida em quatro arquivos e eu atualizei dois. O link novo dava "Link
+// indisponível" antes mesmo de consultar o banco. Este teste exige que todos os
+// pontos de entrada usem a mesma função.
+describe('um só lugar decide o que é código válido',()=>{
+ it('aceita o código curto e o antigo, recusa o resto',()=>{
+  expect(formatoValido('abcdefgh2345')).toBe(true)
+  expect(formatoValido('a'.repeat(64))).toBe(true)
+  expect(formatoValido('abcdefgh234')).toBe(false)   // 11
+  expect(formatoValido('abcdefghi234')).toBe(false)  // "i" não existe no alfabeto
+  expect(formatoValido('abcdefgh0345')).toBe(false)  // "0" não existe no alfabeto
+  expect(formatoValido('')).toBe(false)
+ })
+ it('nenhum ponto de entrada valida o formato por conta própria',async()=>{
+  const {readFile}=await import('node:fs/promises')
+  for(const arquivo of ['api/_lib/social.ts','api/_lib/social-share.ts','api/_lib/social-playback.ts']){
+   const fonte=await readFile(arquivo,'utf8')
+   expect(fonte,`${arquivo} ainda valida token por conta própria`).not.toMatch(/\.test\(token\s*\|\|\s*bundle\)|!\/\^\[a-f0-9\]\{64\}\$\/\.test\(token\)/)
+  }
+ })
 })

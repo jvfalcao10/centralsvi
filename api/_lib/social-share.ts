@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { createAdminClient } from './supabase.js'
 import { publicCard, SocialError, type SocialCard } from './social-domain.js'
 import { previewPath } from './social-preview.js'
-import {clientReview,pendingClientCards} from './social-client.js'
+import {clientReview,pendingClientCards,formatoValido} from './social-client.js'
 
 const origin='https://central.svicompany.com.br'
 const CURTO='https://aprovar.svicompany.com.br'
@@ -53,7 +53,7 @@ export async function handleSocialShare(req:VercelRequest,res:VercelResponse) {
  const error=(status:number)=>{res.status(status).setHeader('Content-Type','text/html; charset=utf-8');return req.method==='HEAD'?res.end():res.send('<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Link indisponível</title><h1>Este link não está disponível</h1><p>Peça à equipe o link de aprovação atualizado.</p></html>')}
  if(!['GET','HEAD'].includes(req.method||'')){res.setHeader('Allow','GET, HEAD');return error(405)}
  const token=typeof req.query.token==='string'?req.query.token:''
- if(!/^[a-f0-9]{64}$/.test(token))return error(404)
+ if(!formatoValido(token))return error(404)
  try {
   const db=createAdminClient()
   let meta:ReturnType<typeof socialShareMeta>

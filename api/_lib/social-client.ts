@@ -30,7 +30,7 @@ export async function pendingClientCards(db:SupabaseClient,client:string) {
   if(data.length<500)return cards
  }
 }
-const formatoValido=(token:string)=>/^[a-f0-9]{64}$/.test(token)||/^[23456789abcdefghjkmnpqrstuvwxyz]{12}$/.test(token)
+export const formatoValido=(token:string)=>/^[a-f0-9]{64}$/.test(token)||/^[23456789abcdefghjkmnpqrstuvwxyz]{12}$/.test(token)
 export async function clientReview(db:SupabaseClient,token:string) {
  if(!formatoValido(token))throw new SocialError(404,'Este link não está disponível.')
  const {data,error}=await db.from('central_social_client_links').select('client,token_hash,slug').eq('token_hash',clientTokenHash(token)).is('revoked_at',null).maybeSingle()

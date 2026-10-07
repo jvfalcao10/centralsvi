@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import { createAdminClient } from './supabase.js'
 import { publicCard,type SocialCard } from './social-domain.js'
 import { driveVideoRange } from './social-drive.js'
-import {clientReviewCard} from './social-client.js'
+import {clientReviewCard,formatoValido} from './social-client.js'
 import {SocialError} from './social-domain.js'
 export const VIDEO_CHUNK=3*1024*1024
 export function videoRange(raw:string|undefined,size:number) {
@@ -19,7 +19,7 @@ export async function handleSocialPlayback(req:VercelRequest,res:VercelResponse)
  res.setHeader('Cache-Control','private, no-store');res.setHeader('Referrer-Policy','no-referrer');res.setHeader('X-Robots-Tag','noindex, nofollow');res.setHeader('X-Content-Type-Options','nosniff')
  if(!['GET','HEAD'].includes(req.method||''))return res.status(405).end()
  const token=typeof req.query.token==='string'?req.query.token:'',bundle=typeof req.query.bundle==='string'?req.query.bundle:'',id=typeof req.query.asset==='string'?req.query.asset:''
- if((token&&bundle)||!/^[a-f0-9]{64}$/.test(token||bundle)||!id)return res.status(404).end()
+ if((token&&bundle)||!formatoValido(token||bundle)||!id)return res.status(404).end()
  try {
   const db=createAdminClient()
   let card:SocialCard

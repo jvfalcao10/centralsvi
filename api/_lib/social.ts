@@ -3,7 +3,7 @@ import {publicationContext,publicationPlayback,uploadPublicationCover,enqueuePub
 import {publicPublication} from './social-publication-domain.js'
 import {moveManyCards} from './social-bulk.js'
 import { approvalLink, newApprovalLink } from './social-approval-link.js'
-import {clientReview,clientReviewCard,getClientLink,pendingClientCards} from './social-client.js'
+import {clientReview,clientReviewCard,getClientLink,pendingClientCards,formatoValido} from './social-client.js'
 import {socialMedia} from './social-media.js'
 import { previewPath } from './social-preview.js'
 import { feedbackContext, saveFeedbackRoute } from './social-feedback.js'
@@ -44,7 +44,7 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
    ])
    if (roleError || !roles?.some(r => ['admin','manager','seller','executor','traffic'].includes(r.role))) fail(403, 'Acesso restrito à equipe SVI.')
    actorId = data.user.id; actor = profile?.name || data.user.email || 'Equipe SVI'
-  } else if (!/^[a-f0-9]{64}$/.test(token||bundle)) fail(404, 'Este link não está disponível.')
+  } else if (!formatoValido(token||bundle)) fail(404, 'Este link não está disponível.')
 
   if(!publicAccess&&req.method==='POST'&&req.body?.action==='publication_cover')return res.json(await uploadPublicationCover(db,req.body,actorId!))
   if(!publicAccess&&req.method==='POST'&&req.body?.action==='mover_lote')return res.json(await moveManyCards(db,req.body,actor,actorId!))
