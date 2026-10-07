@@ -13,3 +13,31 @@ it('generates a draft and leaves it editable without publishing',async()=>{rende
 it('keeps a future date in the explicit Belém timezone',async()=>{render(<PublicationComposer ids={['qa']} cards={[card]} schedule onClose={()=>{}} onChanged={()=>{}}/>);await screen.findByText('Criativo QA');fireEvent.change(screen.getByLabelText('Conta do Instagram'),{target:{value:'123'}});fireEvent.change(screen.getByLabelText('Data e hora · Belém (UTC−3)'),{target:{value:'2026-10-05T09:30'}});fireEvent.click(screen.getByRole('button',{name:'Programar postagem'}));await waitFor(()=>expect(api.mock.calls.some(([,b])=>b?.scheduled_at==='2026-10-05T12:30:00.000Z')).toBe(true))})
 
 it('does not offer a second publication for a manually posted piece',async()=>{api.mockResolvedValue({card:{...card,stage:'postado'},accounts:[],publication:null});render(<PublicationComposer ids={['qa']} cards={[card]} onClose={()=>{}} onChanged={()=>{}}/>);await screen.findByText('Esta peça já está em Postado. Consulte o registro de publicação nos detalhes.');expect(screen.queryByRole('button',{name:'Publicar agora'})).toBeNull()})
+
+// João, 07/10: "nos dar a opção de postar tanto no reels quanto nos stories".
+const cardVideo:any={...card,id:'v1',selected_assets:['v'],assets:[{id:'v',name:'Reel',url:'/r.mp4',path:'v',type:'video/mp4'}]}
+it('publica o mesmo vídeo no reels e no story, um envio para cada',async()=>{
+ api.mockImplementation(async(_q:string,b:any)=>b?.action==='publication_enqueue'
+  ?{publication:{id:'j-'+b.format,status:'queued',account_username:'qa',format:b.format,scheduled_at:new Date().toISOString()}}
+  :{card:cardVideo,accounts:[{id:'123',username:'qa',name:'Cliente QA'}],publication:null})
+ render(<PublicationComposer ids={['v1']} cards={[cardVideo]} onClose={()=>{}} onChanged={()=>{}}/>)
+ await screen.findByText('Criativo QA')
+ fireEvent.change(screen.getByLabelText('Conta do Instagram'),{target:{value:'123'}})
+ fireEvent.click(screen.getByRole('checkbox',{name:'Story'}))
+ fireEvent.click(screen.getByRole('button',{name:'Publicar agora'}))
+ await waitFor(()=>expect(api.mock.calls.filter(([,b])=>b?.action==='publication_enqueue')).toHaveLength(2))
+ const envios=api.mock.calls.filter(([,b])=>b?.action==='publication_enqueue').map(([,b])=>b)
+ // O feed sai antes do story, porque o story costuma apontar pra ele.
+ expect(envios.map(e=>e.format)).toEqual(['reel','story'])
+ // Pedido próprio por formato: repetido, o segundo voltaria como o primeiro.
+ expect(envios[0].request_id).not.toBe(envios[1].request_id)
+})
+
+it('não deixa publicar sem escolher nenhum destino',async()=>{
+ api.mockImplementation(async(_q:string,b:any)=>b?{publication:null}:{card:cardVideo,accounts:[{id:'123',username:'qa',name:'Cliente QA'}],publication:null})
+ render(<PublicationComposer ids={['v1']} cards={[cardVideo]} onClose={()=>{}} onChanged={()=>{}}/>)
+ await screen.findByText('Criativo QA')
+ fireEvent.change(screen.getByLabelText('Conta do Instagram'),{target:{value:'123'}})
+ fireEvent.click(screen.getByRole('checkbox',{name:'Reels'}))
+ expect(screen.getByRole('button',{name:'Publicar agora'})).toBeDisabled()
+})
