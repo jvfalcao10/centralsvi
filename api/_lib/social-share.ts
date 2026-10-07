@@ -12,7 +12,9 @@ const CURTO='https://aprovar.svicompany.com.br'
 /** O endereço nas meta tags tem que ser o mesmo por onde a pessoa abriu, senão
  * o WhatsApp mostra a prévia de um domínio e o link leva pra outro. */
 const enderecoDaPeca=(token:string)=>/^[a-f0-9]{64}$/.test(token)?`${origin}/aprovar/social/${token}`:`${CURTO}/p/${token}`
-const enderecoDoCliente=(token:string,slug?:string)=>/^[a-f0-9]{64}$/.test(token)||!slug?`${origin}/aprovar/cliente/${token}`:`${CURTO}/${slug}/${token}`
+// Havendo apelido, o endereço curto vale também para o código antigo: é o
+// mesmo que getClientLink entrega, e prévia e link têm que bater.
+const enderecoDoCliente=(token:string,slug?:string)=>slug?`${CURTO}/${slug}/${token}`:`${origin}/aprovar/cliente/${token}`
 const esc=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!))
 export function socialShareMeta(card:SocialCard,token:string) {
  const c=publicCard(card),asset=c.assets[0]
