@@ -84,6 +84,7 @@ export type Store={
  cardByFile(name:string,aliases:string[]):Promise<SocialCard|null>
  card(id:string):Promise<SocialCard|null>
  approve(c:SocialCard,patch:Record<string,unknown>):Promise<string>
+ markSent(c:SocialCard):Promise<string>
 }
 // Group events live in central_social_intake_receipts (service role only) under
 // "cg-media:", "cg-change:" and "client-approval:" ids, so no schema change.
@@ -110,6 +111,14 @@ export function receiptStore(db:ReturnType<typeof createAdminClient>):Store {
   },
   async card(id){const {data}=await db.from('central_social_cards').select('*').eq('id',id).maybeSingle();return (data as SocialCard)||null},
   async approve(c,patch){const {error}=await db.rpc('central_social_apply',{p_id:c.id,p_expected:c.version,p_patch:patch,p_action:'aprovar',p_actor:'Sofia · grupo do cliente',p_actor_id:null});return error?(error.message.includes('version_conflict')?'central_conflito':'central_erro'):''},
+  // A peça já está na mão do cliente: o time acabou de mandar o arquivo no grupo dele.
+  // "Conferir" passa a ser mentira, e enquanto for, a aprovação que vier depois não
+  // encontra a peça, porque só vale para quem está aguardando o cliente.
+  async markSent(c){
+   if(c.stage!=='conferir'||c.ingest_pending||!c.selected_assets.length)return ''
+   const {error}=await db.rpc('central_social_apply',{p_id:c.id,p_expected:c.version,p_patch:socialPatch(c,{action:'solicitar'}),p_action:'solicitar',p_actor:'Sofia · entregue no grupo do cliente',p_actor_id:null})
+   return error?(error.message.includes('version_conflict')?'central_conflito':'central_erro'):''
+  },
  }
 }
 
@@ -124,7 +133,16 @@ export async function clientGroupApproval(db:ReturnType<typeof createAdminClient
  const quoted=stanza(m.quoted||m.content?.contextInfo?.stanzaId)
  if(isTeamSender(m)){
   // The team's deliveries to the client are remembered so a later reply can point at them.
-  if(isMedia(m))await store.claim(`cg-media:${own}`,chat,{name:String(m.content?.fileName||m.content?.title||''),at,by:String(m.sender_pn||m.sender||'')})
+  if(isMedia(m)){
+   const name=String(m.content?.fileName||m.content?.title||'')
+   await store.claim(`cg-media:${own}`,chat,{name,at,by:String(m.sender_pn||m.sender||'')})
+   // Casa com a peça que já existe, achada pelo nome do arquivo. Não cria card novo:
+   // no grupo do cliente também trafega referência e print, e isso viraria lixo no quadro.
+   if(name)try{
+    const c=await store.cardByFile(name,group.aliases)
+    if(c)await store.markSent(c)
+   }catch{/* registrar a entrega vale mais que mover a peça; a aprovação dirá o que faltou */}
+  }
   return {route:'pass'}
  }
  const verdict=clientVerdict(text)

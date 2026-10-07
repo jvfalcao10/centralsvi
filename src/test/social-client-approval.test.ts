@@ -19,7 +19,7 @@ describe('client wording (real replies from the client groups)',()=>{
 const card=(id:string,assets:string[],selected:string[],extra:any={})=>({id,client:'Espaço Soraia',title:id,author:'Math',assets:assets.map(n=>({id:'a-'+n,name:n,path:'x',type:'video/mp4'})),selected_assets:selected.map(n=>'a-'+n),caption:'',note:'',stage:'conferir',revision:1,version:2,approved_revision:null,approved_by:null,approved_at:null,approval_evidence:null,ingest_pending:false,posted_at:null,...extra})
 function world(cards:any[],tasks:any[]=[]){
  const receipts:Record<string,{chat:string;result:any;at:number}>={}
- const approved:string[]=[],clickup:any[]=[]
+ const approved:string[]=[],clickup:any[]=[],sent:string[]=[]
  const store:Store={
   async claim(id,chat,result){if(receipts[id])return false;receipts[id]={chat,result,at:Number((result as any).at||0)};return true},
   async save(id,result){receipts[id].result=result},
@@ -34,11 +34,12 @@ function world(cards:any[],tasks:any[]=[]){
   async cardByFile(name){return cards.find(c=>c.assets.some((a:any)=>a.name===name))||null},
   async card(id){return cards.find(c=>c.id===id)||null},
   async approve(c,patch){approved.push(c.id);Object.assign(c,patch);return ''},
+  async markSent(c){if(c.stage!=='conferir'||c.ingest_pending||!c.selected_assets.length)return '';sent.push(c.id);c.stage='aguardando';return ''},
  }
  const fetcher=async(path:string,init?:any)=>{clickup.push({path,method:init?.method||'GET',body:init?.body});return path.startsWith('/list/901521539717')?{tasks}:{tasks:[]}}
  let n=0
  const send=(who:any,extra:any)=>clientGroupApproval({} as any,{id:'m'+(++n),messageid:'m'+n,chatid:SORAIA,fromMe:false,...who,...extra},fetcher,T0+60*MIN*24,store)
- return {store,approved,clickup,receipts,team:(file:string,minute:number)=>send(LETICIA,{messageType:'DocumentMessage',content:{fileName:file},messageTimestamp:T0+minute*MIN}).then(()=>'m'+n),client:(text:string,minute:number,quoted='')=>send(CLIENTE,{text,quoted,messageTimestamp:T0+minute*MIN})}
+ return {store,approved,clickup,receipts,sent,team:(file:string,minute:number)=>send(LETICIA,{messageType:'DocumentMessage',content:{fileName:file},messageTimestamp:T0+minute*MIN}).then(()=>'m'+n),client:(text:string,minute:number,quoted='')=>send(CLIENTE,{text,quoted,messageTimestamp:T0+minute*MIN})}
 }
 
 describe('João: three videos go out, video 1 comes back corrected',()=>{
@@ -52,7 +53,10 @@ describe('João: three videos go out, video 1 comes back corrected',()=>{
   const cards=[card('v1',['soraia 1.mov'],['soraia 1.mov']),card('v2',['soraia 2.mov'],['soraia 2.mov']),card('v3',['soraia 3.mov'],['soraia 3.mov'])]
   const w=world(cards);const m1=await w.team('soraia 1.mov',0);await w.team('soraia 2.mov',1);await w.team('soraia 3.mov',2)
   await w.client('Esse troca a música',5,m1);await w.client('Os outros aprovados',6)
-  expect(w.approved).toEqual(['v2','v3']);expect(cards[0].stage).toBe('conferir')
+  // O v1 ficava em "conferir" só porque a peça nunca saía de lá. Agora ela é marcada
+  // como entregue quando o time manda o arquivo, e o que importa aqui segue valendo:
+  // o vídeo em que o cliente pediu mudança não entra na aprovação solta.
+  expect(w.approved).toEqual(['v2','v3']);expect(cards[0].stage).not.toBe('aprovado')
  })
  it('the corrected v2 is approved on its own; an answer on the old v1 is ignored',async()=>{
   const cards=[card('v1',['soraia 1.mov','soraia 1 v2.mov'],['soraia 1 v2.mov'],{revision:2})]
@@ -113,5 +117,50 @@ describe('safety',()=>{
   expect(await clientGroupApproval({} as any,{id:'p',chatid:'559492404033@s.whatsapp.net',text:'Aprovado'})).toBeNull()
   const db:any={from:()=>({insert:async()=>({error:null})})}
   for(const m of [{...LETICIA,messageType:'DocumentMessage',content:{fileName:'x.mov'}},{...CLIENTE,text:'Bom dia'},{...CLIENTE,text:'Ainda não pode postar'}])expect(await socialIntake(db,{id:'i'+Math.random(),chatid:SORAIA,messageTimestamp:T0,...m})).toEqual({route:'pass'})
+ })
+})
+
+// O arquivo que o time manda no grupo do cliente JÁ está com o cliente. Enquanto a
+// peça ficar em "conferir", a aprovação que vier depois não encontra nada.
+describe('entrega no grupo do cliente marca a peça como enviada',()=>{
+ it('move a peça de conferir para aguardando quando o time manda o arquivo',async()=>{
+  const cards=[card('v1',['soraia 1.mov'],['soraia 1.mov'])]
+  const w=world(cards)
+  expect(cards[0].stage).toBe('conferir')
+  await w.team('soraia 1.mov',0)
+  expect(w.sent).toEqual(['v1'])
+  expect(cards[0].stage).toBe('aguardando')
+ })
+
+ it('e por isso a aprovação que vem depois encontra a peça',async()=>{
+  const cards=[card('v1',['soraia 1.mov'],['soraia 1.mov'])]
+  const w=world(cards)
+  await w.team('soraia 1.mov',0)
+  await w.client('Aprovado',10)
+  expect(w.approved).toEqual(['v1'])
+  expect(cards[0].stage).toBe('aprovado')
+ })
+
+ it('não mexe em peça que não está em conferir',async()=>{
+  const cards=[card('v1',['soraia 1.mov'],['soraia 1.mov'],{stage:'aprovado'})]
+  const w=world(cards);await w.team('soraia 1.mov',0)
+  expect(w.sent).toEqual([]);expect(cards[0].stage).toBe('aprovado')
+ })
+
+ it('não mexe em peça sem arquivo selecionado nem com importação pendente',async()=>{
+  const semArquivo=[card('v1',['soraia 1.mov'],[])]
+  const a=world(semArquivo);await a.team('soraia 1.mov',0)
+  expect(a.sent).toEqual([])
+  const pendente=[card('v2',['soraia 2.mov'],['soraia 2.mov'],{ingest_pending:true})]
+  const b=world(pendente);await b.team('soraia 2.mov',0)
+  expect(b.sent).toEqual([])
+ })
+
+ // No grupo do cliente também trafega referência e print. Virar card seria lixo no quadro.
+ it('arquivo sem peça correspondente não cria nada, só fica o registro',async()=>{
+  const w=world([card('v1',['outra.mov'],['outra.mov'])])
+  const id=await w.team('referencia solta.jpg',0)
+  expect(w.sent).toEqual([])
+  expect(w.receipts['cg-media:'+id]).toBeTruthy()
  })
 })
