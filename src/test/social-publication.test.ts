@@ -1,4 +1,5 @@
-import {suggestAccount,contaDoCliente} from '../../api/_lib/social-publication'
+import {readFile} from 'node:fs/promises'
+import {suggestAccount,contaDoCliente,enqueuePublication} from '../../api/_lib/social-publication'
 import {describe,it,expect,vi} from 'vitest'
 import {publicationInput} from '../../api/_lib/social-publication-domain'
 import {allowedUploadURI,publishReady,processPublications} from '../../api/_lib/social-publication-worker'
@@ -74,4 +75,13 @@ describe('a Central aprende a conta de cada cliente',()=>{
  })
  it('ignora conta guardada que sumiu da lista do Instagram',async()=>
   expect(await contaDoCliente(banco('999') as never,'VANESSA BACK',contas)).toBeNull())
+})
+
+// O retorno do Supabase é PromiseLike e NÃO tem .catch. Usar .catch nele lança
+// TypeError, e em produção isso derrubou uma publicação que já tinha sido
+// aceita: a peça entrou na fila e a tela mostrou erro vermelho.
+it('nenhum .catch no retorno do Supabase, que é PromiseLike',async()=>{
+ const fonte=await readFile('api/_lib/social-publication.ts','utf8')
+ expect(fonte).not.toMatch(/db\.rpc\([^)]*\)\s*\.catch/)
+ expect(fonte).not.toMatch(/db\.from\([^)]*\)[^;]*\.catch\(/)
 })

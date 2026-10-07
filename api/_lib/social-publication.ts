@@ -100,7 +100,9 @@ export async function enqueuePublication(db:SupabaseClient,card:SocialCard,body:
  if(error)throw publicationDatabaseError(error.message)
  // Guarda a conta que a pessoa confirmou, para a próxima peça deste cliente já
  // vir pronta. Falhar aqui não pode derrubar uma publicação que já foi aceita.
- await db.rpc('central_social_client_account_set',{p_client:card.client,p_account_id:data.account_id,p_username:data.account_username,p_actor:actor}).catch(()=>{})
+ // O retorno do Supabase é PromiseLike e NÃO tem .catch: usar .catch nele lança
+ // TypeError e derruba justamente o que se queria proteger.
+ try{await db.rpc('central_social_client_account_set',{p_client:card.client,p_account_id:data.account_id,p_username:data.account_username,p_actor:actor})}catch{/* a publicação já foi aceita */}
  return {ok:true,publication:publicPublication(job)}
 }
 export function publicationDatabaseError(message:string){return new SocialError(409,/publication_active/.test(message)?'Esta peça já tem uma publicação na fila. Abra a programação para conferir.':/publication_in_progress/.test(message)?'A publicação já está sendo enviada ao Instagram. Aguarde a confirmação.':/already_published/.test(message)?'Esta versão já foi publicada.':/version_conflict/.test(message)?'Esta peça mudou em outra tela. Reabra e confira.':'Não foi possível salvar a programação. Atualize a peça e tente novamente.')}
