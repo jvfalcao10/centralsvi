@@ -1,16 +1,12 @@
 import {createHash,randomBytes} from 'node:crypto'
 import type {SupabaseClient} from '@supabase/supabase-js'
 import {openApprovalToken,sealApprovalToken} from './social-approval-link.js'
+import {codigoCurto,formatoValido} from './social-token.js'
 import {SocialError,type SocialCard} from './social-domain.js'
 
 const BASE_CURTO='https://aprovar.svicompany.com.br'
 const base='https://central.svicompany.com.br/aprovar/cliente/'
 
-// Alfabeto sem 0/O e 1/l/I: o link é lido em voz alta e digitado no celular.
-const ALFABETO='23456789abcdefghjkmnpqrstuvwxyz'
-export function codigoCurto(bytes=randomBytes(12)) {
- return Array.from(bytes).map(b=>ALFABETO[b%ALFABETO.length]).join('')
-}
 /** Apelido do cliente no endereço: "DRA. ÉSIA LOPES" vira "dra-esia-lopes". */
 export function apelidoDoCliente(client:string) {
  const limpo=client.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
@@ -30,7 +26,6 @@ export async function pendingClientCards(db:SupabaseClient,client:string) {
   if(data.length<500)return cards
  }
 }
-export const formatoValido=(token:string)=>/^[a-f0-9]{64}$/.test(token)||/^[23456789abcdefghjkmnpqrstuvwxyz]{12}$/.test(token)
 export async function clientReview(db:SupabaseClient,token:string) {
  if(!formatoValido(token))throw new SocialError(404,'Este link não está disponível.')
  const {data,error}=await db.from('central_social_client_links').select('client,token_hash,slug').eq('token_hash',clientTokenHash(token)).is('revoked_at',null).maybeSingle()

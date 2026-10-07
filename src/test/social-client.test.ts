@@ -1,7 +1,8 @@
 import {beforeEach,afterEach,describe,it,expect,vi} from 'vitest'
-import {clientPending,clientReviewCard,clientReview,getClientLink,clientTokenHash,pendingClientCards,formatoValido} from '../../api/_lib/social-client'
+import {clientPending,clientReviewCard,clientReview,getClientLink,clientTokenHash,pendingClientCards} from '../../api/_lib/social-client'
 import {clientShareMeta,socialShareHTML} from '../../api/_lib/social-share'
 import {sealApprovalToken} from '../../api/_lib/social-approval-link'
+import {formatoValido} from '../../api/_lib/social-token'
 import type {SocialCard} from '../../api/_lib/social-domain'
 const asset={id:'final',name:'Final.mp4',path:'a',type:'video/mp4',thumbnail:'preview.jpg'}
 const card={id:'a',client:'Cliente A',stage:'aguardando',assets:[asset,{...asset,id:'draft',name:'Rascunho'}],selected_assets:['final'],revision:1,version:2} as SocialCard

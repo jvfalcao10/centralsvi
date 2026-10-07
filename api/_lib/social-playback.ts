@@ -3,7 +3,8 @@ import { createHash } from 'node:crypto'
 import { createAdminClient } from './supabase.js'
 import { publicCard,type SocialCard } from './social-domain.js'
 import { driveVideoRange } from './social-drive.js'
-import {clientReviewCard,formatoValido} from './social-client.js'
+import {clientReviewCard} from './social-client.js'
+import {formatoValido} from './social-token.js'
 import {SocialError} from './social-domain.js'
 export const VIDEO_CHUNK=3*1024*1024
 export function videoRange(raw:string|undefined,size:number) {

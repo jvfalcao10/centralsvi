@@ -1,7 +1,7 @@
 import {createCipheriv,createDecipheriv,createHash,randomBytes} from 'node:crypto'
 import type {SupabaseClient} from '@supabase/supabase-js'
 import type {SocialCard} from './social-domain.js'
-import {codigoCurto} from './social-client.js'
+import {codigoCurto} from './social-token.js'
 const BASE='https://aprovar.svicompany.com.br/p/'
 const BASE_ANTIGA='https://central.svicompany.com.br/aprovar/social/'
 const digest=(value:string)=>createHash('sha256').update(value).digest('hex')
