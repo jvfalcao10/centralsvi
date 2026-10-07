@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase'
 export type Asset = { id:string; name:string; path:string; storage?:'drive'; drive_id?:string; folder_url?:string; folder_label?:string; thumbnail?:string; duration_ms?:number; width?:number; height?:number; preview_retry_at?:string; playback_url?:string; type:string; bytes?:number; url?:string; preview?:string }
 export type Card = {
  ingest_pending?:boolean; id:string; client:string; title:string; author:string; source_url:string; source_status:string; source_description?:string;
- source_updated:string; created_at?:string; assets:Asset[]; selected_assets:string[]; caption:string; note:string; stage:string; revision:number; version:number;
+ source_updated:string; created_at?:string; assets:Asset[]; selected_assets:string[]; caption:string; caption_draft?:boolean; transcript?:string|null; note:string; stage:string; revision:number; version:number;
  approved_by:string|null; approved_at:string|null; approval_evidence:string|null; scheduled_at:string|null; posted_at:string|null; posted_url:string|null; channel:string|null; preview?:string;
 }
 export const SOCIAL_STAGES = [
@@ -29,4 +29,21 @@ export const localInput=(date=new Date())=>new Date(date.getTime()-date.getTimez
 export function newestSocialFirst(a:Card,b:Card) {
  const time=(card:Card)=>Date.parse(card.source_updated)||Date.parse(card.created_at||'')||0
  return time(b)-time(a)||a.id.localeCompare(b.id)
+}
+
+// Etiqueta de cliente: a mesma marca sempre sai na mesma cor, para bater o olho
+// no quadro sem ler. Médico e clínica ficam no azul, como no resto da Central.
+const TONS=['#c3a36b','#df9279','#79b79b','#ada0cf','#a6b7b0','#d2a3a3','#9fb07e','#c9a86a','#b59ccf','#8fb3a4','#cf9f7e','#9ab8c9']
+const AZUL_MEDICO='#80a8cf'
+const semAcento=(v:string)=>v.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
+export function clienteMedico(client:string) {
+ const n=semAcento(client)
+ return /\b(clinica|hospital|consultorio|odonto|medic)\b/.test(n)||/^dra?[.\s]/.test(n)
+}
+export function clientTone(client:string) {
+ if(!client||client==='Identificar cliente')return '#6b7280'
+ if(clienteMedico(client))return AZUL_MEDICO
+ let h=0
+ for(const ch of semAcento(client))h=(h*31+ch.charCodeAt(0))>>>0
+ return TONS[h%TONS.length]
 }

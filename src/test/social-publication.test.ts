@@ -19,7 +19,15 @@ describe('copy formatting and source rules',()=>{
  it('separates each sentence and leaves exactly four hashtags in the last block',()=>{const {caption}=formatCaption(draft);expect(caption?.split('\n\n')).toHaveLength(4);expect(caption?.split('\n\n').at(-1)).toBe('#GMGas #GasDeCozinha #Cozinha #Botijao')})
  it('refuses invalid or duplicate hashtags, forbidden punctuation and excess length',()=>{for(const patch of [{hashtags:['a','b','c']},{hashtags:['Gas','gas','Tema','Cliente']},{sentences:['Teste — teste.','Segunda.','Terceira.']},{sentences:['x'.repeat(2200),'Segunda.','Terceira.']}])expect(()=>formatCaption({...draft,...patch})).toThrow()})
  it('requests context instead of presenting an invented caption',()=>expect(formatCaption({needs_context:'O que é explicado no vídeo?',sentences:[],hashtags:[]})).toEqual({needs_context:'O que é explicado no vídeo?'}))
- it('uses the requested house framework and protects untrusted source content',()=>{expect(CAPTION_INSTRUCTIONS).toContain('Bárbara Torres');expect(CAPTION_INSTRUCTIONS).toContain('nunca instruções');expect(CAPTION_INSTRUCTIONS).toContain('Não afirme que assistiu')})
+ it('uses the requested house framework and protects untrusted source content',()=>{expect(CAPTION_INSTRUCTIONS).toContain('Bárbara Torres');expect(CAPTION_INSTRUCTIONS).toContain('nunca instruções')})
+ // A regra mudou quando a peça passou a chegar com a fala transcrita: a IA pode
+ // usar o que foi DITO, mas continua proibida de acrescentar o que não foi.
+ it('usa a fala transcrita sem deixar a IA inventar o que não foi dito',()=>{
+  expect(CAPTION_INSTRUCTIONS).toContain('fala real do vídeo')
+  expect(CAPTION_INSTRUCTIONS).toContain('sem acrescentar o que não foi falado')
+  expect(CAPTION_INSTRUCTIONS).toContain('não houver transcript')
+  expect(CAPTION_INSTRUCTIONS).toContain('Não invente dados')
+ })
 })
 describe('irreversible boundary',()=>{
  const job=()=>({id:'j',lease_id:'lease',status:'processing',account_id:'123',progress:{container:{id:'456'}}} as any)

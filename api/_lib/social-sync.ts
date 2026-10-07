@@ -1,5 +1,6 @@
 import {processPublications} from './social-publication-worker.js'
 import { refreshVideoPreviews } from './social-preview.js'
+import { processCaptions } from './social-caption-worker.js'
 import { processFeedback } from './social-feedback.js'
 import { socialIntake } from './social-intake.js'
 import { identifyGroupDelivery } from './social-delivery.js'
@@ -200,7 +201,10 @@ export async function handleSocialSync(req:VercelRequest,res:VercelResponse) {
    }
    // Thumbnail availability must never turn a successful original import into failure.
    const previews=Date.now()-start<40000?await refreshVideoPreviews(db,3).catch(()=>({ready:0,pending:0})):undefined
-   return res.json({processed:results.length,results,previews,feedback})
+   // A legenda vem por último e no tempo que sobrar: transcrever é lento, e
+   // peça sem legenda é incômodo, enquanto peça sem arquivo é peça perdida.
+   const captions=Date.now()-start<45000?await processCaptions(db,2).catch(()=>({captions:0,results:[]})):undefined
+   return res.json({processed:results.length,results,previews,feedback,captions})
   }
   return res.status(400).json({error:'Invalid mode'})
  }catch{return res.status(500).json({error:'sync_failed'})}

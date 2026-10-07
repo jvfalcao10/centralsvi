@@ -1,14 +1,14 @@
 import {CardActionsButton,StageSelect} from './CardActions'
 import TouchStageMove,{TouchMoveCard,TouchStageColumn} from './TouchStageMove'
 import CardSelection,{type CardSelectionProps} from './CardSelection'
-import {useEffect, useRef, useState} from 'react'
+import {useEffect,useRef,useState,memo} from 'react'
 import {ArrowLeft,ArrowRight} from 'lucide-react'
 import {Button} from '@/components/ui/button'
 import {VideoCover} from '@/components/social/VideoPreview'
-import {SOCIAL_STAGES, socialDate, type Card} from '@/lib/social-board'
+import {SOCIAL_STAGES, socialDate, type Card,clientTone} from '@/lib/social-board'
 
 /** Trello-style columns on phones and tablets; scrolling never starts a card drag. */
-export default function MobileSocialBoard({cards, columns, filterKey, busy, onOpen, onMove, onCopy,selectedIds,onSelect,onPublish}: CardSelectionProps&{
+function MobileSocialBoard({cards, columns, filterKey, busy, onOpen, onMove, onCopy,selectedIds,onSelect,onPublish}: CardSelectionProps&{
  cards: Card[]; columns:typeof SOCIAL_STAGES; filterKey: string; busy: boolean
  onPublish?: (id:string)=>void; onCopy: (value: string) => void; onOpen: (id: string) => void; onMove: (id: string, stage: string) => void
 }) {
@@ -31,7 +31,7 @@ export default function MobileSocialBoard({cards, columns, filterKey, busy, onOp
     <button className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary" aria-label={`Abrir ${card.title}`} onClick={()=>onOpen(card.id)}>
      <VideoCover asset={card.assets.find(a=>a.id===card.selected_assets[0])||card.assets[0]} preview={card.preview}/>
      <div className="space-y-2 p-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-primary">{card.client}</p>
+      <span className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide" style={{color:clientTone(card.client),backgroundColor:clientTone(card.client)+'1f'}}><span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{backgroundColor:clientTone(card.client)}}/><span className="truncate">{card.client}</span></span>
       <h3 className="line-clamp-3 break-words text-sm font-semibold leading-snug">{card.title}</h3>
       <p className="text-sm text-muted-foreground">{card.author} · {card.assets.length} arquivo{card.assets.length===1?'':'s'} · v{card.revision}</p>
       {card.ingest_pending&&<p className="text-sm text-orange-400">Importação pendente</p>}
@@ -53,3 +53,5 @@ export default function MobileSocialBoard({cards, columns, filterKey, busy, onOp
   </div>
  </section></TouchStageMove>
 }
+
+export default memo(MobileSocialBoard)

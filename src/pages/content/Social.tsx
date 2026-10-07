@@ -11,12 +11,13 @@ import {StageSelect} from '@/components/social/CardActions'
 import PublicationDetails from '@/components/social/PublicationDetails'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { ArrowUp, ArrowDown, Check, CheckCircle2, Clock3, Copy, Download, ExternalLink, ImageIcon, Link2, Loader2, RefreshCw, Search, X, Video } from 'lucide-react'
+import {ArrowUp, ArrowDown, Check, CheckCircle2, Clock3, Copy, Download, ExternalLink, ImageIcon, Link2, Loader2, RefreshCw, Search, X, Video,Sparkles} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
-import { socialApi, SOCIAL_STAGES, socialDate, newestSocialFirst, type Card } from '@/lib/social-board'
+import { socialApi, SOCIAL_STAGES, socialDate, newestSocialFirst, clientTone, type Card } from '@/lib/social-board'
+import { useEvent } from '@/hooks/use-event'
 import { useToast } from '@/hooks/use-toast'
 
 type Event = {id:number; action:string; actor:string; revision:number; created_at:string; details:{from:string;to:string;evidence?:string;note?:string}}
@@ -37,7 +38,7 @@ export default function Social() {
  const detailRequest=useRef(0);const historyRequest=useRef(0);const moving=useRef(false);const boardEpoch=useRef(0);const boardRead=useRef(0)
  const [pendingStage,setPendingStage]=useState('')
  const [publishing,setPublishing]=useState<string[]>([]);const [schedulePublication,setSchedulePublication]=useState(false)
- const publish=(id:string)=>{setSchedulePublication(false);setPublishing([id])}
+ const publish=useEvent((id:string)=>{setSchedulePublication(false);setPublishing([id])})
  const [selectedCards,setSelectedCards]=useState<Set<string>>(new Set())
  const [batchErrors,setBatchErrors]=useState<{id:string;title:string;error:string}[]>([])
  const notify=(message:string)=>toast({description:message})
@@ -53,19 +54,27 @@ export default function Social() {
  const cardId=params.get('peca')
  useEffect(()=>{if(cardId)void open(cardId);else setCard(null)},[cardId,open])
 
- const choose=(id:string)=>{if(busy||moving.current)return;setParams(p=>{p.set('peca',id);return p})}
+ const choose=useEvent((id:string)=>{if(busy||moving.current)return;setParams(p=>{p.set('peca',id);return p})})
  const close=()=>{if(busy)return;detailRequest.current++;setCard(null);setParams(p=>{p.delete('peca');return p})}
  const clients=useMemo(()=>[...new Set(cards.map(c=>c.client))].sort((a,b)=>a.localeCompare(b)),[cards])
+ // Etiquetas de cliente com a contagem do que está em aberto, para filtrar num toque.
+ const clientTags=useMemo(()=>{
+  const conta=new Map<string,number>()
+  for(const c of cards)if(c.stage!=='arquivado'&&c.stage!=='postado')conta.set(c.client,(conta.get(c.client)||0)+1)
+  return [...conta].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]))
+ },[cards])
  const authors=useMemo(()=>[...new Set(cards.map(c=>c.author))].sort(),[cards])
- const filtered=cards.filter(c=>(!client||c.client===client)&&(!author||c.author===author)&&(!query||`${c.title} ${c.client} ${c.note}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()))&&(archived||c.stage!=='arquivado')).sort(newestSocialFirst)
- const columns=SOCIAL_STAGES.filter(s=>(archived||s.id!=='arquivado')&&(!stage||stage==='all'||s.id===stage))
- const selectionScope=filtered.filter(c=>columns.some(s=>s.id===c.stage))
- const selectedRows=selectionScope.filter(c=>selectedCards.has(c.id))
+ // Derivados ficam fora do caminho de todo render: sem isto, cada tecla digitada
+ // na legenda refiltra e reordena as 213 peças antes de redesenhar o quadro.
+ const filtered=useMemo(()=>cards.filter(c=>(!client||c.client===client)&&(!author||c.author===author)&&(!query||`${c.title} ${c.client} ${c.note}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()))&&(archived||c.stage!=='arquivado')).sort(newestSocialFirst),[cards,client,author,query,archived])
+ const columns=useMemo(()=>SOCIAL_STAGES.filter(s=>(archived||s.id!=='arquivado')&&(!stage||stage==='all'||s.id===stage)),[archived,stage])
+ const selectionScope=useMemo(()=>filtered.filter(c=>columns.some(s=>s.id===c.stage)),[filtered,columns])
+ const selectedRows=useMemo(()=>selectionScope.filter(c=>selectedCards.has(c.id)),[selectionScope,selectedCards])
  useEffect(()=>{setSelectedCards(new Set());setBatchErrors([])},[query,client,author,stage,archived,isMobile])
- const toggleSelected=(id:string)=>setSelectedCards(previous=>{const next=new Set(previous);next.has(id)?next.delete(id):next.add(id);return next})
+ const toggleSelected=useEvent((id:string)=>setSelectedCards(previous=>{const next=new Set(previous);next.has(id)?next.delete(id):next.add(id);return next}))
  const contentDirty=card&&(editClient!==card.client||editTitle!==card.title||caption!==card.caption||note!==card.note||JSON.stringify(selected)!==JSON.stringify(card.selected_assets))
  const dirty=contentDirty||routeDirty
- const copy=async(text:string)=>{try{await navigator.clipboard.writeText(text);notify('Copiado.')}catch{notify('Não foi possível copiar. Selecione o texto e copie.')}}
+ const copy=useEvent(async(text:string)=>{try{await navigator.clipboard.writeText(text);notify('Copiado.')}catch{notify('Não foi possível copiar. Selecione o texto e copie.')}})
  const save=async()=>{
   if(!card||busy)return;setBusy(true)
   try{
@@ -78,7 +87,7 @@ export default function Social() {
   setBusy(true)
   try{const result=await socialApi('',{id:card.id,version:card.version,action:'solicitar'});if(!result.approval_url)throw new Error('Não foi possível gerar o link. Tente novamente.');setApprovalUrl(result.approval_url);const d=await socialApi('?id='+encodeURIComponent(card.id));setCard(d.card);setEvents(d.events);setFeedback(d.feedback);void load();return result.approval_url as string}finally{setBusy(false)}
  }
- const moveStage=async(id:string,target:string)=>{
+ const moveStage=useEvent(async(id:string,target:string)=>{
   if(moving.current||busy)return
   const current=card?.id===id?card:cards.find(c=>c.id===id)
   if(!current||current.stage===target)return
@@ -109,7 +118,7 @@ export default function Social() {
    // A lost response may still have committed. Reconcile with the server, never retry the write blindly.
    moving.current=false;void load();if(cardId===id&&detail===detailRequest.current)void open(id)
   }finally{moving.current=false;setBusy(false);setPendingStage('')}
- }
+ })
  const moveSelected=async(target:string)=>{
   if(busy||moving.current||cardId||!selectedRows.length)return
   if(selectedRows.length>250){notify('Mova até 250 peças por vez.');return}
@@ -155,6 +164,15 @@ export default function Social() {
     <label className="flex min-h-11 items-center gap-3 px-2 text-sm text-muted-foreground"><input type="checkbox" className="h-5 w-5 md:h-4 md:w-4" checked={archived} onChange={e=>{setArchived(e.target.checked);if(!e.target.checked&&stage==='arquivado')setStage('')}}/>Mostrar arquivo</label>
    </div>}
   </section>
+  {!!clientTags.length&&<section aria-label="Filtrar por cliente" className="flex flex-wrap items-center gap-1.5">
+   <button type="button" onClick={()=>{setClient('');setParams(p=>{p.delete('cliente');return p})}} className={`rounded-full border px-3 py-1 text-xs transition-colors ${client?'text-muted-foreground hover:bg-muted':'border-primary bg-primary/10 text-primary font-semibold'}`}>Todos</button>
+   {clientTags.map(([nome,n])=>{const tom=clientTone(nome),ativo=client===nome
+    return <button key={nome} type="button" title={`${n} peça${n===1?'':'s'} em aberto`} onClick={()=>{const alvo=ativo?'':nome;setClient(alvo);setParams(p=>{alvo?p.set('cliente',alvo):p.delete('cliente');return p})}}
+     className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors"
+     style={{color:tom,borderColor:ativo?tom:tom+'59',backgroundColor:ativo?tom+'26':'transparent',fontWeight:ativo?600:400}}>
+     <span className="h-1.5 w-1.5 rounded-full" style={{backgroundColor:tom}}/>{nome}<span className="opacity-60">{n}</span>
+    </button>})}
+  </section>}
   <section aria-label="Mover várias peças" className="sticky top-16 z-20 flex flex-wrap items-center gap-2 rounded-xl border bg-background/95 p-3 backdrop-blur">
    <label className="flex min-h-11 cursor-pointer items-center gap-3 pr-2 text-sm"><input type="checkbox" aria-label="Selecionar todos os resultados" className="h-5 w-5 accent-primary" checked={selectionScope.length>0&&selectionScope.every(c=>selectedCards.has(c.id))} disabled={busy||!!cardId||!selectionScope.length} onChange={e=>setSelectedCards(e.target.checked?new Set(selectionScope.map(c=>c.id)):new Set())}/>Selecionar todos ({selectionScope.length})</label>
    <span className="text-sm text-muted-foreground">{selectedRows.length} selecionada{selectedRows.length===1?'':'s'}</span>
@@ -166,7 +184,7 @@ export default function Social() {
   <div className="flex min-h-6 flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span>{filtered.length} peças · {filtered.reduce((n,c)=>n+c.assets.length,0)} arquivos · mais recentes primeiro</span><span role="status" aria-live="polite" className="flex items-center gap-2">{pendingStage?<><Loader2 className="h-3 w-3 animate-spin"/>Salvando em {pendingStage}…</>:<span className="hidden md:inline">Mudanças de etapa ficam no histórico.</span>}</span></div>
   {sync&&<details className="rounded-lg border bg-card p-3 text-xs"><summary className="min-h-8 cursor-pointer flex flex-wrap items-center gap-2"><RefreshCw className="w-3 h-3"/>Entrada automática · ClickUp, grupos e Sofia{sync.pending>0&&<span className="text-muted-foreground">{sync.pending} na fila</span>}{(sync.issues.length>0||sync.sources.some(s=>s.error||!s.last_success_at||Date.now()-Date.parse(s.last_success_at)>15*60000))&&<span className="text-orange-400">Conferir sincronização</span>}</summary><div className="mt-3 space-y-3"><p className="text-muted-foreground">Novos uploads de José, Laís e Math no ClickUp. Consulta a cada 2 minutos; o quadro se atualiza a cada minuto. Nos respectivos grupos, Math e Sarah podem identificar o vídeo com CLIENTE | TÍTULO | V1. Uma correção usa o mesmo título e V2. Envie como documento para preservar o arquivo. Entrega nova exige conferência. No privado da Sofia, vídeo enviado como arquivo/documento vai para a Central; vídeo enviado normalmente vai para transcrição. Ela pergunta se faltar identificar o cliente. Pastas: ano / mês / cliente. Para indicar outro mês, use POSTAR | CLIENTE | OUTUBRO na legenda do documento. APROVADO registra a liberação quando informado por João ou Letícia.</p><div className="flex flex-wrap gap-3">{sync.sources.map(s=><p key={s.id}>{s.label}: <span className={s.error?'text-orange-400':'text-muted-foreground'}>{s.error?'consulta pendente':s.last_success_at?socialDate(s.last_success_at):'primeira consulta pendente'}</span></p>)}</div>{sync.issues.map(i=><div key={i.key} className="border-l-2 border-orange-400 pl-3"><p className="font-medium">{i.title}</p><p className="text-muted-foreground">{i.reason}</p><a className="underline text-primary" href={i.source_url} target="_blank" rel="noreferrer">Conferir na origem</a></div>)}</div></details>}
   {error&&<div role="alert" className="p-4 rounded-lg border border-destructive/40 text-destructive">{error}<Button variant="ghost" size="sm" onClick={()=>void load()}>Tentar novamente</Button></div>}
-  {loading?<div className="flex gap-2 items-center py-16 text-muted-foreground"><Loader2 className="animate-spin h-5 w-5"/>Carregando o quadro…</div>:isMobile?<MobileSocialBoard selectedIds={selectedCards} onSelect={toggleSelected} cards={filtered} columns={columns} filterKey={`${client}|${author}|${query}|${archived}`} busy={busy||!!cardId} onOpen={choose} onMove={(id,target)=>void moveStage(id,target)} onCopy={text=>void copy(text)} onPublish={publish}/>:<DesktopSocialBoard selectedIds={selectedCards} onSelect={toggleSelected} cards={filtered} columns={columns} busy={busy||!!cardId} onOpen={choose} onMove={(id,target)=>void moveStage(id,target)} onCopy={text=>void copy(text)} onPublish={publish}/>}
+  {loading?<div className="flex gap-2 items-center py-16 text-muted-foreground"><Loader2 className="animate-spin h-5 w-5"/>Carregando o quadro…</div>:isMobile?<MobileSocialBoard selectedIds={selectedCards} onSelect={toggleSelected} cards={filtered} columns={columns} filterKey={`${client}|${author}|${query}|${archived}`} busy={busy||!!cardId} onOpen={choose} onMove={moveStage} onCopy={copy} onPublish={publish}/>:<DesktopSocialBoard selectedIds={selectedCards} onSelect={toggleSelected} cards={filtered} columns={columns} busy={busy||!!cardId} onOpen={choose} onMove={moveStage} onCopy={copy} onPublish={publish}/>}
   <Sheet open={!!cardId} onOpenChange={value=>{if(!value)close()}}><SheetContent className="[&>button]:hidden w-full h-dvh sm:max-w-5xl overflow-y-auto overscroll-contain p-4 sm:p-8 pb-[max(1.5rem,env(safe-area-inset-bottom))] break-words">
    <div className="sticky -top-4 sm:-top-8 z-20 -mx-4 sm:-mx-8 -mt-4 sm:-mt-8 mb-4 flex justify-end border-b bg-background/95 backdrop-blur px-2 py-1"><Button size="sm" variant="ghost" onClick={close} disabled={busy} aria-label="Fechar peça"><X className="h-4 w-4"/>Fechar</Button></div>
    {!card?<SheetHeader><SheetTitle>{detailLoading?'Carregando peça…':'Peça indisponível'}</SheetTitle><SheetDescription>Arquivos e histórico da publicação.</SheetDescription></SheetHeader>:<>
@@ -190,7 +208,10 @@ export default function Social() {
      </div>
      <div className="min-w-0 space-y-5">
       <div className="space-y-3"><div><label htmlFor="social-client" className="text-sm font-semibold">Cliente</label><Input id="social-client" list="social-clients" value={editClient} onChange={e=>setEditClient(e.target.value)} disabled={busy||card.stage==='postado'} className="mt-1"/><datalist id="social-clients">{clients.filter(c=>c!=='Identificar cliente').map(c=><option key={c} value={c}/>)}</datalist></div><div><label htmlFor="social-title" className="text-sm font-semibold">Título da peça</label><Input id="social-title" value={editTitle} onChange={e=>setEditTitle(e.target.value)} disabled={busy||card.stage==='postado'} className="mt-1"/></div></div>
-      <div><label htmlFor="social-caption" className="text-sm font-semibold">Legenda final</label><Textarea id="social-caption" disabled={busy||card.stage==='postado'} value={caption} onChange={e=>setCaption(e.target.value)} className="min-h-40 mt-2" placeholder="Cole aqui a legenda que acompanha esta versão."/><Button disabled={!caption} size="sm" variant="ghost" onClick={()=>void copy(caption)}><Copy className="h-3 w-3 mr-2"/>Copiar legenda</Button></div>
+      <div><label htmlFor="social-caption" className="text-sm font-semibold">Legenda final</label>
+       {card.caption_draft&&caption===card.caption&&<p className="mt-2 flex items-start gap-2 rounded-lg border border-primary/40 bg-primary/5 p-2 text-xs text-primary"><Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0"/><span>Rascunho escrito pela IA a partir da fala do vídeo. Confira antes de mandar para o cliente. O aviso sai quando você salvar.</span></p>}
+       <Textarea id="social-caption" disabled={busy||card.stage==='postado'} value={caption} onChange={e=>setCaption(e.target.value)} className="min-h-40 mt-2" placeholder="Cole aqui a legenda que acompanha esta versão."/><Button disabled={!caption} size="sm" variant="ghost" onClick={()=>void copy(caption)}><Copy className="h-3 w-3 mr-2"/>Copiar legenda</Button></div>
+      {card.transcript&&<details className="rounded-xl border p-3"><summary className="cursor-pointer py-1 text-sm font-medium">O que é dito no vídeo</summary><p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{card.transcript}</p><Button size="sm" variant="ghost" className="mt-2" onClick={()=>void copy(card.transcript||'')}><Copy className="h-3 w-3 mr-2"/>Copiar transcrição</Button></details>}
       <CaptionAssistant key={card.id} card={card} disabled={busy||card.stage==='postado'||editClient!==card.client||editTitle!==card.title||JSON.stringify(selected)!==JSON.stringify(card.selected_assets)} onGenerated={setCaption}/>
       <div><label htmlFor="social-note" className="text-sm font-semibold">Observação da equipe</label><Textarea id="social-note" disabled={busy||card.stage==='postado'} value={note} onChange={e=>setNote(e.target.value)} className="min-h-20 mt-2"/><p className="text-[11px] text-muted-foreground mt-1">Visível somente para a equipe.</p></div>
       {contentDirty&&<div className="rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-2"><p className="text-xs">Alterar os arquivos ou a legenda exige nova aprovação. O histórico anterior fica registrado.</p><Button disabled={busy||routeDirty} size="sm" onClick={()=>void save()}>Salvar versão</Button></div>}
