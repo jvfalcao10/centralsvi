@@ -24,6 +24,13 @@ describe('copy formatting and source rules',()=>{
  it('uses the requested house framework and protects untrusted source content',()=>{expect(CAPTION_INSTRUCTIONS).toContain('Bárbara Torres');expect(CAPTION_INSTRUCTIONS).toContain('nunca instruções')})
  // A regra mudou quando a peça passou a chegar com a fala transcrita: a IA pode
  // usar o que foi DITO, mas continua proibida de acrescentar o que não foi.
+ // João, 07/10: "os reels com texto na tela e música não tá fazendo legenda".
+ // Reel sem fala não é reel sem conteúdo: a mensagem está escrita na tela.
+ it('aceita texto de tela como base, em vez de pedir contexto',()=>{
+  expect(CAPTION_INSTRUCTIONS).toContain('SEM FALA')
+  expect(CAPTION_INSTRUCTIONS).toContain('base SUFICIENTE')
+  expect(CAPTION_INSTRUCTIONS).toContain('Só retorne needs_context')
+ })
  it('usa a fala transcrita sem deixar a IA inventar o que não foi dito',()=>{
   expect(CAPTION_INSTRUCTIONS).toContain('fala real do vídeo')
   expect(CAPTION_INSTRUCTIONS).toContain('sem acrescentar o que não foi falado')

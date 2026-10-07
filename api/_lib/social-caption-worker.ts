@@ -68,7 +68,7 @@ export async function understandVideo(db:SupabaseClient,asset:SocialAsset):Promi
 
   const pedido={contents:[{parts:[
    {file_data:{mime_type:tipo,file_uri:file.uri}},
-   {text:'Comece direto pela primeira palavra dita, sem introdução e sem aspas: nada de "aqui está a transcrição". Transcreva a fala deste vídeo em português do Brasil, com acentuação correta, na ordem em que é dita. Depois, em um parágrafo curto começando com "Cena:", descreva o que aparece: quem fala, onde está e qualquer texto escrito na tela. Não interprete, não resuma e não acrescente nada que não esteja no vídeo. Se não houver fala, escreva apenas a parte da cena.'},
+   {text:'Comece direto, sem introdução e sem aspas: nada de "aqui está a transcrição". Primeiro, transcreva a fala deste vídeo em português do Brasil, com acentuação correta, na ordem em que é dita. Se não houver fala, escreva apenas: SEM FALA. Depois, em "Texto na tela:", copie PALAVRA POR PALAVRA tudo que aparece escrito no vídeo, na ordem em que aparece, incluindo legendas, títulos e letreiros. Em muitos reels a mensagem inteira está só no texto da tela, com música ao fundo, e sem isso não dá para escrever a legenda. Por fim, em "Cena:", descreva em um parágrafo curto quem aparece, onde está e o que faz. Não interprete, não resuma e não acrescente nada que não esteja no vídeo.'},
   ]}],generationConfig:{temperature:0,maxOutputTokens:8000}}
   const r=await fetch(`${GOOGLE}/v1beta/models/${MODELO_VIDEO}:generateContent?key=${key}`,{
    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pedido),signal:AbortSignal.timeout(180000)})
@@ -142,15 +142,24 @@ export async function processCaptions(db:SupabaseClient,max=2) {
    let fala=(peca.transcript||'').trim()
    if(!fala&&video)fala=await lerVideo(db,video)
    const pesado=!!video&&!(peca.transcript||'').trim()
+   // A leitura do vídeo é a parte cara. Guarda antes de tentar a legenda, para
+   // que uma falha na escrita não jogue fora o que já foi entendido.
+   if(fala&&!(peca.transcript||'').trim())
+    try{await db.rpc('central_social_caption_write',{p_id:peca.id,p_caption:'',p_transcript:fala})}catch{/* segue para a legenda */}
    const resultado=await generateSocialCaption(db,peca,{brief:fala},'esteira',{transcript:fala,automatic:true})
-   if(!resultado.caption){feitas.push({id:peca.id,status:'sem_contexto'});continue}
+   if(!resultado.caption){
+    try{await db.rpc('central_social_caption_fail',{p_id:peca.id,p_motivo:'A IA pediu contexto: '+(resultado.needs_context||'sem detalhe')})}catch{/* diagnóstico */}
+    feitas.push({id:peca.id,status:'sem_contexto'});continue
+   }
    const {error:gravou}=await db.rpc('central_social_caption_write',{p_id:peca.id,p_caption:resultado.caption,p_transcript:fala})
    feitas.push({id:peca.id,status:gravou?'erro_ao_gravar':'escrita'})
    if(pesado)break
   }catch(e){
-   // Guarda a transcrição mesmo quando a legenda falhar: ela custou tempo e
-   // dinheiro, e na próxima volta a peça já começa com a fala em mãos.
-   feitas.push({id:peca.id,status:String((e as Error).message||'falhou').slice(0,60)})
+   // Sem registrar o motivo, peça que desiste depois de três tentativas vira
+   // mistério: era o que acontecia com 13 peças.
+   const motivo=String((e as Error)?.message||e||'falhou')
+   try{await db.rpc('central_social_caption_fail',{p_id:peca.id,p_motivo:motivo})}catch{/* diagnóstico não derruba a esteira */}
+   feitas.push({id:peca.id,status:motivo.slice(0,80)})
   }
  }
  return {captions:feitas.length,results:feitas}

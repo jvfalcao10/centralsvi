@@ -112,7 +112,9 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
    const informado = typeof body.name === 'string' ? body.name.trim().slice(0,120) : ''
    actor = informado.length >= 2 ? informado : 'Cliente (pelo link da peça)'
   } else if (action.startsWith('cliente_')) fail(403, 'Use o registro de aprovação da equipe.')
-  if(!publicAccess&&action==='caption_generate')return res.json(await generateSocialCaption(db,card,body,actorId!))
+  // O botão da tela ignorava a fala já transcrita e pedia que alguém colasse a
+  // transcrição à mão, mesmo com ela guardada na peça.
+  if(!publicAccess&&action==='caption_generate')return res.json(await generateSocialCaption(db,card,body,actorId!,{transcript:(card as SocialCard&{transcript?:string}).transcript||''}))
   if(!publicAccess&&action==='publication_cancel'){
    const {data:job}=await db.from('central_social_publications').select('id').eq('id',body.job_id).eq('card_id',card.id).maybeSingle();if(!job)fail(404,'Programação não encontrada.')
    const {data,error}=await db.rpc('central_social_publication_cancel',{p_job:job.id,p_actor:actor,p_actor_id:actorId});if(error)throw publicationDatabaseError(error.message);return res.json({ok:true,publication:publicPublication(data)})
