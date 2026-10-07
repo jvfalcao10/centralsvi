@@ -31,11 +31,35 @@ export async function publicationPlayback(req:VercelRequest,res:VercelResponse){
   res.setHeader('Content-Range',expectedRange);res.setHeader('Content-Length',String(bytes.length));return res.status(206).send(bytes)
  }catch{return res.status(503).end()}
 }
+
+const semAcento=(v:string)=>v.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()
+const VAZIAS=new Set(['dr','dra','doutor','doutora','clinica','espaco','colegio','escola','centro','instituto','oficial','br','svi'])
+
+/**
+ * Qual conta do Instagram pertence a este cliente.
+ *
+ * A peça já sabe que é do Espaço Soraia; obrigar a escolher a conta toda vez é
+ * um passo repetido que não decide nada. A Graph API não diz a qual cliente a
+ * conta pertence, então a ligação é pelo nome, e só vale quando UMA conta
+ * serve: havendo dúvida, a pessoa escolhe, porque postar na conta errada é
+ * irreversível.
+ */
+export function suggestAccount(client:string,accounts:{id:string;username:string;name:string}[]) {
+ const termos=semAcento(client||'').split(' ').filter(p=>p.length>2&&!VAZIAS.has(p))
+ if(!termos.length)return null
+ const casa=(a:{username:string;name:string})=>{
+  const alvo=' '+semAcento(a.name)+' '+semAcento(a.username).replace(/\s+/g,'')+' '+semAcento(a.username)+' '
+  return termos.every(termo=>alvo.includes(termo))
+ }
+ const achadas=accounts.filter(casa)
+ return achadas.length===1?achadas[0].id:null
+}
+
 export async function publicationContext(db:SupabaseClient,card:SocialCard){
  const [accounts,media,{data:jobs,error}]=await Promise.all([publicationAccounts(),socialMedia(db,card),db.from('central_social_publications').select('*').eq('card_id',card.id).order('created_at',{ascending:false}).limit(1)])
  if(error)throw error
  const {token_hash:_hash,token_expires_at:_expires,source_description:_description,...safe}=media
- return {accounts,card:{...safe,assets:media.assets.map(a=>({...a,...(a.storage==='drive'&&a.type.startsWith('video/')&&card.selected_assets.includes(a.id)?{playback_url:staffPlayback(card,a.id)}:{})}))},publication:publicPublication(jobs?.[0]||null)}
+ return {accounts,suggested_account:suggestAccount(card.client,accounts),card:{...safe,assets:media.assets.map(a=>({...a,...(a.storage==='drive'&&a.type.startsWith('video/')&&card.selected_assets.includes(a.id)?{playback_url:staffPlayback(card,a.id)}:{})}))},publication:publicPublication(jobs?.[0]||null)}
 }
 export async function uploadPublicationCover(db:SupabaseClient,body:Record<string,any>,actorId:string){
  if(typeof body.image!=='string'||body.image.length>3*1024*1024||!/^data:image\/(jpeg|png|webp);base64,/.test(body.image))throw new SocialError(400,'Envie uma imagem JPG, PNG ou WebP de até 2 MB.')

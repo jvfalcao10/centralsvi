@@ -1,3 +1,4 @@
+import {suggestAccount} from '../../api/_lib/social-publication'
 import {describe,it,expect,vi} from 'vitest'
 import {publicationInput} from '../../api/_lib/social-publication-domain'
 import {allowedUploadURI,publishReady,processPublications} from '../../api/_lib/social-publication-worker'
@@ -38,4 +39,24 @@ describe('irreversible boundary',()=>{
   await publishReady(db as any,job(),graph);expect(graph).toHaveBeenCalledTimes(1);expect(updates.at(-1).status).toBe('uncertain')
  })
  it('an empty queue never contacts Meta',async()=>{const db={rpc:vi.fn().mockResolvedValue({data:null})};expect(await processPublications(db as any)).toEqual({processed:0})})
+})
+
+describe('conta do Instagram sugerida pelo cliente da peça',()=>{
+ const contas=[
+  {id:'1',username:'espacosoraia',name:'Espaço Soraia'},
+  {id:'2',username:'draeniapaulaaguiar',name:'Dra Enia Paula Aguiar'},
+  {id:'3',username:'dr.felipebranco',name:'Dr Felipe Branco'},
+ ]
+ it('acerta a conta do cliente da peça',()=>{
+  expect(suggestAccount('ESPAÇO SORAIA',contas)).toBe('1')
+  expect(suggestAccount('Dra Enia',contas)).toBe('2')
+  expect(suggestAccount('DR. FELIPE BRANCO',contas)).toBe('3')
+ })
+ // Postar na conta errada é irreversível: na dúvida, a pessoa escolhe.
+ it('não sugere nada quando duas contas servem ou nenhuma serve',()=>{
+  expect(suggestAccount('Dra Enia',[...contas,{id:'4',username:'draenia2',name:'Dra Enia Backup'}])).toBeNull()
+  expect(suggestAccount('Colégio Christo Rei',contas)).toBeNull()
+  expect(suggestAccount('Identificar cliente',contas)).toBeNull()
+  expect(suggestAccount('',contas)).toBeNull()
+ })
 })
