@@ -1,4 +1,4 @@
-import {suggestAccount} from '../../api/_lib/social-publication'
+import {suggestAccount,contaDoCliente} from '../../api/_lib/social-publication'
 import {describe,it,expect,vi} from 'vitest'
 import {publicationInput} from '../../api/_lib/social-publication-domain'
 import {allowedUploadURI,publishReady,processPublications} from '../../api/_lib/social-publication-worker'
@@ -59,4 +59,19 @@ describe('conta do Instagram sugerida pelo cliente da peça',()=>{
   expect(suggestAccount('Identificar cliente',contas)).toBeNull()
   expect(suggestAccount('',contas)).toBeNull()
  })
+})
+
+describe('a Central aprende a conta de cada cliente',()=>{
+ const contas=[{id:'9',username:'backesteticaa',name:'Back Estética'},{id:'1',username:'espacosoraia',name:'Espaço Soraia'}]
+ const banco=(guardada?:string)=>({from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:guardada?{account_id:guardada}:null})})})})})
+ // Caso real: a peça diz "VANESSA BACK" e a conta é @backesteticaa. Nome nenhum
+ // liga as duas, e é por isso que a escolha confirmada fica guardada.
+ it('usa a conta guardada mesmo quando o nome não se parece em nada',async()=>
+  expect(await contaDoCliente(banco('9') as never,'VANESSA BACK',contas)).toBe('9'))
+ it('sem nada guardado, cai no nome e não inventa',async()=>{
+  expect(await contaDoCliente(banco() as never,'ESPAÇO SORAIA',contas)).toBe('1')
+  expect(await contaDoCliente(banco() as never,'VANESSA BACK',contas)).toBeNull()
+ })
+ it('ignora conta guardada que sumiu da lista do Instagram',async()=>
+  expect(await contaDoCliente(banco('999') as never,'VANESSA BACK',contas)).toBeNull())
 })

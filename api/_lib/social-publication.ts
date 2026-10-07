@@ -55,11 +55,31 @@ export function suggestAccount(client:string,accounts:{id:string;username:string
  return achadas.length===1?achadas[0].id:null
 }
 
+/**
+ * A conta que este cliente usa.
+ *
+ * A conta usada na última publicação deste cliente fica guardada, então a
+ * escolha é feita uma vez e vale para sempre. Isso é evidência, não palpite, e
+ * resolve casos que o nome nunca resolveria, como a peça da "VANESSA BACK" que
+ * publica em @backesteticaa.
+ *
+ * Casar pelo nome só entra quando o cliente nunca publicou.
+ *
+ * Postar na conta errada é irreversível, então na dúvida ninguém decide por
+ * quem está na tela.
+ */
+export async function contaDoCliente(db:SupabaseClient,client:string,accounts:{id:string;username:string;name:string}[]) {
+ const {data}=await db.from('central_social_client_accounts').select('account_id').eq('client',client).maybeSingle()
+ const guardada=data?.account_id
+ if(guardada&&accounts.some(a=>a.id===guardada))return guardada
+ return suggestAccount(client,accounts)
+}
+
 export async function publicationContext(db:SupabaseClient,card:SocialCard){
  const [accounts,media,{data:jobs,error}]=await Promise.all([publicationAccounts(),socialMedia(db,card),db.from('central_social_publications').select('*').eq('card_id',card.id).order('created_at',{ascending:false}).limit(1)])
  if(error)throw error
  const {token_hash:_hash,token_expires_at:_expires,source_description:_description,...safe}=media
- return {accounts,suggested_account:suggestAccount(card.client,accounts),card:{...safe,assets:media.assets.map(a=>({...a,...(a.storage==='drive'&&a.type.startsWith('video/')&&card.selected_assets.includes(a.id)?{playback_url:staffPlayback(card,a.id)}:{})}))},publication:publicPublication(jobs?.[0]||null)}
+ return {accounts,suggested_account:await contaDoCliente(db,card.client,accounts),card:{...safe,assets:media.assets.map(a=>({...a,...(a.storage==='drive'&&a.type.startsWith('video/')&&card.selected_assets.includes(a.id)?{playback_url:staffPlayback(card,a.id)}:{})}))},publication:publicPublication(jobs?.[0]||null)}
 }
 export async function uploadPublicationCover(db:SupabaseClient,body:Record<string,any>,actorId:string){
  if(typeof body.image!=='string'||body.image.length>3*1024*1024||!/^data:image\/(jpeg|png|webp);base64,/.test(body.image))throw new SocialError(400,'Envie uma imagem JPG, PNG ou WebP de até 2 MB.')
@@ -78,6 +98,9 @@ export async function enqueuePublication(db:SupabaseClient,card:SocialCard,body:
  if(data.cover_path){const {data:object,error}=await db.storage.from('central-social').info(data.cover_path);if(error||!object)throw new SocialError(400,'A capa não foi encontrada. Envie novamente.')}
  const {data:job,error}=await db.rpc('central_social_publication_enqueue',{p_id:card.id,p_expected:body.version,p_request:body.request_id,p_data:data,p_actor:actor,p_actor_id:actorId})
  if(error)throw publicationDatabaseError(error.message)
+ // Guarda a conta que a pessoa confirmou, para a próxima peça deste cliente já
+ // vir pronta. Falhar aqui não pode derrubar uma publicação que já foi aceita.
+ await db.rpc('central_social_client_account_set',{p_client:card.client,p_account_id:data.account_id,p_username:data.account_username,p_actor:actor}).catch(()=>{})
  return {ok:true,publication:publicPublication(job)}
 }
 export function publicationDatabaseError(message:string){return new SocialError(409,/publication_active/.test(message)?'Esta peça já tem uma publicação na fila. Abra a programação para conferir.':/publication_in_progress/.test(message)?'A publicação já está sendo enviada ao Instagram. Aguarde a confirmação.':/already_published/.test(message)?'Esta versão já foi publicada.':/version_conflict/.test(message)?'Esta peça mudou em outra tela. Reabra e confira.':'Não foi possível salvar a programação. Atualize a peça e tente novamente.')}

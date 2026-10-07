@@ -1,3 +1,4 @@
+import {useEffect} from 'react'
 import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -97,6 +98,14 @@ function AutoLayout({ children }: { children: React.ReactNode }) {
   return isClient ? <ClientLayout>{children}</ClientLayout> : <AppLayout>{children}</AppLayout>;
 }
 
+const ehDominioDeAprovacao = typeof window !== 'undefined' && window.location.hostname === 'aprovar.svicompany.com.br'
+
+/** Endereço errado no domínio de aprovação não mostra a Central: vai pro site. */
+const ParaOSite = () => {
+  useEffect(() => { window.location.replace('https://svicompany.com.br') }, [])
+  return null
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -106,6 +115,14 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
+              {/* O domínio de aprovação só serve as telas do cliente. As rotas
+                  entram antes porque "/:slug/:token" casaria com caminhos da
+                  Central se o endereço fosse o mesmo. */}
+              {ehDominioDeAprovacao && <>
+                <Route path="/p/:token" element={<SocialApprove />} />
+                <Route path="/:slug/:token" element={<SocialClientApprove />} />
+                <Route path="*" element={<ParaOSite />} />
+              </>}
               <Route path="/" element={<Navigate to="/login" replace />} />
 
               {/* Public */}

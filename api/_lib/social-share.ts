@@ -8,18 +8,23 @@ import { previewPath } from './social-preview.js'
 import {clientReview,pendingClientCards} from './social-client.js'
 
 const origin='https://central.svicompany.com.br'
+const CURTO='https://aprovar.svicompany.com.br'
+/** O endereço nas meta tags tem que ser o mesmo por onde a pessoa abriu, senão
+ * o WhatsApp mostra a prévia de um domínio e o link leva pra outro. */
+const enderecoDaPeca=(token:string)=>/^[a-f0-9]{64}$/.test(token)?`${origin}/aprovar/social/${token}`:`${CURTO}/p/${token}`
+const enderecoDoCliente=(token:string,slug?:string)=>/^[a-f0-9]{64}$/.test(token)||!slug?`${origin}/aprovar/cliente/${token}`:`${CURTO}/${slug}/${token}`
 const esc=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!))
 export function socialShareMeta(card:SocialCard,token:string) {
  const c=publicCard(card),asset=c.assets[0]
  const title=(c.client===c.title?c.title:`${c.client} · ${c.title}`).replace(/\s+/g,' ').slice(0,180)
  const video=asset?.type.startsWith('video/')
  const description=`${c.assets.length>1?`${c.assets.length} arquivos`:video?'Vídeo':'Publicação'} para aprovação · versão ${c.revision}. Abra para ${video?'assistir':'conferir'} e aprovar ou pedir ajustes.`
- const url=`${origin}/aprovar/social/${token}`
+ const url=enderecoDaPeca(token)
  return {title,description,url,image:asset&&previewPath(asset)?`${url}/preview.jpg`:undefined,asset}
 }
-export function clientShareMeta(client:string,cards:SocialCard[],token:string) {
+export function clientShareMeta(client:string,cards:SocialCard[],token:string,slug?:string) {
  const asset=cards.flatMap(c=>publicCard(c).assets).find(a=>previewPath(a))
- const url=`${origin}/aprovar/cliente/${token}`
+ const url=enderecoDoCliente(token,slug)
  return {title:`${client} · Aprovação de conteúdo`.slice(0,180),description:cards.length?`${cards.length} ${cards.length===1?'peça aguardando':'peças aguardando'} sua resposta. Assista, confira e aprove ou peça alterações em cada publicação.`:'Todas as pendências em um só lugar. Abra para conferir os conteúdos enviados pela equipe.',url,image:asset?`${url}/preview.jpg`:undefined,asset}
 }
 export function socialShareHTML(shell:string,meta:ReturnType<typeof socialShareMeta>) {
@@ -52,7 +57,7 @@ export async function handleSocialShare(req:VercelRequest,res:VercelResponse) {
   let meta:ReturnType<typeof socialShareMeta>
   if(req.query.bundle==='1'){
    const review=await clientReview(db,token)
-   meta=clientShareMeta(review.client,await pendingClientCards(db,review.client),token)
+   meta=clientShareMeta(review.client,await pendingClientCards(db,review.client),token,review.slug||undefined)
   } else {
    const {data,error:dbError}=await db.from('central_social_cards').select('*').eq('token_hash',createHash('sha256').update(token).digest('hex')).maybeSingle()
    if(dbError)throw new Error('share_unavailable')

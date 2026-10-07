@@ -1,7 +1,9 @@
 import {createCipheriv,createDecipheriv,createHash,randomBytes} from 'node:crypto'
 import type {SupabaseClient} from '@supabase/supabase-js'
 import type {SocialCard} from './social-domain.js'
-const BASE='https://central.svicompany.com.br/aprovar/social/'
+import {codigoCurto} from './social-client.js'
+const BASE='https://aprovar.svicompany.com.br/p/'
+const BASE_ANTIGA='https://central.svicompany.com.br/aprovar/social/'
 const digest=(value:string)=>createHash('sha256').update(value).digest('hex')
 function key(){const secret=process.env.SOCIAL_SYNC_SECRET;if(!secret||secret.length<32)throw new Error('approval_link_key_missing');return createHash('sha256').update('central-social-approval-link:v1:'+secret).digest()}
 export function sealApprovalToken(token:string,cardId:string){
@@ -20,6 +22,13 @@ export async function approvalLink(db:SupabaseClient,card:SocialCard){
  const {data,error}=await db.from('central_social_approval_links').select('ciphertext,token_hash').eq('card_id',card.id).maybeSingle()
  if(error)throw new Error('approval_link_read_failed')
  if(!data||data.token_hash!==card.token_hash)return null
- try{const raw=openApprovalToken(data.ciphertext,card.id);return /^[a-f0-9]{64}$/.test(raw)&&digest(raw)===card.token_hash?BASE+raw:null}catch{return null}
+ // O código antigo, de 64 caracteres, abre pelo endereço de antes: link que já
+ // está com o cliente não pode morrer por causa de uma mudança de endereço.
+ try{
+  const raw=openApprovalToken(data.ciphertext,card.id)
+  if(digest(raw)!==card.token_hash)return null
+  if(/^[a-f0-9]{64}$/.test(raw))return BASE_ANTIGA+raw
+  return /^[23456789abcdefghjkmnpqrstuvwxyz]{12}$/.test(raw)?BASE+raw:null
+ }catch{return null}
 }
-export function newApprovalLink(cardId:string){const token=randomBytes(32).toString('hex');return {url:BASE+token,hash:digest(token),ciphertext:sealApprovalToken(token,cardId)}}
+export function newApprovalLink(cardId:string){const token=codigoCurto();return {url:BASE+token,hash:digest(token),ciphertext:sealApprovalToken(token,cardId)}}

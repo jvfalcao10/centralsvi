@@ -25,6 +25,46 @@
   ],
   "rewrites": [
     {
+      "source": "/p/:token/preview.jpg",
+      "has": [
+        {
+          "type": "host",
+          "value": "aprovar.svicompany.com.br"
+        }
+      ],
+      "destination": "/api/r?__rota=social-share&token=:token&image=1"
+    },
+    {
+      "source": "/p/:token",
+      "has": [
+        {
+          "type": "host",
+          "value": "aprovar.svicompany.com.br"
+        }
+      ],
+      "destination": "/api/r?__rota=social-share&token=:token"
+    },
+    {
+      "source": "/:slug/:token/preview.jpg",
+      "has": [
+        {
+          "type": "host",
+          "value": "aprovar.svicompany.com.br"
+        }
+      ],
+      "destination": "/api/r?__rota=social-share&bundle=1&token=:token&image=1"
+    },
+    {
+      "source": "/:slug/:token",
+      "has": [
+        {
+          "type": "host",
+          "value": "aprovar.svicompany.com.br"
+        }
+      ],
+      "destination": "/api/r?__rota=social-share&bundle=1&token=:token"
+    },
+    {
       "source": "/aprovar/cliente/:token/preview.jpg",
       "destination": "/api/r?__rota=social-share&bundle=1&token=:token&image=1"
     },
@@ -103,8 +143,14 @@
     {
       "source": "/aprovar/cliente/:path*",
       "headers": [
-        {"key": "X-Robots-Tag", "value": "noindex, nofollow"},
-        {"key": "Referrer-Policy", "value": "no-referrer"}
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
       ]
     },
     {
