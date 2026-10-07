@@ -25,6 +25,26 @@
   ],
   "rewrites": [
     {
+      "source": "/api/social",
+      "has": [
+        {
+          "type": "host",
+          "value": "aprovar.svicompany.com.br"
+        }
+      ],
+      "destination": "/api/r?__rota=social"
+    },
+    {
+      "source": "/api/:caminho*",
+      "has": [
+        {
+          "type": "host",
+          "value": "aprovar.svicompany.com.br"
+        }
+      ],
+      "destination": "/api/:caminho*"
+    },
+    {
       "source": "/p/:token/preview.jpg",
       "has": [
         {
