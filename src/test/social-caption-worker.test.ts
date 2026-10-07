@@ -69,4 +69,20 @@ describe('vídeo grande, que é a regra no quadro e não a exceção',()=>{
   await expect(lerVideo(db as never,{...grande,storage:undefined} as never)).resolves.toContain('Cena: consultório')
   expect(chamadas.some(c=>c.startsWith('DELETE'))).toBe(true)
  })
+
+ // Medido em produção com o vídeo do Dr. Felipe: o modelo abriu com
+ // "Aqui está a transcrição da fala do vídeo:", que viraria frase na legenda.
+ it('corta o preâmbulo do modelo em vez de deixar virar legenda',async()=>{
+  process.env.GEMINI_API_KEY='test'
+  vi.stubGlobal('fetch',vi.fn(async(url:string)=>{
+   const u=String(url)
+   if(u.includes('/upload/v1beta/files'))return {ok:true,headers:{get:()=>'https://upload.test/s'}}
+   if(u==='https://upload.test/s')return {ok:true,json:async()=>({file:{uri:'u',name:'files/x',state:'ACTIVE'}})}
+   if(u.includes(':generateContent'))return {ok:true,json:async()=>({candidates:[{content:{parts:[{text:'Aqui está a transcrição da fala do vídeo:\n\nOi pessoal, tudo bem?'}]}}]})}
+   return {ok:true,json:async()=>({})}
+  }))
+  const db={storage:{from:()=>({download:async()=>({data:new Blob(['x']),error:null})})}}
+  const r=await lerVideo(db as never,{...grande,storage:undefined} as never)
+  expect(r.startsWith('Oi pessoal')).toBe(true)
+ })
 })

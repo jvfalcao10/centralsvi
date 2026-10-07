@@ -10,6 +10,16 @@ afterEach(()=>{cleanup();vi.unstubAllGlobals()})
 describe('client reviews several pieces on one page',()=>{
  it('approves only the selected piece and preserves the other pending form',async()=>{show();const a=await screen.findByRole('article',{name:'Vídeo A'}),b=screen.getByRole('article',{name:'Vídeo B'});fireEvent.change(within(a).getByRole('textbox',{name:'Seu nome'}),{target:{value:'Maria'}});expect(within(b).getByRole('textbox',{name:'Seu nome'})).toHaveValue('Maria');fireEvent.click(within(a).getByRole('button',{name:'Aprovar esta versão'}));await within(a).findByText('Aprovação registrada.');expect(screen.getByRole('status')).toHaveTextContent('1 publicação aguardando');expect(within(b).getByRole('button',{name:'Aprovar esta versão'})).toBeEnabled();expect(JSON.parse(request.mock.calls[1][1].body)).toMatchObject({id:'a',version:3,action:'cliente_aprovar',name:'Maria'});expect(request).toHaveBeenCalledTimes(2)})
  it('sends the reason for the right piece and keeps it separate from approval',async()=>{show();const b=await screen.findByRole('article',{name:'Vídeo B'});fireEvent.change(within(b).getByRole('textbox',{name:'Seu nome'}),{target:{value:'Maria'}});fireEvent.click(within(b).getByRole('button',{name:'Pedir alteração'}));fireEvent.change(within(b).getByRole('textbox',{name:'O que você deseja alterar?'}),{target:{value:'Trocar a frase aos 15 segundos.'}});fireEvent.click(within(b).getByRole('button',{name:'Enviar pedido de alteração'}));await within(b).findByText('Pedido de alteração registrado.');expect(JSON.parse(request.mock.calls[1][1].body)).toMatchObject({id:'b',version:5,action:'cliente_ajustes',reason:'Trocar a frase aos 15 segundos.'})})
+ // João, 07/10: "não precisa inserir nome, isso trava o processo". O cliente abre
+ // o link para aprovar e esbarrava num campo obrigatório antes do botão.
+ it('aprova num clique, sem exigir que o cliente digite o nome',async()=>{
+  show()
+  const a=await screen.findByRole('article',{name:'Vídeo A'})
+  expect(within(a).getByRole('button',{name:'Aprovar esta versão'})).toBeEnabled()
+  fireEvent.click(within(a).getByRole('button',{name:'Aprovar esta versão'}))
+  await within(a).findByText('Aprovação registrada.')
+  expect(JSON.parse(request.mock.calls[1][1].body)).toMatchObject({id:'a',action:'cliente_aprovar',name:''})
+ })
  it('does not claim approval when a newer version caused a conflict',async()=>{request.mockImplementationOnce(async()=>({ok:true,json:async()=>({client:'Cliente A',cards})})).mockImplementationOnce(async()=>({ok:false,json:async()=>({error:'Esta peça mudou. Atualize a página.'})}));show();const a=await screen.findByRole('article',{name:'Vídeo A'});fireEvent.change(within(a).getByRole('textbox',{name:'Seu nome'}),{target:{value:'Maria'}});fireEvent.click(within(a).getByRole('button',{name:'Aprovar esta versão'}));expect(await within(a).findByRole('alert')).toHaveTextContent('Esta peça mudou');expect(screen.getByRole('status')).toHaveTextContent('2 publicações');expect(screen.queryByText('Aprovação registrada.')).toBeNull()})
  it('keeps an empty client link useful for future deliveries',async()=>{request.mockResolvedValue({ok:true,json:async()=>({client:'Cliente A',cards:[]})});show();expect(await screen.findByText('Tudo conferido por aqui.')).toBeVisible();expect(screen.getByText(/neste mesmo link/)).toBeVisible()})
 })

@@ -75,9 +75,16 @@ export function socialPatch(c: SocialCard, body: Record<string, unknown>, now = 
   requireAssets()
   if (c.stage === 'postado' || c.stage === 'arquivado') reject('Esta peça está encerrada.')
   const name = text(body.name, 120); const evidence = text(body.evidence, 2000)
-  if (name.length < 2) reject('Informe quem aprovou.')
+  // O cliente aprova pelo link sem precisar digitar nada: o link é único por
+  // peça e o clique fica registrado com data e versão. Só o registro feito pela
+  // equipe continua pedindo quem aprovou e onde, porque aí a prova está fora.
+  if (action === 'aprovar' && name.length < 2) reject('Informe quem aprovou.')
   if (action === 'aprovar' && evidence.length < 8) reject('Registre onde e quando a aprovação foi recebida.')
-  return { stage: 'aprovado', approved_revision: c.revision, approved_by: name, approved_at: now.toISOString(), approval_evidence: action === 'cliente_aprovar' ? 'Resposta pelo link desta versão; nome informado pelo cliente.' : evidence, scheduled_at: null }
+  const quem = name.length >= 2 ? name : 'Cliente (pelo link da peça)'
+  const prova = action === 'cliente_aprovar'
+   ? (name.length >= 2 ? 'Resposta pelo link desta versão; nome informado pelo cliente.' : 'Resposta pelo link desta versão, sem nome informado.')
+   : evidence
+  return { stage: 'aprovado', approved_revision: c.revision, approved_by: quem, approved_at: now.toISOString(), approval_evidence: prova, scheduled_at: null }
  }
  if (action === 'ajustes' || action === 'cliente_ajustes' || action === 'cliente_reprovar') {
   if (c.stage === 'postado') reject('Peça já postada; preserve o registro.')

@@ -18,6 +18,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { socialApi, SOCIAL_STAGES, socialDate, newestSocialFirst, clientTone, type Card } from '@/lib/social-board'
 import { useEvent } from '@/hooks/use-event'
+
+// Comparar 480 KB custa poucos milissegundos; redesenhar 138 cards com arrastar
+// e soltar custa muito mais. A cada minuto o quadro se recarrega, e quase sempre
+// nada mudou.
+const mesmasPecas=(a:Card[],b:Card[])=>a.length===b.length&&a.every((c,i)=>c.id===b[i].id&&c.version===b[i].version&&c.stage===b[i].stage&&c.caption===b[i].caption&&c.client===b[i].client&&c.title===b[i].title&&c.note===b[i].note&&c.preview===b[i].preview&&c.ingest_pending===b[i].ingest_pending&&c.caption_draft===b[i].caption_draft)
 import { useToast } from '@/hooks/use-toast'
 
 type Event = {id:number; action:string; actor:string; revision:number; created_at:string; details:{from:string;to:string;evidence?:string;note?:string}}
@@ -45,7 +50,7 @@ export default function Social() {
  const load=useCallback(async()=>{
   const epoch=boardEpoch.current,request=++boardRead.current;setError('')
   await Promise.all([
-   (async()=>{try{const data=await socialApi();if(request===boardRead.current&&epoch===boardEpoch.current&&!moving.current)setCards(data.cards)}catch(e){if(request===boardRead.current)setError((e as Error).message)}finally{if(request===boardRead.current)setLoading(false)}})(),
+   (async()=>{try{const data=await socialApi();if(request===boardRead.current&&epoch===boardEpoch.current&&!moving.current)setCards(anterior=>mesmasPecas(anterior,data.cards)?anterior:data.cards)}catch(e){if(request===boardRead.current)setError((e as Error).message)}finally{if(request===boardRead.current)setLoading(false)}})(),
    (async()=>{try{const status=await socialApi('?sync=status');if(request===boardRead.current)setSync(status)}catch{/* Sync health must not block the board. */}})(),
   ])
  },[])

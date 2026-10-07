@@ -105,8 +105,11 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
   if (publicAccess) {
    if (card.stage !== 'aguardando') fail(409, 'Esta versão já recebeu uma resposta ou saiu de aprovação.')
    if (!['cliente_aprovar','cliente_ajustes','cliente_reprovar'].includes(action)) fail(403, 'Ação não permitida neste link.')
-   if (typeof body.name !== 'string' || body.name.trim().length < 2) fail(400, 'Informe seu nome para registrar a resposta.')
-   actor = body.name.trim().slice(0,120)
+   // Exigir o nome travava a aprovação: o cliente abre o link para clicar em
+   // aprovar e esbarrava num campo. O link já é único por peça e o clique fica
+   // registrado com data e versão, então o nome passa a ser só um detalhe a mais.
+   const informado = typeof body.name === 'string' ? body.name.trim().slice(0,120) : ''
+   actor = informado.length >= 2 ? informado : 'Cliente (pelo link da peça)'
   } else if (action.startsWith('cliente_')) fail(403, 'Use o registro de aprovação da equipe.')
   if(!publicAccess&&action==='caption_generate')return res.json(await generateSocialCaption(db,card,body,actorId!))
   if(!publicAccess&&action==='publication_cancel'){

@@ -68,15 +68,18 @@ export async function understandVideo(db:SupabaseClient,asset:SocialAsset):Promi
 
   const pedido={contents:[{parts:[
    {file_data:{mime_type:tipo,file_uri:file.uri}},
-   {text:'Transcreva a fala deste vídeo em português do Brasil, com acentuação correta, na ordem em que é dita. Depois, em um parágrafo curto começando com "Cena:", descreva o que aparece: quem fala, onde está e qualquer texto escrito na tela. Não interprete, não resuma e não acrescente nada que não esteja no vídeo. Se não houver fala, escreva apenas a parte da cena.'},
-  ]}],generationConfig:{temperature:0,maxOutputTokens:4000}}
+   {text:'Comece direto pela primeira palavra dita, sem introdução e sem aspas: nada de "aqui está a transcrição". Transcreva a fala deste vídeo em português do Brasil, com acentuação correta, na ordem em que é dita. Depois, em um parágrafo curto começando com "Cena:", descreva o que aparece: quem fala, onde está e qualquer texto escrito na tela. Não interprete, não resuma e não acrescente nada que não esteja no vídeo. Se não houver fala, escreva apenas a parte da cena.'},
+  ]}],generationConfig:{temperature:0,maxOutputTokens:8000}}
   const r=await fetch(`${GOOGLE}/v1beta/models/${MODELO_VIDEO}:generateContent?key=${key}`,{
    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pedido),signal:AbortSignal.timeout(180000)})
   if(!r.ok)throw new Error(`gemini_http_${r.status}`)
   const data=await r.json() as {candidates?:{content?:{parts?:{text?:string}[]}}[]}
-  const texto=(data.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('').trim()
-  if(!texto)throw new Error('gemini_sem_resposta')
-  return texto.slice(0,12000)
+  const bruto=(data.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('').trim()
+  if(!bruto)throw new Error('gemini_sem_resposta')
+  // Visto no teste com o vídeo do Dr. Felipe: o modelo abriu com "Aqui está a
+  // transcrição da fala do vídeo:". Isso viraria frase na legenda do cliente.
+  const texto=bruto.replace(/^[^\n]{0,120}?transcri[çc][ãa]o[^\n]{0,80}?:\s*/i,'').replace(/^["“']+|["”']+$/g,'').trim()
+  return (texto||bruto).slice(0,12000)
  }finally{void apagar()}
 }
 
@@ -138,10 +141,12 @@ export async function processCaptions(db:SupabaseClient,max=2) {
    const video=escolhidos.find(a=>a.type.startsWith('video/'))
    let fala=(peca.transcript||'').trim()
    if(!fala&&video)fala=await lerVideo(db,video)
+   const pesado=!!video&&!(peca.transcript||'').trim()
    const resultado=await generateSocialCaption(db,peca,{brief:fala},'esteira',{transcript:fala,automatic:true})
    if(!resultado.caption){feitas.push({id:peca.id,status:'sem_contexto'});continue}
    const {error:gravou}=await db.rpc('central_social_caption_write',{p_id:peca.id,p_caption:resultado.caption,p_transcript:fala})
    feitas.push({id:peca.id,status:gravou?'erro_ao_gravar':'escrita'})
+   if(pesado)break
   }catch(e){
    // Guarda a transcrição mesmo quando a legenda falhar: ela custou tempo e
    // dinheiro, e na próxima volta a peça já começa com a fala em mãos.
