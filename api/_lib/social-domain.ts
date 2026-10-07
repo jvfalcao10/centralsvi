@@ -21,10 +21,15 @@ export function socialMovePatch(c: SocialCard, target: unknown, actor: string, n
  if (!actor.trim()) reject('Entre na Central novamente.')
  if (['aguardando','aprovado','para_anuncio','agendado','postado'].includes(stage)) {
   if (c.ingest_pending) reject('Aguarde a importação dos arquivos para continuar.')
-  if (!c.selected_assets.length) reject('Selecione ao menos um arquivo final.')
+  // O caminho em lote move pelo estado salvo e nem sempre carrega os arquivos.
+  if (!(c.assets||[]).length && !(c.selected_assets||[]).length) reject('Esta peça ainda não tem nenhum arquivo.')
   if (c.client === 'Identificar cliente') reject('Identifique o cliente desta peça para continuar.')
  }
  const patch: Record<string, unknown> = {stage, token_hash:null, token_expires_at:null}
+ // Quem não escolheu arquivo quis dizer "é tudo". Num carrossel de 8 lâminas
+ // todas são finais, e exigir a seleção travava a peça sem motivo. A ordem de
+ // importação é mantida, que é a ordem das lâminas.
+ if (!(c.selected_assets||[]).length && (c.assets||[]).length) patch.selected_assets = c.assets.map(a => a.id)
  // Moving back corrects the current board; the earlier publication stays in the event history.
  if (stage !== 'postado') Object.assign(patch,{posted_at:null,posted_url:null})
  if (['conferir','aguardando','ajustes','arquivado'].includes(stage)) Object.assign(patch,cleared)

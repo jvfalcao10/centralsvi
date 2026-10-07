@@ -33,9 +33,15 @@ describe('movimentação interna direta',()=>{
  it('reabre uma publicação e limpa os campos do estado atual',()=>expect(socialMovePatch(card({stage:'postado',posted_at:now.toISOString()}),'conferir','João',now)).toMatchObject({posted_at:null,posted_url:null,approved_at:null}))
  it('mantém observações existentes ao mover para ajuste sem motivo novo',()=>expect(socialMovePatch(card(),'ajustes','João',now)).not.toHaveProperty('note'))
  it('recusa etapa desconhecida e operador vazio',()=>{expect(()=>socialMovePatch(card(),'outro','João',now)).toThrow('Etapa');expect(()=>socialMovePatch(card(),'postado','',now)).toThrow('Entre')})
- it('continua bloqueando arquivos incompletos e importações pendentes',()=>{expect(()=>socialMovePatch(card({selected_assets:[]}),'postado','João',now)).toThrow('arquivo');expect(()=>socialMovePatch(card({ingest_pending:true}),'postado','João',now)).toThrow('importação')})
+ it('continua bloqueando peça sem arquivo e importação pendente',()=>{expect(()=>socialMovePatch(card({assets:[],selected_assets:[]}),'postado','João',now)).toThrow('arquivo');expect(()=>socialMovePatch(card({ingest_pending:true}),'postado','João',now)).toThrow('importação')})
+ // João, 07/10: travou ao mover um carrossel de 8 lâminas, todas finais, porque
+ // nenhuma estava marcada. Quem não escolheu quis dizer "é tudo".
+ it('sem seleção, assume todos os arquivos na ordem em vez de travar',()=>{
+  const c=card({selected_assets:[]})
+  expect(socialMovePatch(c,'aprovado','João',now)).toMatchObject({stage:'aprovado',selected_assets:c.assets.map(a=>a.id)})
+ })
  it('permite detalhes opcionais sem mudar etapa nem aprovação',()=>{const p=socialPatch(card({stage:'agendado'}),{action:'informacoes',channel:'Reels',scheduled_at:null},now);expect(p).toMatchObject({channel:'Reels',scheduled_at:null});expect(p).not.toHaveProperty('stage');expect(p).not.toHaveProperty('approved_by')})
  it('permite completar a publicação depois e valida links/datas',()=>{const c=card({stage:'postado',posted_at:now.toISOString()});expect(socialPatch(c,{action:'informacoes',posted_url:'https://instagram.com/p/qa',posted_at:now.toISOString()},now)).toMatchObject({posted_url:'https://instagram.com/p/qa'});expect(()=>socialPatch(c,{action:'informacoes',posted_url:'javascript:alert(1)'},now)).toThrow('inválido');expect(()=>socialPatch(c,{action:'informacoes',posted_at:'2027-01-01'},now)).toThrow('válida')})
 })
 
-it('Para anúncio organiza tráfego pago sem marcar publicação ou inventar aprovação',()=>{const p=socialMovePatch(card(),'para_anuncio','João',now);expect(p).toMatchObject({stage:'para_anuncio',posted_at:null,scheduled_at:null});expect(p).not.toHaveProperty('approved_by');expect(()=>socialMovePatch(card({selected_assets:[]}),'para_anuncio','João',now)).toThrow('arquivo')})
+it('Para anúncio organiza tráfego pago sem marcar publicação ou inventar aprovação',()=>{const p=socialMovePatch(card(),'para_anuncio','João',now);expect(p).toMatchObject({stage:'para_anuncio',posted_at:null,scheduled_at:null});expect(p).not.toHaveProperty('approved_by');expect(()=>socialMovePatch(card({assets:[],selected_assets:[]}),'para_anuncio','João',now)).toThrow('arquivo')})
