@@ -8,10 +8,12 @@
 const FORMATOS = 'carross?[eé]is?|carrossel|est[aá]ti[ck]os?|v[ií]deos?|reels?|stor(?:y|ies)|flyer|post|arte|an[uú]ncios?|anuncio|criativos?|tipogr[aá]fico|trend'
 
 function semAcento(value: string) {
- return value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+ return String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
 
 export function clientFacingTitle(client: string, title: string, video = false, files = 1) {
+ // Peça sem cliente ou sem título ainda precisa de um nome, e nunca pode derrubar
+ // a página nem a prévia por causa de um campo vazio.
  // O genérico nunca mente: descreve o que a pessoa vai abrir.
  const generico = video ? 'Vídeo para aprovação' : files > 1 ? `Carrossel de ${files} artes para aprovação` : 'Arte para aprovação'
  let t = String(title || '').replace(/\s+/g, ' ').trim()
@@ -20,7 +22,9 @@ export function clientFacingTitle(client: string, title: string, video = false, 
  t = t.replace(/^(?:\p{Lu}{3,}\s+)?(?:\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\s*)?(?:\d{1,2}h\d{0,2}\s*)?[·\-|–—:]\s*/u, '')
  // 2. Marcador de retrabalho e emoji solto no começo.
  t = t.replace(/^(?:altera[çc][aã]o|refa[çc][aã]o|urgente|novo|v\d+)\s*[·\-|–—:]\s*/i, '')
- t = t.replace(/^[^\p{L}\p{N}[]+/u, '')
+ // Só emoji e pontuação de separação. Tirar "qualquer coisa que não é letra" comia
+ // o "<" de um título hostil e mudava o texto que o escape do preview recebe.
+ t = t.replace(/^(?:[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F\u200D]|[\s·•\-|–—:>]|\p{Zs})+/u, '')
  // 3. Tag do cliente em colchetes: "[COLÉGIO CHRISTO REI]".
  t = t.replace(/^\[[^\]]{2,60}\]\s*[·\-|–—:]?\s*/, '')
  // 4. Sobra de data depois da tag: "[DR BRENNO] Out · Estático · ..."

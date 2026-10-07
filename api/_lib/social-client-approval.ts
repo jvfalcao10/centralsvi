@@ -37,7 +37,7 @@ export const CLIENT_GROUPS:Record<string,{client:string;aliases:string[]}> = {
 const TEAM_SUFFIX = ['92404033','92941072','92416107','92446604','96142150','96238835','91836693','96740929','20007880','33005199']
 const TEAM_IDS = new Set(Object.values(SOCIAL_WHATSAPP_SOURCES).flatMap(s=>[...s.senders]))
 const LISTS = ['901521539717','901524992979','901523658547']
-const WAITING = 'com o cliente', APPROVED = 'aprovado pelo cliente'
+const WAITING = 'com o cliente', APPROVED = 'aprovado pelo cliente', CHANGES = 'alteração do cliente'
 const EXPLICIT_WINDOW = 10*86400000, PRAISE_WINDOW = 48*3600000
 
 export function isTeamSender(m:Record<string,any>) {
@@ -85,6 +85,7 @@ export type Store={
  card(id:string):Promise<SocialCard|null>
  approve(c:SocialCard,patch:Record<string,unknown>):Promise<string>
  markSent(c:SocialCard):Promise<string>
+ askChanges(c:SocialCard,reason:string,who:string):Promise<string>
 }
 // Group events live in central_social_intake_receipts (service role only) under
 // "cg-media:", "cg-change:" and "client-approval:" ids, so no schema change.
@@ -111,6 +112,13 @@ export function receiptStore(db:ReturnType<typeof createAdminClient>):Store {
   },
   async card(id){const {data}=await db.from('central_social_cards').select('*').eq('id',id).maybeSingle();return (data as SocialCard)||null},
   async approve(c,patch){const {error}=await db.rpc('central_social_apply',{p_id:c.id,p_expected:c.version,p_patch:patch,p_action:'aprovar',p_actor:'Sofia · grupo do cliente',p_actor_id:null});return error?(error.message.includes('version_conflict')?'central_conflito':'central_erro'):''},
+  // O cliente pediu mudança naquela peça. Sem isso ela fica parada em "aguardando"
+  // e o designer não vê, no quadro, que tem retrabalho pedido esperando por ele.
+  async askChanges(c,reason,who){
+   if(c.stage==='postado'||c.stage==='arquivado')return ''
+   const {error}=await db.rpc('central_social_apply',{p_id:c.id,p_expected:c.version,p_patch:socialPatch(c,{action:'cliente_ajustes',reason}),p_action:'cliente_ajustes',p_actor:who,p_actor_id:null})
+   return error?(error.message.includes('version_conflict')?'central_conflito':'central_erro'):''
+  },
   // A peça já está na mão do cliente: o time acabou de mandar o arquivo no grupo dele.
   // "Conferir" passa a ser mentira, e enquanto for, a aprovação que vier depois não
   // encontra a peça, porque só vale para quem está aguardando o cliente.
@@ -146,7 +154,35 @@ export async function clientGroupApproval(db:ReturnType<typeof createAdminClient
   return {route:'pass'}
  }
  const verdict=clientVerdict(text)
- if(verdict==='change'){await store.claim(`cg-change:${own}`,chat,{media:quoted,at,text});return {route:'pass'}}
+ if(verdict==='change'){
+  await store.claim(`cg-change:${own}`,chat,{media:quoted,at,text})
+  // Só move a peça quando o cliente RESPONDE em cima de um arquivo. "Muda a cor" solto,
+  // depois de três vídeos, não diz qual. Na dúvida não mexe, igual à regra da aprovação.
+  if(quoted){
+   const mudanca:Record<string,unknown>={}
+   try{
+    const alvo=(await store.media(chat,at-EXPLICIT_WINDOW)).find(r=>r.id===quoted)
+    if(alvo?.name){
+     const c=await store.cardByFile(alvo.name,group.aliases)
+     if(c){
+      const quem=`${group.client} · WhatsApp ${String(m.sender_pn||m.sender||'').split('@')[0].replace(/\D/g,'')||'sem número'}`
+      const fail=await store.askChanges(c,`Pedido do cliente no grupo em ${brasilia(at)} (Brasília), sobre ${alvo.name}: "${text}"`,quem)
+      if(fail)mudanca.skipped=fail
+      else{
+       mudanca.card=c.id
+       if(!c.id.startsWith('wa-'))try{
+        await clickup(`/task/${c.id}`,{method:'PUT',body:{status:CHANGES}})
+        await clickup(`/task/${c.id}/comment`,{method:'POST',body:{comment_text:`[svi-ajuste] ${quem} pediu em ${brasilia(at)} (Brasília), respondendo ao arquivo ${alvo.name}: "${text}"`,notify_all:false}})
+        mudanca.clickup=c.id
+       }catch{mudanca.clickup_falhou=c.id}
+      }
+     }else mudanca.skipped='sem_card_na_central'
+    }
+   }catch(e:any){mudanca.skipped=String(e?.message||'central_recusou').slice(0,120)}
+   if(Object.keys(mudanca).length)await store.save(`cg-change:${own}`,{media:quoted,at,text,change:mudanca})
+  }
+  return {route:'pass'}
+ }
  if(verdict!=='explicit'&&verdict!=='praise')return {route:'pass'}
  const receipt=`client-approval:${own}`
  if(!await store.claim(receipt,chat,{route:'pass',state:'claimed',at}))return {route:'pass',client_approval:{duplicate:true}}

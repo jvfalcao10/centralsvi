@@ -107,7 +107,7 @@ export function socialPatch(c: SocialCard, body: Record<string, unknown>, now = 
 // é lido pelo cliente, na página e no card do WhatsApp, então sai limpo.
 export function publicCard(c: SocialCard) {
  const selecionados = c.assets.filter(a => c.selected_assets.includes(a.id))
- const title = clientFacingTitle(c.client, c.title, selecionados.some(a => a.type.startsWith('video/')), selecionados.length)
+ const title = clientFacingTitle(c.client, c.title, selecionados.some(a => String(a.type||'').startsWith('video/')), selecionados.length)
  return { ingest_pending:c.ingest_pending, id: c.id, client: c.client, title, assets: c.assets.filter(a => c.selected_assets.includes(a.id)).sort((a,b)=>c.selected_assets.indexOf(a.id)-c.selected_assets.indexOf(b.id)), caption: c.caption, stage: c.stage, revision: c.revision, version: c.version, approved_by: c.approved_by, approved_at: c.approved_at }
 }
 

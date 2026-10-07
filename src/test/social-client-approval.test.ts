@@ -19,7 +19,7 @@ describe('client wording (real replies from the client groups)',()=>{
 const card=(id:string,assets:string[],selected:string[],extra:any={})=>({id,client:'Espaço Soraia',title:id,author:'Math',assets:assets.map(n=>({id:'a-'+n,name:n,path:'x',type:'video/mp4'})),selected_assets:selected.map(n=>'a-'+n),caption:'',note:'',stage:'conferir',revision:1,version:2,approved_revision:null,approved_by:null,approved_at:null,approval_evidence:null,ingest_pending:false,posted_at:null,...extra})
 function world(cards:any[],tasks:any[]=[]){
  const receipts:Record<string,{chat:string;result:any;at:number}>={}
- const approved:string[]=[],clickup:any[]=[],sent:string[]=[]
+ const approved:string[]=[],clickup:any[]=[],sent:string[]=[],changed:any[]=[]
  const store:Store={
   async claim(id,chat,result){if(receipts[id])return false;receipts[id]={chat,result,at:Number((result as any).at||0)};return true},
   async save(id,result){receipts[id].result=result},
@@ -35,11 +35,12 @@ function world(cards:any[],tasks:any[]=[]){
   async card(id){return cards.find(c=>c.id===id)||null},
   async approve(c,patch){approved.push(c.id);Object.assign(c,patch);return ''},
   async markSent(c){if(c.stage!=='conferir'||c.ingest_pending||!c.selected_assets.length)return '';sent.push(c.id);c.stage='aguardando';return ''},
+  async askChanges(c,reason){if(c.stage==='postado'||c.stage==='arquivado')return '';changed.push({id:c.id,reason});c.stage='ajustes';c.note=reason;return ''},
  }
  const fetcher=async(path:string,init?:any)=>{clickup.push({path,method:init?.method||'GET',body:init?.body});return path.startsWith('/list/901521539717')?{tasks}:{tasks:[]}}
  let n=0
  const send=(who:any,extra:any)=>clientGroupApproval({} as any,{id:'m'+(++n),messageid:'m'+n,chatid:SORAIA,fromMe:false,...who,...extra},fetcher,T0+60*MIN*24,store)
- return {store,approved,clickup,receipts,sent,team:(file:string,minute:number)=>send(LETICIA,{messageType:'DocumentMessage',content:{fileName:file},messageTimestamp:T0+minute*MIN}).then(()=>'m'+n),client:(text:string,minute:number,quoted='')=>send(CLIENTE,{text,quoted,messageTimestamp:T0+minute*MIN})}
+ return {store,approved,clickup,receipts,sent,changed,team:(file:string,minute:number)=>send(LETICIA,{messageType:'DocumentMessage',content:{fileName:file},messageTimestamp:T0+minute*MIN}).then(()=>'m'+n),client:(text:string,minute:number,quoted='')=>send(CLIENTE,{text,quoted,messageTimestamp:T0+minute*MIN})}
 }
 
 describe('João: three videos go out, video 1 comes back corrected',()=>{
@@ -162,5 +163,54 @@ describe('entrega no grupo do cliente marca a peça como enviada',()=>{
   const id=await w.team('referencia solta.jpg',0)
   expect(w.sent).toEqual([])
   expect(w.receipts['cg-media:'+id]).toBeTruthy()
+ })
+})
+
+// Sem isso, o pedido de mudança ficava só no histórico e a peça parada em "aguardando":
+// o designer não via no quadro que tinha retrabalho pedido pelo cliente esperando.
+describe('pedido de ajuste do cliente move a peça',()=>{
+ it('resposta em cima de um arquivo manda aquela peça para ajustes, com o que o cliente escreveu',async()=>{
+  const cards=[card('v1',['soraia 1.mov'],['soraia 1.mov']),card('v2',['soraia 2.mov'],['soraia 2.mov'])]
+  const w=world(cards);const m1=await w.team('soraia 1.mov',0);await w.team('soraia 2.mov',1)
+  await w.client('troca a música do começo',5,m1)
+  expect(w.changed.map((c:any)=>c.id)).toEqual(['v1'])
+  expect(cards[0].stage).toBe('ajustes')
+  expect(cards[0].note).toContain('troca a música do começo')
+  expect(cards[0].note).toContain('soraia 1.mov')
+  expect(cards[1].stage).toBe('aguardando')
+ })
+
+ // "muda a cor" depois de três vídeos não diz qual. A mesma régua da aprovação.
+ it('pedido solto, sem citar arquivo, não move nada',async()=>{
+  const cards=[card('v1',['soraia 1.mov'],['soraia 1.mov']),card('v2',['soraia 2.mov'],['soraia 2.mov'])]
+  const w=world(cards);await w.team('soraia 1.mov',0);await w.team('soraia 2.mov',1)
+  await w.client('muda a cor',5)
+  expect(w.changed).toEqual([])
+  expect(cards.map(c=>c.stage)).toEqual(['aguardando','aguardando'])
+ })
+
+ it('a peça em ajustes não entra na aprovação solta que vier depois',async()=>{
+  const cards=[card('v1',['soraia 1.mov'],['soraia 1.mov']),card('v2',['soraia 2.mov'],['soraia 2.mov'])]
+  const w=world(cards);const m1=await w.team('soraia 1.mov',0);await w.team('soraia 2.mov',1)
+  await w.client('troca a música',5,m1);await w.client('os outros aprovados',6)
+  expect(w.approved).toEqual(['v2'])
+  expect(cards[0].stage).toBe('ajustes')
+ })
+
+ it('tarefa do ClickUp recebe o status de alteração do cliente e o comentário',async()=>{
+  const cards=[card('86abc',['soraia 1.mov'],['soraia 1.mov'])]
+  const w=world(cards);const m1=await w.team('soraia 1.mov',0)
+  await w.client('deixa a legenda maior',5,m1)
+  const put=w.clickup.find((c:any)=>c.method==='PUT'&&c.path==='/task/86abc')
+  expect(put?.body?.status).toBe('alteração do cliente')
+  const com=w.clickup.find((c:any)=>c.path==='/task/86abc/comment')
+  expect(com?.body?.comment_text).toContain('deixa a legenda maior')
+ })
+
+ it('peça já postada não volta para ajustes',async()=>{
+  const cards=[card('v1',['soraia 1.mov'],['soraia 1.mov'],{stage:'postado'})]
+  const w=world(cards);const m1=await w.team('soraia 1.mov',0)
+  await w.client('troca a música',5,m1)
+  expect(w.changed).toEqual([]);expect(cards[0].stage).toBe('postado')
  })
 })

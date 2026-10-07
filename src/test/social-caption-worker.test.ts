@@ -1,5 +1,5 @@
 import {describe,it,expect,vi,beforeEach,afterEach} from 'vitest'
-import {processCaptions,transcribeAsset} from '../../api/_lib/social-caption-worker'
+import {processCaptions,transcribeAsset,lerVideo} from '../../api/_lib/social-caption-worker'
 
 const video=(bytes:number)=>({id:'a1',name:'reel.mp4',path:'p/reel.mp4',type:'video/mp4',bytes} as never)
 
@@ -38,5 +38,35 @@ describe('esteira de legenda',()=>{
   expect(r.captions).toBe(1)
   expect(r.results[0].status).not.toBe('escrita')
   vi.unstubAllGlobals()
+ })
+})
+
+describe('vídeo grande, que é a regra no quadro e não a exceção',()=>{
+ const grande={id:'a1',name:'reel.mp4',path:'p/reel.mp4',type:'video/mp4',bytes:116*1024*1024} as never
+ beforeEach(()=>{
+  process.env.OPENAI_API_KEY='test'
+  if(!AbortSignal.timeout)vi.stubGlobal('AbortSignal',{...AbortSignal,timeout:()=>new AbortController().signal})
+ })
+ afterEach(()=>{delete process.env.GEMINI_API_KEY;vi.unstubAllGlobals()})
+
+ it('sem a chave do Gemini, recusa na hora em vez de baixar 116 MB à toa',async()=>{
+  const fetchSpy=vi.fn();vi.stubGlobal('fetch',fetchSpy)
+  await expect(lerVideo({} as never,grande)).rejects.toThrow('video_grande_demais')
+  expect(fetchSpy).not.toHaveBeenCalled()
+ })
+
+ it('com a chave, lê e ouve o vídeo inteiro e apaga o arquivo do Google depois',async()=>{
+  process.env.GEMINI_API_KEY='test'
+  const chamadas:string[]=[]
+  vi.stubGlobal('fetch',vi.fn(async(url:string,init?:RequestInit)=>{
+   const u=String(url);chamadas.push(`${init?.method||'GET'} ${u.split('?')[0]}`)
+   if(u.includes('/upload/v1beta/files'))return {ok:true,headers:{get:()=>'https://upload.test/sessao'}}
+   if(u==='https://upload.test/sessao')return {ok:true,json:async()=>({file:{uri:'u',name:'files/x',state:'ACTIVE'}})}
+   if(u.includes(':generateContent'))return {ok:true,json:async()=>({candidates:[{content:{parts:[{text:'Bom dia. Cena: consultório.'}]}}]})}
+   return {ok:true,json:async()=>({})}
+  }))
+  const db={storage:{from:()=>({download:async()=>({data:new Blob(['x']),error:null})})}}
+  await expect(lerVideo(db as never,{...grande,storage:undefined} as never)).resolves.toContain('Cena: consultório')
+  expect(chamadas.some(c=>c.startsWith('DELETE'))).toBe(true)
  })
 })
