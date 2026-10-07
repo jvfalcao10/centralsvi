@@ -11,7 +11,9 @@ import { allowedMediaURL, deliveredByTeam, digest, whatsappVideo, mediaType, nor
 const MAX_BYTES=50*1024*1024
 const CLICKUP='https://api.clickup.com/api/v2'
 const UAZ='https://svicompany.uazapi.com'
-const LISTS:Record<string,{id:string;author:string}>={jose:{id:'901521539717',author:'José'},lais:{id:'901524992979',author:'Laís'},math:{id:'901523658547',author:'Math'}}
+// Laís saiu da SVI em 07/10/2026; a lista dela (901524992979) deixou de ser lida aqui.
+// As peças que ela entregou seguem no quadro, porque o card guarda o autor no próprio registro.
+const LISTS:Record<string,{id:string;author:string}>={jose:{id:'901521539717',author:'José'},math:{id:'901523658547',author:'Math'}}
 type DB=ReturnType<typeof createAdminClient>
 type Job={key:string;provider:'clickup'|'whatsapp';source_id:string;card_id:string;attempts:number;payload:Record<string,any>}
 const checked=<T extends {error:any}>(r:T):T=>{if(r.error)throw new Error('database_failed');return r}
@@ -185,7 +187,7 @@ export async function handleSocialSync(req:VercelRequest,res:VercelResponse) {
   if(mode==='previews')return res.json(await refreshVideoPreviews(db,3))
   if(mode==='intake')return res.json(await socialIntake(db,req.body?.message||{}))
   if(mode==='collect'){
-   const source=String(req.body?.source||'');if(!['clickup:jose','clickup:lais','clickup:math',...Object.keys(SOCIAL_WHATSAPP_SOURCES).filter(s=>s.startsWith('whatsapp:'))].includes(source))return res.status(400).json({error:'Invalid source'})
+   const source=String(req.body?.source||'');if(!['clickup:jose','clickup:math',...Object.keys(SOCIAL_WHATSAPP_SOURCES).filter(s=>s.startsWith('whatsapp:'))].includes(source))return res.status(400).json({error:'Invalid source'})
    return res.json(await discover(db,source))
   }
   if(mode==='process'){
