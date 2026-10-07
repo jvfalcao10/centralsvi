@@ -1,3 +1,4 @@
+import { clientFacingTitle } from './social-client-title.js'
 export type SocialAsset = { id: string; name: string; path: string; storage?: 'drive'; sha256?:string; delivery_period?:string; drive_id?: string; folder_url?: string; folder_label?: string; thumbnail?: string; duration_ms?:number; width?:number; height?:number; preview_retry_at?:string; playback_url?:string; type: string; bytes?: number; date?: string; url?: string; preview?: string }
 export type SocialCard = {
  caption_draft?:boolean
@@ -102,8 +103,12 @@ export function socialPatch(c: SocialCard, body: Record<string, unknown>, now = 
  if (action === 'conferir') { if (c.stage === 'postado') reject('Peça já postada; preserve o registro.'); return { ...cleared, stage: 'conferir' } }
  reject('Ação inválida.')
 }
+// O título é escrito para a equipe dentro da tarefa do ClickUp. Tudo que sai daqui
+// é lido pelo cliente, na página e no card do WhatsApp, então sai limpo.
 export function publicCard(c: SocialCard) {
- return { ingest_pending:c.ingest_pending, id: c.id, client: c.client, title: c.title, assets: c.assets.filter(a => c.selected_assets.includes(a.id)).sort((a,b)=>c.selected_assets.indexOf(a.id)-c.selected_assets.indexOf(b.id)), caption: c.caption, stage: c.stage, revision: c.revision, version: c.version, approved_by: c.approved_by, approved_at: c.approved_at }
+ const selecionados = c.assets.filter(a => c.selected_assets.includes(a.id))
+ const title = clientFacingTitle(c.client, c.title, selecionados.some(a => a.type.startsWith('video/')), selecionados.length)
+ return { ingest_pending:c.ingest_pending, id: c.id, client: c.client, title, assets: c.assets.filter(a => c.selected_assets.includes(a.id)).sort((a,b)=>c.selected_assets.indexOf(a.id)-c.selected_assets.indexOf(b.id)), caption: c.caption, stage: c.stage, revision: c.revision, version: c.version, approved_by: c.approved_by, approved_at: c.approved_at }
 }
 
 // Return only the persisted movement fields, without signing all media again.
