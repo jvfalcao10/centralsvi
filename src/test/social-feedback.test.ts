@@ -1,5 +1,5 @@
 import { describe,it,expect,vi } from 'vitest'
-import { taskId, feedbackText, deliverFeedback, type FeedbackJob } from '../../api/_lib/social-feedback'
+import {taskId,feedbackText,deliverFeedback,type FeedbackJob} from '../../api/_lib/social-feedback'
 import {socialPatch,type SocialCard} from '../../api/_lib/social-domain'
 const job:FeedbackJob={id:1,event_id:20,card_id:'qa',channel:'clickup',destination:'task123',attempts:1,dispatched_at:null,created_at:'2026-09-25T12:00:00Z',payload:{client:'Cliente',title:'Vídeo',revision:3,actor:'Maria',action:'cliente_ajustes',comment:'Trocar a legenda aos 10 segundos.',created_at:'2026-09-25T12:00:00Z',files:['final.mp4'],task_id:'task123',group_label:'MATH | EDITOR | SVI'}}
 describe('feedback routing and safe delivery',()=>{
@@ -15,4 +15,26 @@ describe('feedback routing and safe delivery',()=>{
  it('does not send when provider history cannot be verified',async()=>{const p={find:vi.fn(async()=>{throw new Error('timeout')}),send:vi.fn()};expect((await deliverFeedback(job,vi.fn(),p)).status).toBe('retry');expect(p.send).not.toHaveBeenCalled()})
  it('does not send after losing the database lease',async()=>{const p={find:vi.fn(async()=>null),send:vi.fn()};await deliverFeedback(job,async()=>{throw new Error('lease lost')},p);expect(p.send).not.toHaveBeenCalled()})
  it('never substitutes a missing destination',async()=>{const p={find:vi.fn(),send:vi.fn()};expect((await deliverFeedback({...job,destination:''},vi.fn(),p)).status).toBe('blocked');expect(p.find).not.toHaveBeenCalled();expect(p.send).not.toHaveBeenCalled()})
+})
+
+// João, 08/10: botão de ajuste que num clique muda a etapa, bota a tarefa no
+// dia e manda o que ajustar para quem entregou.
+describe('pedido de ajuste da equipe',()=>{
+ const job=(extra:Record<string,unknown>={})=>({id:1,event_id:7,card_id:'c1',channel:'clickup',destination:'t1',attempts:0,dispatched_at:null,created_at:new Date().toISOString(),
+  payload:{client:'Cliente','title':'Peça',revision:2,actor:'João',action:'ajustes',comment:'Trocar a foto da lâmina 3',created_at:new Date().toISOString(),files:[],task_id:'t1',group_label:'José',...extra}} as never)
+
+ it('o texto diz que é pedido da equipe e que a tarefa voltou para hoje',()=>{
+  const texto=feedbackText(job())
+  expect(texto).toContain('AJUSTE PEDIDO PELA EQUIPE')
+  expect(texto).toContain('Pedido por João')
+  expect(texto).toContain('A tarefa voltou para hoje')
+  expect(texto).toContain('O que ajustar:')
+  expect(texto,'não é retorno de cliente').not.toContain('Comentário do cliente')
+ })
+ it('retorno de cliente continua com o texto de antes',()=>{
+  const texto=feedbackText(job({action:'cliente_ajustes'}))
+  expect(texto).toContain('ALTERAÇÃO SOLICITADA')
+  expect(texto).toContain('Comentário do cliente')
+  expect(texto).not.toContain('A tarefa voltou para hoje')
+ })
 })

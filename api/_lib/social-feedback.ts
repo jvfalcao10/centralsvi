@@ -20,11 +20,13 @@ export async function feedbackContext(db:DB,card:SocialCard) {
  return {route:{task_id:stored?.task_id||taskId(card.source_url)||'',task_name:stored?.task_name||'',group_id:group?.id||'',group_label:group?.label||''},groups:(groups as FeedbackGroup[]).map(({id,author,label})=>({id,author,label})),deliveries}
 }
 class DeliveryError extends Error {constructor(public code:string,public status:number,public ambiguous=false){super(code)}}
-async function request(channel:'clickup'|'whatsapp',path:string,body?:Record<string,unknown>) {
+// Atualizar tarefa no ClickUp é PUT; comentar é POST. Sem o método explícito,
+// o pedido de prazo virava um POST em /task/{id} e o ClickUp recusava.
+async function request(channel:'clickup'|'whatsapp',path:string,body?:Record<string,unknown>,metodo?:'POST'|'PUT') {
  const token=channel==='clickup'?process.env.SOCIAL_CLICKUP_TOKEN:process.env.SOCIAL_UAZ_TOKEN
  if(!token)throw new DeliveryError('configuration_missing',0)
  let r:Response
- try{r=await fetch((channel==='clickup'?'https://api.clickup.com/api/v2':'https://svicompany.uazapi.com')+path,{method:body?'POST':'GET',headers:channel==='clickup'?{Authorization:token,'Content-Type':'application/json'}:{token,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(12000)})}catch{throw new DeliveryError('provider_timeout',0,!!body)}
+ try{r=await fetch((channel==='clickup'?'https://api.clickup.com/api/v2':'https://svicompany.uazapi.com')+path,{method:metodo||(body?'POST':'GET'),headers:channel==='clickup'?{Authorization:token,'Content-Type':'application/json'}:{token,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(12000)})}catch{throw new DeliveryError('provider_timeout',0,!!body)}
  if(!r.ok)throw new DeliveryError(`provider_${r.status}`,r.status,!!body&&r.status>=500)
  try{return await r.json()}catch{throw new DeliveryError('provider_response_invalid',0,!!body)}
 }
@@ -43,9 +45,21 @@ export async function saveFeedbackRoute(db:DB,card:SocialCard,body:Record<string
  if(error){if(error.message.includes('version_conflict'))throw new SocialError(409,'Esta peça mudou. Reabra e confira.');throw error}
 }
 export function feedbackText(job:FeedbackJob) {
- const p=job.payload,decision=({cliente_aprovar:'APROVADO',cliente_ajustes:'ALTERAÇÃO SOLICITADA',cliente_reprovar:'REPROVADO'} as Record<string,string>)[p.action]||'RETORNO DO CLIENTE'
+ const p=job.payload as FeedbackJob['payload']&{texto_pronto?:string}
+ // O convite que a Sofia leva ao cliente é escrito na hora do pedido, com a
+ // legenda e o link daquela versão. Não cabe no molde de retorno interno.
+ if(p.texto_pronto)return `${p.texto_pronto}\n[SVI retorno ${job.event_id}]`
+ const decision=({cliente_aprovar:'APROVADO',cliente_ajustes:'ALTERAÇÃO SOLICITADA',cliente_reprovar:'REPROVADO',ajustes:'AJUSTE PEDIDO PELA EQUIPE'} as Record<string,string>)[p.action]||'RETORNO DO CLIENTE'
  const date=new Date(p.created_at).toLocaleString('pt-BR',{timeZone:'America/Belem'})
- return [`${decision} · ${p.client}`,`${p.title} · versão ${p.revision}`,`Resposta de ${p.actor}, em ${date}.`,p.comment?`\nComentário do cliente:\n${p.comment}`:'',p.files?.length?`\nArquivos desta versão:\n${p.files.join('\n')}`:'',`\nCentral: https://central.svicompany.com.br/content/social?peca=${encodeURIComponent(job.card_id)}`,p.task_id?`ClickUp: https://app.clickup.com/t/${p.task_id}`:'',`[SVI retorno ${job.event_id}]`].filter(Boolean).join('\n')
+ // Pedido da equipe não é retorno de cliente: quem lê precisa saber de quem
+ // veio e que a tarefa voltou para hoje.
+ const interno=p.action==='ajustes'
+ return [`${decision} · ${p.client}`,`${p.title} · versão ${p.revision}`,
+  interno?`Pedido por ${p.actor}, em ${date}. A tarefa voltou para hoje.`:`Resposta de ${p.actor}, em ${date}.`,
+  p.comment?`\n${interno?'O que ajustar':'Comentário do cliente'}:\n${p.comment}`:'',
+  p.files?.length?`\nArquivos desta versão:\n${p.files.join('\n')}`:'',
+  `\nCentral: https://central.svicompany.com.br/content/social?peca=${encodeURIComponent(job.card_id)}`,
+  p.task_id?`ClickUp: https://app.clickup.com/t/${p.task_id}`:'',`[SVI retorno ${job.event_id}]`].filter(Boolean).join('\n')
 }
 export const feedbackProvider={
  async find(job:FeedbackJob):Promise<string|null> {
@@ -69,6 +83,13 @@ export const feedbackProvider={
  },
  async send(job:FeedbackJob):Promise<string> {
   const text=feedbackText(job)
+  // Pedido de ajuste devolve a tarefa para a bancada e para o dia de hoje, que
+  // é o que faz ela subir na lista de quem vai executar. Falhar aqui não pode
+  // impedir o comentário: o aviso vale mais que o prazo.
+  if(job.channel==='clickup'&&job.destination&&(job.payload as {retomar_tarefa?:boolean}).retomar_tarefa){
+   const hoje=new Date();hoje.setHours(23,59,0,0)
+   try{await request('clickup',`/task/${job.destination}`,{status:'fazendo',due_date:hoje.getTime(),due_date_time:true},'PUT')}catch{/* o comentário é o que não pode faltar */}
+  }
   const d=job.channel==='clickup'?await request('clickup',`/task/${job.destination}/comment`,{comment_text:text,notify_all:true}):await request('whatsapp','/send/text',{number:job.destination,text,linkPreview:false,readchat:false,readmessages:false,track_source:'central-social',track_id:`feedback-${job.event_id}`,async:false})
   const id=d.id||d.messageid
   if(!id)throw new DeliveryError('provider_response_invalid',0,true)

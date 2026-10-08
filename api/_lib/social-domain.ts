@@ -75,7 +75,7 @@ export function socialPatch(c: SocialCard, body: Record<string, unknown>, now = 
   // Salvar é o gesto de revisão: a legenda deixa de ser rascunho da IA.
   return { client, title, caption, caption_draft: false, selected_assets: selected, note: text(body.note), ...(changed ? { ...cleared, revision: c.revision + 1, stage: 'conferir' } : {}) }
  }
- if (action === 'solicitar') { requireAssets(); if (c.stage === 'postado' || c.stage === 'arquivado') reject('Reabra a peça antes de solicitar aprovação.'); return { ...cleared, stage: 'aguardando' } }
+ if (action === 'solicitar' || action === 'enviar_cliente') { requireAssets(); if (c.stage === 'postado' || c.stage === 'arquivado') reject('Reabra a peça antes de solicitar aprovação.'); return { ...cleared, stage: 'aguardando' } }
  if (action === 'aprovar' || action === 'cliente_aprovar') {
   requireAssets()
   if (c.stage === 'postado' || c.stage === 'arquivado') reject('Esta peça está encerrada.')

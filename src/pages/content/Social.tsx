@@ -1,4 +1,5 @@
 import CaptionAssistant from '@/components/social/CaptionAssistant'
+import PedirAjuste from '@/components/social/PedirAjuste'
 import PublicationComposer from '@/components/social/PublicationComposer'
 import MobileSocialBoard from '@/components/social/MobileSocialBoard'
 import {useSocialTouchLayout} from '@/hooks/use-social-touch-layout'
@@ -11,7 +12,7 @@ import {StageSelect} from '@/components/social/CardActions'
 import PublicationDetails from '@/components/social/PublicationDetails'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import {ArrowUp, ArrowDown, Check, CheckCircle2, Clock3, Copy, Download, ExternalLink, ImageIcon, Link2, Loader2, RefreshCw, Search, X, Video,Sparkles} from 'lucide-react'
+import {ArrowUp,ArrowDown,Check,CheckCircle2,Clock3,Copy,Download,ExternalLink,ImageIcon,Link2,Loader2,RefreshCw,Search,X,Video,Sparkles,Send} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -85,6 +86,18 @@ export default function Social() {
   try{
    await socialApi('',{id:card.id,version:card.version,action:'editar',client:editClient,title:editTitle,caption,note,selected_assets:selected})
    await load();await open(card.id);notify('Versão salva para toda a equipe.')
+  }catch(e){notify((e as Error).message)}finally{setBusy(false)}
+ }
+ const enviarPelaSofia=async()=>{
+  if(!card||busy)return
+  setBusy(true)
+  try{
+   const r=await socialApi('',{id:card.id,version:card.version,action:'enviar_cliente'})
+   // Quando o grupo não é encontrado, a peça já foi para Aguardando cliente e o
+   // link existe: dizer isso é mais útil que falhar sem saída.
+   notify(r.enviado?`A Sofia está mandando no grupo ${r.grupo}.`:(r.motivo||'A peça foi para Aguardando cliente.'))
+   if(!r.enviado&&r.approval_url)await copy(r.approval_url)
+   await load();await open(card.id)
   }catch(e){notify((e as Error).message)}finally{setBusy(false)}
  }
  const generateApprovalLink=async()=>{
@@ -222,6 +235,11 @@ export default function Social() {
       {contentDirty&&<div className="rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-2"><p className="text-xs">Alterar os arquivos ou a legenda exige nova aprovação. O histórico anterior fica registrado.</p><Button disabled={busy||routeDirty} size="sm" onClick={()=>void save()}>Salvar versão</Button></div>}
       {feedback&&<details className="rounded-xl border p-3"><summary className="cursor-pointer py-1 text-sm font-medium">Responsável e destino do retorno</summary><FeedbackRouting key={`${card.id}:${card.version}`} cardId={card.id} version={card.version} context={feedback} onDirty={setRouteDirty} onSaved={async()=>{await load();const d=await socialApi('?id='+encodeURIComponent(card.id));setCard(d.card);setFeedback(d.feedback);setEvents(d.events);setRouteDirty(false)}}/></details>}
       {card.approved_by&&<div className="rounded-lg bg-emerald-500/10 border border-emerald-500/25 p-4"><p className="text-sm font-medium">Aprovado por {card.approved_by}</p><p className="text-xs text-muted-foreground mt-1">Registrado em {socialDate(card.approved_at)} · versão {card.revision}</p><p className="text-xs mt-2 whitespace-pre-wrap">{card.approval_evidence}</p></div>}
+      {!['postado','arquivado'].includes(card.stage)&&<Button variant="outline" className="w-full" disabled={busy||!!dirty||!selected.length||card.client==='Identificar cliente'}
+       onClick={()=>void enviarPelaSofia()}>
+       <Send className="h-4 w-4 mr-2"/>Mandar para o cliente aprovar pela Sofia
+      </Button>}
+      <PedirAjuste key={`ajuste:${card.id}:${card.version}`} card={card} disabled={busy||!!dirty} onPedido={async()=>{await load();await open(card.id)}}/>
       <section className="space-y-3 border-t pt-4"><h3 className="text-sm font-semibold">Etapa da peça</h3><StageSelect card={card} busy={busy||!!dirty} onMove={(id,target)=>void moveStage(id,target)}/><p className="text-xs text-muted-foreground">A mudança é salva na hora e fica registrada no histórico.</p></section>
       <Button variant="outline" disabled={busy||!!dirty||!['aprovado','agendado','para_anuncio','postado'].includes(card.stage)} onClick={()=>publish(card.id)}>Publicar / programar no Instagram</Button>
       <PublicationDetails key={`${card.id}:${card.version}`} card={card} disabled={busy||!!dirty} onSaved={async()=>{await load();await open(card.id)}}/>

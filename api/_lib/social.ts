@@ -4,6 +4,7 @@ import {publicPublication} from './social-publication-domain.js'
 import {moveManyCards} from './social-bulk.js'
 import { approvalLink, newApprovalLink } from './social-approval-link.js'
 import {clientReview,clientReviewCard,getClientLink,pendingClientCards} from './social-client.js'
+import {grupoDoCliente} from './social-client-approval.js'
 import {formatoValido} from './social-token.js'
 import {socialMedia} from './social-media.js'
 import { previewPath } from './social-preview.js'
@@ -124,7 +125,7 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
   if(action==='mover'&&body.stage===card.stage)return res.json({ok:true,card:staffMoveState(card)})
   const patch: Record<string, unknown> = action==='mover' ? socialMovePatch(card,body.stage,actor) : socialPatch(card, body)
   let approvalUrl: string | undefined; let sealed: string | undefined
-  if (action === 'solicitar' || (action==='mover'&&patch.stage==='aguardando')) {
+  if (action === 'solicitar' || action === 'enviar_cliente' || (action==='mover'&&patch.stage==='aguardando')) {
    const link=newApprovalLink(card.id)
    patch.token_hash=link.hash;patch.token_expires_at=new Date(Date.now()+30*86400000).toISOString()
    approvalUrl=link.url;sealed=link.ciphertext
@@ -133,6 +134,29 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
   if (error) { if (error.message.includes('version_conflict')) fail(409, 'Outra pessoa acabou de atualizar esta peça. Reabra e confira.'); if(error.message.includes('link_unavailable'))fail(404,'Este link ou esta peça não está disponível. Atualize a página.'); throw error }
   if (publicAccess) return res.json({ ok:true, card: publicCard(data as SocialCard) })
   if(action==='mover')return res.json({ok:true,card:staffMoveState(data as SocialCard),approval_url:approvalUrl||''})
+  // A Sofia leva a peça ao grupo do cliente. O envio entra na mesma fila dos
+  // outros avisos, com nova tentativa e registro, em vez de disparar na hora:
+  // uma falha de rede não pode sumir com o pedido de aprovação.
+  if(action==='enviar_cliente'){
+   const grupo=grupoDoCliente(card.client)
+   if(!grupo)return res.json({ok:true,approval_url:approvalUrl,enviado:false,
+    motivo:'Não encontrei o grupo deste cliente no WhatsApp. Copie o link e mande você mesmo.'})
+   const atual=data as SocialCard
+   const aviso=[`${atual.client} · ${atual.title}`,'',atual.caption?`Legenda:\n${atual.caption}\n`:'',
+    'Para aprovar ou pedir alteração, é só abrir:',approvalUrl||''].filter(Boolean).join('\n')
+   // A fila exige o evento que originou o envio, e é ele que dá rastro no
+   // histórico da peça. O apply acabou de registrar um; é esse que se usa.
+   const {data:evento}=await db.from('central_social_events').select('id')
+    .eq('card_id',atual.id).eq('action','enviar_cliente').order('id',{ascending:false}).limit(1).maybeSingle()
+   const {error:erroFila}=evento?.id?await db.from('central_social_feedback_outbox').insert({
+    event_id:evento.id,card_id:atual.id,channel:'whatsapp',destination:grupo.jid,
+    payload:{client:atual.client,title:atual.title,revision:atual.revision,actor,action:'enviar_cliente',
+     comment:'',created_at:new Date().toISOString(),files:[],task_id:null,group_label:grupo.nome,texto_pronto:aviso},
+    status:'pending'}):{error:{message:'evento_nao_encontrado'}}
+   if(erroFila)return res.json({ok:true,approval_url:approvalUrl,enviado:false,
+    motivo:'A peça foi para Aguardando cliente, mas o envio não entrou na fila. Copie o link e mande você mesmo.'})
+   return res.json({ok:true,approval_url:approvalUrl,enviado:true,grupo:grupo.nome})
+  }
   return res.json({ ok:true, approval_url: approvalUrl })
  } catch (error) {
   if (error instanceof SocialError) return res.status(error.status).json({ error:error.message })

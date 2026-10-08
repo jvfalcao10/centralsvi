@@ -89,6 +89,21 @@ export type Store={
 }
 // Group events live in central_social_intake_receipts (service role only) under
 // "cg-media:", "cg-change:" and "client-approval:" ids, so no schema change.
+/**
+ * O grupo de WhatsApp daquele cliente.
+ *
+ * O nome no quadro não é igual ao nome do grupo ("DRA. ÉSIA LOPES" contra
+ * "Dra. Ésia"), então a ligação é pelos mesmos apelidos que já servem para
+ * reconhecer a peça. Com dois grupos possíveis não devolve nenhum: mandar
+ * material para o cliente errado não tem volta.
+ */
+export function grupoDoCliente(client:string):{jid:string;nome:string}|null {
+ const alvo=' '+normalized(client||'')+' '
+ if(alvo.trim().length<3)return null
+ const achados=Object.entries(CLIENT_GROUPS).filter(([,g])=>g.aliases.some(a=>alvo.includes(' '+normalized(a)+' ')))
+ return achados.length===1?{jid:achados[0][0],nome:achados[0][1].client}:null
+}
+
 export function receiptStore(db:ReturnType<typeof createAdminClient>):Store {
  const rows=async(chat:string,prefix:string,since:number)=>{const {data,error}=await db.from('central_social_intake_receipts').select('id,result').eq('chat_id',chat).like('id',prefix+'%').gte('created_at',new Date(since).toISOString()).limit(500);if(error)throw new Error('database_failed');return data||[]}
  return {
