@@ -47,3 +47,13 @@ export function clientTone(client:string) {
  for(const ch of semAcento(client))h=(h*31+ch.charCodeAt(0))>>>0
  return TONS[h%TONS.length]
 }
+
+/** Mesma regra do servidor: numeração só vira ordem quando ela É a ordem. */
+export function ordemDasLaminas<T extends {name?:string}>(assets:T[]):T[] {
+ const esqueleto=(n:string)=>n.replace(/\d+/g,'#')
+ const nomes=assets.map(a=>a.name||'')
+ const numerados=nomes.every(n=>/\d/.test(n))&&new Set(nomes.map(esqueleto)).size===1
+ if(!numerados||new Set(nomes).size!==nomes.length)return assets
+ const comparador=new Intl.Collator('pt-BR',{numeric:true,sensitivity:'base'})
+ return assets.map((a,i)=>({a,i})).sort((x,y)=>comparador.compare(x.a.name||'',y.a.name||'')||x.i-y.i).map(x=>x.a)
+}

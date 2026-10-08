@@ -24,11 +24,20 @@ const {token_hash:_th,token_expires_at:_te,...mantemOLink}=cleared
 /**
  * A ordem das lâminas de um carrossel.
  *
- * Ordena pelo nome do arquivo tratando número como número, para que _9 venha
- * antes de _10. Nome igual mantém a ordem em que chegou, então nada embaralha
- * quando não há numeração.
+ * Só reordena quando a numeração É a ordem, ou seja, quando os nomes são
+ * iguais tirando os dígitos: "Queda_05.png" e "Queda_06.png", ou "1.jpg" e
+ * "2.jpg". Aí o número foi escrito para dizer a sequência.
+ *
+ * Quando os nomes diferem por outra coisa, nada é reordenado. Custou descobrir:
+ * ao arrumar os carrosséis eu também mexi numa peça cujos arquivos eram hashes
+ * e em outra com dois vídeos, e inverti uma ordem que alguém tinha escolhido à
+ * mão. Numeração ausente não é desordem, é escolha.
  */
 export function ordemDasLaminas<T extends {name?:string}>(assets:T[]):T[] {
+ const esqueleto=(n:string)=>n.replace(/\d+/g,'#')
+ const nomes=assets.map(a=>a.name||'')
+ const numerados=nomes.every(n=>/\d/.test(n))&&new Set(nomes.map(esqueleto)).size===1
+ if(!numerados||new Set(nomes).size!==nomes.length)return assets
  const comparador=new Intl.Collator('pt-BR',{numeric:true,sensitivity:'base'})
  return assets.map((a,i)=>({a,i})).sort((x,y)=>comparador.compare(x.a.name||'',y.a.name||'')||x.i-y.i).map(x=>x.a)
 }

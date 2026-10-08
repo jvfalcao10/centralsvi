@@ -90,6 +90,21 @@ describe('ordem das lâminas do carrossel',()=>{
   expect(ordemDasLaminas(entrada).map(x=>x.id)).toEqual(['a0','a1','a2'])
  })
 
+ // Arrumando os carrosséis eu mexi onde não devia e inverti ordem escolhida à
+ // mão. Numeração ausente não é desordem, é escolha de quem montou.
+ it('não mexe em arquivos de nome aleatório, como hash',()=>{
+  const entrada=n('d437fc_exif.jpg','9425994_exif.jpg','0f9c2c_exif.jpg')
+  expect(nomes(ordemDasLaminas(entrada))).toEqual(['d437fc_exif.jpg','9425994_exif.jpg','0f9c2c_exif.jpg'])
+ })
+ it('não mexe quando os nomes diferem por outra coisa além do número',()=>{
+  const entrada=n('Dra.Enia.MOV','Dra Enia.MP4')
+  expect(nomes(ordemDasLaminas(entrada))).toEqual(['Dra.Enia.MOV','Dra Enia.MP4'])
+ })
+ it('reordena quando o número É a única diferença',()=>{
+  expect(nomes(ordemDasLaminas(n('arte_3.jpg','arte_1.jpg','arte_2.jpg'))))
+   .toEqual(['arte_1.jpg','arte_2.jpg','arte_3.jpg'])
+ })
+
  it('mover sem seleção grava a ordem do nome, não a de importação',()=>{
   const c=card({assets:[{id:'x',name:'p_06.png'},{id:'y',name:'p_05.png'}],selected_assets:[]})
   expect(socialMovePatch(c,'agendado','João',now).selected_assets).toEqual(['y','x'])
