@@ -14,6 +14,11 @@ export class SocialError extends Error { constructor(public status: number, mess
 const reject = (message: string): never => { throw new SocialError(400, message) }
 const text = (value: unknown, max = 10000) => typeof value === 'string' ? value.trim().slice(0, max) : ''
 const cleared = { approved_revision: null, approved_by: null, approved_at: null, approval_evidence: null, token_hash: null, token_expires_at: null, scheduled_at: null }
+// Em ajuste o link continua de pé. Matá-lo deixava o cliente com endereço morto
+// na mão e obrigava a mandar outro depois; agora ele abre o mesmo link e vê que
+// a peça está sendo corrigida. A aprovação cai do mesmo jeito, porque a versão
+// que ele viu mudou.
+const {token_hash:_th,token_expires_at:_te,...mantemOLink}=cleared
 /** A staff member explicitly moving a card is the decision; optional details never block it. */
 export function socialMovePatch(c: SocialCard, target: unknown, actor: string, now = new Date()): Record<string, unknown> {
  const stage = text(target, 30)
@@ -25,14 +30,14 @@ export function socialMovePatch(c: SocialCard, target: unknown, actor: string, n
   if (!(c.assets||[]).length && !(c.selected_assets||[]).length) reject('Esta peça ainda não tem nenhum arquivo.')
   if (c.client === 'Identificar cliente') reject('Identifique o cliente desta peça para continuar.')
  }
- const patch: Record<string, unknown> = {stage, token_hash:null, token_expires_at:null}
+ const patch: Record<string, unknown> = stage==='ajustes' ? {stage} : {stage, token_hash:null, token_expires_at:null}
  // Quem não escolheu arquivo quis dizer "é tudo". Num carrossel de 8 lâminas
  // todas são finais, e exigir a seleção travava a peça sem motivo. A ordem de
  // importação é mantida, que é a ordem das lâminas.
  if (!(c.selected_assets||[]).length && (c.assets||[]).length) patch.selected_assets = c.assets.map(a => a.id)
  // Moving back corrects the current board; the earlier publication stays in the event history.
  if (stage !== 'postado') Object.assign(patch,{posted_at:null,posted_url:null})
- if (['conferir','aguardando','ajustes','arquivado'].includes(stage)) Object.assign(patch,cleared)
+ if (['conferir','aguardando','ajustes','arquivado'].includes(stage)) Object.assign(patch,stage==='ajustes'?mantemOLink:cleared)
  if (stage === 'aprovado') {
   patch.scheduled_at=null
   if (c.approved_revision !== c.revision || !c.approved_at || !c.approved_by) Object.assign(patch,{
@@ -94,7 +99,7 @@ export function socialPatch(c: SocialCard, body: Record<string, unknown>, now = 
  if (action === 'ajustes' || action === 'cliente_ajustes' || action === 'cliente_reprovar') {
   if (c.stage === 'postado') reject('Peça já postada; preserve o registro.')
   const reason = text(body.reason, 2000); if (reason.length < 5) reject(action==='cliente_reprovar'?'Informe o motivo da reprovação.':'Descreva o ajuste necessário.')
-  return { ...cleared, stage: 'ajustes', note: reason }
+  return { ...(action==='ajustes'?mantemOLink:cleared), stage: 'ajustes', note: reason }
  }
  if (action === 'agendar') {
   requireApproved(); if (c.stage !== 'aprovado' && c.stage !== 'agendado') reject('A peça precisa estar aprovada.')

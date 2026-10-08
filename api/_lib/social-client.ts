@@ -15,12 +15,12 @@ export function apelidoDoCliente(client:string) {
 }
 export const clientTokenHash=(token:string)=>createHash('sha256').update(token).digest('hex')
 export function clientPending(card:SocialCard,client:string) {
- return card.client===client && client!=='Identificar cliente' && card.stage==='aguardando' && !card.ingest_pending && !card.posted_at && card.selected_assets.length>0 && card.selected_assets.every(id=>card.assets.some(a=>a.id===id))
+ return card.client===client && client!=='Identificar cliente' && ['aguardando','ajustes'].includes(card.stage) && !card.ingest_pending && !card.posted_at && card.selected_assets.length>0 && card.selected_assets.every(id=>card.assets.some(a=>a.id===id))
 }
 export async function pendingClientCards(db:SupabaseClient,client:string) {
  const cards:SocialCard[]=[]
  for(let offset=0;;offset+=500){
-  const {data,error}=await db.from('central_social_cards').select('*').eq('client',client).eq('stage','aguardando').order('updated_at').order('id').range(offset,offset+499)
+  const {data,error}=await db.from('central_social_cards').select('*').eq('client',client).in('stage',['aguardando','ajustes']).order('updated_at').order('id').range(offset,offset+499)
   if(error)throw new Error('client_cards_read_failed')
   cards.push(...(data as SocialCard[]).filter(c=>clientPending(c,client)))
   if(data.length<500)return cards

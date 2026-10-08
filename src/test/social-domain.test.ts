@@ -45,3 +45,27 @@ describe('movimentação interna direta',()=>{
 })
 
 it('Para anúncio organiza tráfego pago sem marcar publicação ou inventar aprovação',()=>{const p=socialMovePatch(card(),'para_anuncio','João',now);expect(p).toMatchObject({stage:'para_anuncio',posted_at:null,scheduled_at:null});expect(p).not.toHaveProperty('approved_by');expect(()=>socialMovePatch(card({assets:[],selected_assets:[]}),'para_anuncio','João',now)).toThrow('arquivo')})
+
+// João, 08/10: o link do Elpídio sumiu quando a peça foi para Ajustes. Qualquer
+// mudança de etapa apagava o endereço, e o cliente ficava com link morto na mão.
+// Em ajuste o link fica de pé, com a peça mostrando o estado.
+describe('peça em ajuste não perde o link',()=>{
+ const comLink=()=>card({token_hash:'abc',token_expires_at:'2027-01-01T00:00:00.000Z'})
+ it('mover para ajustes preserva o endereço',()=>{
+  const p=socialMovePatch(comLink(),'ajustes','João',now)
+  expect(p).not.toHaveProperty('token_hash')
+  expect(p).not.toHaveProperty('token_expires_at')
+  expect(p.stage).toBe('ajustes')
+ })
+ it('pedir ajuste pela ação também preserva',()=>{
+  const p=socialPatch(comLink(),{action:'ajustes',reason:'Trocar a foto da lâmina 3'},now)
+  expect(p).not.toHaveProperty('token_hash')
+  expect(p.stage).toBe('ajustes')
+  // A aprovação cai: a versão que o cliente viu está sendo mexida.
+  expect(p.approved_by).toBeNull()
+ })
+ it('as outras etapas continuam derrubando o link',()=>{
+  for(const etapa of ['conferir','arquivado'])
+   expect(socialMovePatch(comLink(),etapa,'João',now).token_hash,`${etapa} deveria derrubar`).toBeNull()
+ })
+})

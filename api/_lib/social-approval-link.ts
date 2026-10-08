@@ -18,7 +18,7 @@ export function openApprovalToken(value:string,cardId:string){
  return Buffer.concat([cipher.update(data),cipher.final()]).toString('utf8')
 }
 export async function approvalLink(db:SupabaseClient,card:SocialCard){
- if(!card.token_hash||!(Date.parse(card.token_expires_at||'')>Date.now())||card.ingest_pending||!['aguardando','aprovado','agendado'].includes(card.stage))return null
+ if(!card.token_hash||!(Date.parse(card.token_expires_at||'')>Date.now())||card.ingest_pending||!['aguardando','ajustes','aprovado','agendado'].includes(card.stage))return null
  const {data,error}=await db.from('central_social_approval_links').select('ciphertext,token_hash').eq('card_id',card.id).maybeSingle()
  if(error)throw new Error('approval_link_read_failed')
  if(!data||data.token_hash!==card.token_hash)return null
