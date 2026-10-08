@@ -88,7 +88,8 @@ export const feedbackProvider={
   // impedir o comentário: o aviso vale mais que o prazo.
   if(job.channel==='clickup'&&job.destination&&(job.payload as {retomar_tarefa?:boolean}).retomar_tarefa){
    const hoje=new Date();hoje.setHours(23,59,0,0)
-   try{await request('clickup',`/task/${job.destination}`,{status:'fazendo',due_date:hoje.getTime(),due_date_time:true},'PUT')}catch{/* o comentário é o que não pode faltar */}
+   const status=(job.payload as {status_tarefa?:string}).status_tarefa||'fazendo'
+   try{await request('clickup',`/task/${job.destination}`,{status,due_date:hoje.getTime(),due_date_time:true},'PUT')}catch{/* o comentário é o que não pode faltar */}
   }
   const d=job.channel==='clickup'?await request('clickup',`/task/${job.destination}/comment`,{comment_text:text,notify_all:true}):await request('whatsapp','/send/text',{number:job.destination,text,linkPreview:!!(job.payload as {texto_pronto?:string}).texto_pronto,readchat:false,readmessages:false,track_source:'central-social',track_id:`feedback-${job.event_id}`,async:false})
   const id=d.id||d.messageid

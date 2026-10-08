@@ -1,5 +1,5 @@
 import { describe,it,expect,vi } from 'vitest'
-import {taskId,feedbackText,deliverFeedback,type FeedbackJob} from '../../api/_lib/social-feedback'
+import {taskId,feedbackText,deliverFeedback,type FeedbackJob,feedbackProvider} from '../../api/_lib/social-feedback'
 import {socialPatch,type SocialCard} from '../../api/_lib/social-domain'
 const job:FeedbackJob={id:1,event_id:20,card_id:'qa',channel:'clickup',destination:'task123',attempts:1,dispatched_at:null,created_at:'2026-09-25T12:00:00Z',payload:{client:'Cliente',title:'Vídeo',revision:3,actor:'Maria',action:'cliente_ajustes',comment:'Trocar a legenda aos 10 segundos.',created_at:'2026-09-25T12:00:00Z',files:['final.mp4'],task_id:'task123',group_label:'MATH | EDITOR | SVI'}}
 describe('feedback routing and safe delivery',()=>{
@@ -55,4 +55,30 @@ describe('convite que vai para o cliente',()=>{
  })
  it('no ClickUp o marcador fica, porque é como o comentário é reencontrado',()=>
   expect(feedbackText(convite('clickup'))).toContain('[SVI retorno 513]'))
+})
+
+// João, 08/10: "o status devia ser alteração do cliente". Mandar tudo para
+// "fazendo" apaga de onde veio o retrabalho, e a fila do designer precisa
+// separar o que o cliente pediu do que a casa pediu.
+describe('status da tarefa carrega a origem do ajuste',()=>{
+ const job=(status_tarefa:string)=>({id:1,event_id:9,card_id:'c1',channel:'clickup',destination:'t1',attempts:0,
+  dispatched_at:null,created_at:new Date().toISOString(),
+  payload:{client:'C',title:'P',revision:1,actor:'João',action:'ajustes',comment:'x',
+   created_at:new Date().toISOString(),files:[],task_id:'t1',group_label:'José',
+   retomar_tarefa:true,status_tarefa}} as never)
+
+ it('o worker usa o status que veio no pedido, não um fixo',async()=>{
+  const chamadas:{url:string;body:unknown}[]=[]
+  // jsdom não traz AbortSignal.timeout, que o envio usa para não pendurar.
+  if(!AbortSignal.timeout)vi.stubGlobal('AbortSignal',{...AbortSignal,timeout:()=>new AbortController().signal})
+  vi.stubGlobal('fetch',vi.fn(async(url:string,init?:RequestInit)=>{
+   chamadas.push({url:String(url),body:init?.body?JSON.parse(String(init.body)):null})
+   return {ok:true,json:async()=>({id:'x'})}
+  }))
+  vi.stubEnv('SOCIAL_CLICKUP_TOKEN','t')
+  await feedbackProvider.send(job('alteração do cliente'))
+  const put=chamadas.find(c=>!c.url.endsWith('/comment'))
+  expect((put?.body as {status?:string})?.status).toBe('alteração do cliente')
+  vi.unstubAllGlobals();vi.unstubAllEnvs()
+ })
 })
