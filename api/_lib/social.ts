@@ -148,6 +148,9 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
    // histórico da peça. O apply acabou de registrar um; é esse que se usa.
    const {data:evento}=await db.from('central_social_events').select('id')
     .eq('card_id',atual.id).order('id',{ascending:false}).limit(1).maybeSingle()
+   // A fila recusa duas linhas do mesmo canal para o mesmo evento. O gatilho
+   // deixou de tratar esta ação justamente por isso: o destino aqui é o grupo
+   // do CLIENTE, e quem sabe qual é só o código.
    const {error:erroFila}=evento?.id?await db.from('central_social_feedback_outbox').insert({
     event_id:evento.id,card_id:atual.id,channel:'whatsapp',destination:grupo.jid,
     payload:{client:atual.client,title:atual.title,revision:atual.revision,actor,action:'enviar_cliente',
