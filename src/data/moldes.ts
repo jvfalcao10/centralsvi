@@ -67,6 +67,13 @@ export const MOLDES: Molde[] = [
     "descricao": "\"Posso pesar o clima?\": o mesmo retrato em preto e branco em todas as lâminas, sobre fundo cinza escuro, e uma verdade que incomoda por lâmina, em minúscula e amarelo-claro, centralizada no peito. A capa é a pergunta.",
     "opcoes": "Regra: retrato real do profissional, recortado e em preto e branco · texto nunca no rosto (o gerador para se encostar) · brancos comprimidos pra letra não sumir na camisa",
     "tipo": "carrossel"
+  },
+  {
+    "id": "estudo",
+    "nome": "Estudo",
+    "descricao": "Carrossel de estudo científico: capa com imagem científica escura e a manchete do estudo com as palavras-chave em faixa clara; miolo preto com perfil no topo, texto leve com os números em negrito e seta; fecho com foto real do médico e a chamada para salvar e compartilhar.",
+    "opcoes": "Regra: estudo verificado na fonte, números do resumo oficial e referência completa na legenda com a ressalva do próprio estudo · selo azul só se o perfil for verificado · texto nunca no rosto",
+    "tipo": "carrossel"
   }
 ]
 
@@ -331,6 +338,20 @@ export const POSTS: PostMolde[] = [
       "/moldes/verdades-daniel-s07.webp",
       "/moldes/verdades-daniel-s08.webp",
       "/moldes/verdades-daniel-s09.webp"
+    ]
+  },
+  {
+    "id": "estudo-brenno",
+    "molde": "estudo",
+    "cliente": "Dr. Brenno Cangussu",
+    "titulo": "Estudo · exercício e artrose no joelho",
+    "laminas": [
+      "/moldes/estudo-brenno-s01.webp",
+      "/moldes/estudo-brenno-s02.webp",
+      "/moldes/estudo-brenno-s03.webp",
+      "/moldes/estudo-brenno-s04.webp",
+      "/moldes/estudo-brenno-s05.webp",
+      "/moldes/estudo-brenno-s06.webp"
     ]
   }
 ]
