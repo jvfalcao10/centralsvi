@@ -227,3 +227,24 @@ describe('erro de banco não pode virar aprovação duplicada',()=>{
  it('sem erro, reivindica',async()=>
   expect(await loja(null).claim('x','chat',{})).toBe(true))
 })
+
+// Auditoria externa, 07/10: a busca por nome de arquivo ignorava o cliente e
+// pegava a maior revisão GLOBAL. Dois clientes com "video.mp4" e a mensagem de
+// um mexia na peça do outro, alimentando aprovação, pedido de ajuste e marcação
+// de entrega.
+describe('peça de um cliente não responde à mensagem de outro',()=>{
+ const peca=(id:string,client:string,revision:number)=>({id,client,revision,title:'Vídeo',stage:'aguardando',assets:[{id:'a',name:'video.mp4'}],selected_assets:['a'],version:1})
+ const loja=(achados:unknown[])=>receiptStore({from:()=>({select:()=>({contains:()=>({limit:async()=>({data:achados})}),not:()=>({order:()=>({limit:async()=>({data:[]})})})})})} as never)
+
+ it('ignora a peça de outro cliente, mesmo com revisão maior',async()=>{
+  const achados=[peca('do-outro','Cliente B',9),peca('a-certa','Dra. Erika Figueiredo',1)]
+  const c=await loja(achados).cardByFile('video.mp4',['erika'])
+  expect(c?.id).toBe('a-certa')
+ })
+ it('não devolve nada quando só há peça de outro cliente',async()=>
+  expect(await loja([peca('do-outro','Cliente B',9)]).cardByFile('video.mp4',['erika'])).toBeNull())
+ it('na dúvida entre dois clientes do mesmo grupo, não mexe em nenhuma',async()=>{
+  const achados=[peca('um','Dra. Erika Figueiredo',1),peca('dois','Erika Odonto',2)]
+  expect(await loja(achados).cardByFile('video.mp4',['erika'])).toBeNull()
+ })
+})

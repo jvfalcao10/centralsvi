@@ -36,31 +36,37 @@ async function baixar(db:SupabaseClient,asset:SocialAsset,teto:number):Promise<B
  *
  * O arquivo é apagado do Google ao fim: é vídeo de cliente, não fica hospedado.
  */
-export async function understandVideo(db:SupabaseClient,asset:SocialAsset):Promise<string> {
+export async function understandVideo(db:SupabaseClient,asset:SocialAsset,prazo=Date.now()+240000):Promise<string> {
  const key=process.env.GEMINI_API_KEY;if(!key)throw new Error('gemini_key_missing')
+ // Os limites eram por etapa e a soma estourava o teto da função: baixar 20s +
+ // abrir 30s + enviar 140s + ler 170s dá 360s dentro dos limites individuais.
+ // Agora todas as etapas dividem o mesmo prazo e param juntas.
+ const resta=(reserva=0)=>{const ms=prazo-Date.now()-reserva;if(ms<=1000)throw new Error('sem_tempo_na_volta');return ms}
  const arquivo=await baixar(db,asset,LIMITE_VIDEO)
  const tipo=asset.type||'video/mp4'
 
  const inicio=await fetch(`${GOOGLE}/upload/v1beta/files?key=${key}`,{method:'POST',headers:{
   'X-Goog-Upload-Protocol':'resumable','X-Goog-Upload-Command':'start',
   'X-Goog-Upload-Header-Content-Length':String(arquivo.size),'X-Goog-Upload-Header-Content-Type':tipo,
-  'Content-Type':'application/json'},body:JSON.stringify({file:{display_name:'peca'}}),signal:AbortSignal.timeout(60000)})
+  'Content-Type':'application/json'},body:JSON.stringify({file:{display_name:'peca'}}),signal:AbortSignal.timeout(Math.min(60000,resta(20000)))})
  const destino=inicio.headers.get('x-goog-upload-url')
  if(!inicio.ok||!destino)throw new Error(`gemini_upload_start_${inicio.status}`)
 
  const envio=await fetch(destino,{method:'POST',headers:{
   'X-Goog-Upload-Command':'upload, finalize','X-Goog-Upload-Offset':'0','Content-Type':tipo},
-  body:arquivo,signal:AbortSignal.timeout(180000)})
+  body:arquivo,signal:AbortSignal.timeout(Math.min(180000,resta(20000)))})
  if(!envio.ok)throw new Error(`gemini_upload_${envio.status}`)
  const {file}=await envio.json() as {file:{uri:string;name:string;state:string}}
 
- const apagar=()=>fetch(`${GOOGLE}/v1beta/${file.name}?key=${key}`,{method:'DELETE'}).catch(()=>{})
+ // `void apagar()` deixava o processo terminar antes do apagamento. Vídeo de
+ // cliente não fica hospedado fora: o apagamento tem prazo próprio e é esperado.
+ const apagar=async()=>{try{await fetch(`${GOOGLE}/v1beta/${file.name}?key=${key}`,{method:'DELETE',signal:AbortSignal.timeout(15000)})}catch{/* o Google expira em 48h */}}
  try{
   // O vídeo só pode ser lido depois de processado do outro lado.
   let estado=file.state
   for(let i=0;i<30&&estado==='PROCESSING';i++){
    await new Promise(r=>setTimeout(r,2000))
-   const r=await fetch(`${GOOGLE}/v1beta/${file.name}?key=${key}`,{signal:AbortSignal.timeout(20000)})
+   const r=await fetch(`${GOOGLE}/v1beta/${file.name}?key=${key}`,{signal:AbortSignal.timeout(Math.min(20000,resta(15000)))})
    if(!r.ok)throw new Error(`gemini_state_${r.status}`)
    estado=((await r.json()) as {state:string}).state
   }
@@ -71,7 +77,7 @@ export async function understandVideo(db:SupabaseClient,asset:SocialAsset):Promi
    {text:'Comece direto, sem introdução e sem aspas: nada de "aqui está a transcrição". Primeiro, transcreva a fala deste vídeo em português do Brasil, com acentuação correta, na ordem em que é dita. Se não houver fala, escreva apenas: SEM FALA. Depois, em "Texto na tela:", copie PALAVRA POR PALAVRA tudo que aparece escrito no vídeo, na ordem em que aparece, incluindo legendas, títulos e letreiros. Em muitos reels a mensagem inteira está só no texto da tela, com música ao fundo, e sem isso não dá para escrever a legenda. Por fim, em "Cena:", descreva em um parágrafo curto quem aparece, onde está e o que faz. Não interprete, não resuma e não acrescente nada que não esteja no vídeo.'},
   ]}],generationConfig:{temperature:0,maxOutputTokens:8000}}
   const r=await fetch(`${GOOGLE}/v1beta/models/${MODELO_VIDEO}:generateContent?key=${key}`,{
-   method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pedido),signal:AbortSignal.timeout(180000)})
+   method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pedido),signal:AbortSignal.timeout(Math.min(180000,resta(15000)))})
   if(!r.ok)throw new Error(`gemini_http_${r.status}`)
   const data=await r.json() as {candidates?:{content?:{parts?:{text?:string}[]}}[]}
   const bruto=(data.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('').trim()
@@ -80,7 +86,7 @@ export async function understandVideo(db:SupabaseClient,asset:SocialAsset):Promi
   // transcrição da fala do vídeo:". Isso viraria frase na legenda do cliente.
   const texto=bruto.replace(/^[^\n]{0,120}?transcri[çc][ãa]o[^\n]{0,80}?:\s*/i,'').replace(/^["“']+|["”']+$/g,'').trim()
   return (texto||bruto).slice(0,12000)
- }finally{void apagar()}
+ }finally{await apagar()}
 }
 
 /**
@@ -125,14 +131,16 @@ export async function transcribeAsset(db:SupabaseClient,asset:SocialAsset):Promi
  * caminho que cobre os 116 MB de média do quadro. Sem ela, resta a transcrição
  * da OpenAI, que só aceita 25 MB e hoje atende 9 dos 70 vídeos.
  */
-export async function lerVideo(db:SupabaseClient,asset:SocialAsset):Promise<string> {
- if(process.env.GEMINI_API_KEY)return understandVideo(db,asset)
+export async function lerVideo(db:SupabaseClient,asset:SocialAsset,prazo?:number):Promise<string> {
+ if(process.env.GEMINI_API_KEY)return understandVideo(db,asset,prazo)
  return transcribeAsset(db,asset)
 }
 
-export async function processCaptions(db:SupabaseClient,max=2) {
+export async function processCaptions(db:SupabaseClient,max=2,prazo=Date.now()+240000) {
  const feitas:{id:string;status:string}[]=[]
  for(let i=0;i<max;i++){
+  // Entender um vídeo leva mais de um minuto: sem tempo, nem começa.
+  if(prazo-Date.now()<70000)break
   const {data:card,error}=await db.rpc('central_social_caption_next')
   if(error||!card)break
   const peca=card as SocialCard&{transcript?:string|null}
@@ -140,7 +148,7 @@ export async function processCaptions(db:SupabaseClient,max=2) {
    const escolhidos=(peca.assets||[]).filter(a=>peca.selected_assets.includes(a.id))
    const video=escolhidos.find(a=>a.type.startsWith('video/'))
    let fala=(peca.transcript||'').trim()
-   if(!fala&&video)fala=await lerVideo(db,video)
+   if(!fala&&video)fala=await lerVideo(db,video,prazo)
    const pesado=!!video&&!(peca.transcript||'').trim()
    // A leitura do vídeo é a parte cara. Guarda antes de tentar a legenda, para
    // que uma falha na escrita não jogue fora o que já foi entendido.

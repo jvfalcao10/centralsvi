@@ -203,7 +203,9 @@ export async function handleSocialSync(req:VercelRequest,res:VercelResponse) {
    const previews=Date.now()-start<40000?await refreshVideoPreviews(db,3).catch(()=>({ready:0,pending:0})):undefined
    // A legenda vem por último e no tempo que sobrar: transcrever é lento, e
    // peça sem legenda é incômodo, enquanto peça sem arquivo é peça perdida.
-   const captions=Date.now()-start<45000?await processCaptions(db,2).catch(()=>({captions:0,results:[]})):undefined
+   // A legenda usa o tempo que sobra da volta, nunca o seu próprio teto: a
+   // função tem 300s no total e a importação do arquivo vem primeiro.
+   const captions=Date.now()-start<45000?await processCaptions(db,2,start+260000).catch(()=>({captions:0,results:[]})):undefined
    return res.json({processed:results.length,results,previews,feedback,captions})
   }
   return res.status(400).json({error:'Invalid mode'})

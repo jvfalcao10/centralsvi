@@ -110,9 +110,20 @@ export function receiptStore(db:ReturnType<typeof createAdminClient>):Store {
   async lastApproval(chat,before){const {data}=await db.from('central_social_intake_receipts').select('result').eq('chat_id',chat).like('id','client-approval:%').order('created_at',{ascending:false}).limit(10);return Math.max(0,...(data||[]).map((r:any)=>Number(r.result?.at||0)).filter(t=>t<before))},
   async changes(chat,since){return (await rows(chat,'cg-change:',since)).filter((r:any)=>Number(r.result?.at||0)>=since).length},
   async cardByFile(name,aliases){
-   const {data}=await db.from('central_social_cards').select('*').contains('assets',JSON.stringify([{name}])).limit(5)
-   const exact=(data||[]) as SocialCard[]
-   if(exact.length)return exact.sort((a,b)=>b.revision-a.revision)[0]
+   // O dono da peça precisa ser o dono do grupo. Sem este filtro, dois clientes
+   // com "video.mp4" faziam a mensagem de um mexer na peça do outro: a busca
+   // pegava a maior revisão global. Achado por auditoria externa em 07/10.
+   const doCliente=(c:SocialCard)=>aliases.some(a=>(' '+normalized(c.client)+' ').includes(' '+normalized(a)+' '))
+   // Limite alto de propósito: filtrando depois, um limite curto poderia
+   // devolver só peças de outros clientes e esconder a certa.
+   const {data}=await db.from('central_social_cards').select('*').contains('assets',JSON.stringify([{name}])).limit(50)
+   const exact=((data||[]) as SocialCard[]).filter(doCliente)
+   if(exact.length){
+    // Mesmo nome de arquivo em clientes diferentes dentro do mesmo grupo não
+    // deveria existir, mas se existir ninguém adivinha qual é: não mexe.
+    if(new Set(exact.map(c=>normalized(c.client))).size>1)return null
+    return exact.sort((a,b)=>b.revision-a.revision)[0]
+   }
    const base=baseTitle(name);if(base.length<4)return null
    const {data:recent}=await db.from('central_social_cards').select('*').not('stage','in','(postado,arquivado)').order('source_updated',{ascending:false}).limit(300)
    const hit=((recent||[]) as SocialCard[]).filter(c=>normalized(c.title)===base&&aliases.some(a=>(' '+normalized(c.client)+' ').includes(' '+normalized(a)+' ')))

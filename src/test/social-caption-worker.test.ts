@@ -86,3 +86,35 @@ describe('vídeo grande, que é a regra no quadro e não a exceção',()=>{
   expect(r.startsWith('Oi pessoal')).toBe(true)
  })
 })
+
+// Auditoria externa, 07/10: os limites eram por etapa e a soma passava dos 300s
+// da função. E `void apagar()` deixava o processo terminar antes do apagamento,
+// então vídeo de cliente podia ficar hospedado no Google.
+describe('prazo da volta e limpeza do arquivo',()=>{
+ beforeEach(()=>{process.env.GEMINI_API_KEY='test';process.env.OPENAI_API_KEY='test'
+  if(!AbortSignal.timeout)vi.stubGlobal('AbortSignal',{...AbortSignal,timeout:()=>new AbortController().signal})})
+ afterEach(()=>{delete process.env.GEMINI_API_KEY;vi.unstubAllGlobals()})
+
+ it('não começa um vídeo sem tempo de terminar',async()=>{
+  const rpc=vi.fn()
+  const r=await processCaptions({rpc} as never,2,Date.now()+5000)
+  expect(r.captions).toBe(0)
+  expect(rpc,'nem chegou a pedir peça').not.toHaveBeenCalled()
+ })
+
+ it('o apagamento é esperado, não disparado e esquecido',async()=>{
+  const ordem:string[]=[]
+  vi.stubGlobal('fetch',vi.fn(async(url:string,init?:RequestInit)=>{
+   const u=String(url)
+   if(u.includes('/upload/v1beta/files'))return {ok:true,headers:{get:()=>'https://upload.test/s'}}
+   if(u==='https://upload.test/s')return {ok:true,json:async()=>({file:{uri:'u',name:'files/x',state:'ACTIVE'}})}
+   if(u.includes(':generateContent'))return {ok:true,json:async()=>({candidates:[{content:{parts:[{text:'Oi'}]}}]})}
+   if(init?.method==='DELETE'){await new Promise(r=>setTimeout(r,5));ordem.push('apagou')}
+   return {ok:true,json:async()=>({})}
+  }))
+  const db={storage:{from:()=>({download:async()=>({data:new Blob(['x']),error:null})})}}
+  await lerVideo(db as never,{id:'a',name:'v.mp4',path:'p',type:'video/mp4',bytes:1000} as never)
+  ordem.push('voltou')
+  expect(ordem,'o apagamento precisa terminar antes do retorno').toEqual(['apagou','voltou'])
+ })
+})
