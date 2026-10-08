@@ -130,7 +130,7 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
    patch.token_hash=link.hash;patch.token_expires_at=new Date(Date.now()+30*86400000).toISOString()
    approvalUrl=link.url;sealed=link.ciphertext
   }
-  const { data, error } = bundle ? await db.rpc('central_social_client_answer',{p_hash:hash(bundle),p_id:card.id,p_expected:body.version,p_patch:patch,p_action:action,p_actor:actor}) : sealed ? await db.rpc('central_social_request_link',{p_id:card.id,p_expected:body.version,p_patch:patch,p_ciphertext:sealed,p_actor:actor,p_actor_id:actorId}) : await db.rpc('central_social_apply', { p_id: card.id, p_expected: body.version, p_patch: patch, p_action: action, p_actor: actor, p_actor_id: actorId })
+  const { data, error } = bundle ? await db.rpc('central_social_client_answer',{p_hash:hash(bundle),p_id:card.id,p_expected:body.version,p_patch:patch,p_action:action,p_actor:actor}) : sealed ? await db.rpc('central_social_request_link',{p_id:card.id,p_expected:body.version,p_patch:patch,p_ciphertext:sealed,p_actor:actor,p_actor_id:actorId,p_action:action==='enviar_cliente'?'enviar_cliente':'solicitar'}) : await db.rpc('central_social_apply', { p_id: card.id, p_expected: body.version, p_patch: patch, p_action: action, p_actor: actor, p_actor_id: actorId })
   if (error) { if (error.message.includes('version_conflict')) fail(409, 'Outra pessoa acabou de atualizar esta peça. Reabra e confira.'); if(error.message.includes('link_unavailable'))fail(404,'Este link ou esta peça não está disponível. Atualize a página.'); throw error }
   if (publicAccess) return res.json({ ok:true, card: publicCard(data as SocialCard) })
   if(action==='mover')return res.json({ok:true,card:staffMoveState(data as SocialCard),approval_url:approvalUrl||''})
@@ -147,7 +147,7 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
    // A fila exige o evento que originou o envio, e é ele que dá rastro no
    // histórico da peça. O apply acabou de registrar um; é esse que se usa.
    const {data:evento}=await db.from('central_social_events').select('id')
-    .eq('card_id',atual.id).eq('action','enviar_cliente').order('id',{ascending:false}).limit(1).maybeSingle()
+    .eq('card_id',atual.id).order('id',{ascending:false}).limit(1).maybeSingle()
    const {error:erroFila}=evento?.id?await db.from('central_social_feedback_outbox').insert({
     event_id:evento.id,card_id:atual.id,channel:'whatsapp',destination:grupo.jid,
     payload:{client:atual.client,title:atual.title,revision:atual.revision,actor,action:'enviar_cliente',
