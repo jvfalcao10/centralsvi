@@ -20,12 +20,24 @@ it('does not offer a second publication for a manually posted piece',async()=>{a
 // primeiro já mudou. Enquanto os cinco pontos não forem coordenados, a tela
 // oferece um destino por vez, que é o que o sistema sustenta.
 const cardVideo:any={...card,id:'v1',selected_assets:['v'],assets:[{id:'v',name:'Reel',url:'/r.mp4',path:'v',type:'video/mp4'}]}
-it('oferece um destino por vez, nunca dois de uma vez',async()=>{
- api.mockImplementation(async(_q:string,b:any)=>b?{publication:null}:{card:cardVideo,accounts:[{id:'123',username:'qa',name:'Cliente QA'}],publication:null})
+// Os dois destinos saem num ENVIO só. Em duas chamadas a primeira incrementa a
+// versão da peça e a segunda era recusada com version_conflict. Provado no banco
+// com peça de teste: os dois entram, o reel conclui e o story sobrevive.
+it('manda os dois destinos num envio só, com o feed primeiro',async()=>{
+ api.mockImplementation(async(_q:string,b:any)=>b?.action==='publication_enqueue'
+  ?{publication:{id:'j',status:'queued',account_username:'qa',format:b.format,scheduled_at:new Date().toISOString()}}
+  :{card:cardVideo,accounts:[{id:'123',username:'qa',name:'Cliente QA'}],publication:null})
  render(<PublicationComposer ids={['v1']} cards={[cardVideo]} onClose={()=>{}} onChanged={()=>{}}/>)
  await screen.findByText('Criativo QA')
- expect(screen.queryByRole('checkbox',{name:'Story'})).toBeNull()
- const destino=screen.getByLabelText('Onde publicar') as HTMLSelectElement
- expect([...destino.options].map(o=>o.value)).toEqual(['reel','story'])
+ fireEvent.change(screen.getByLabelText('Conta do Instagram'),{target:{value:'123'}})
+ fireEvent.click(screen.getByRole('checkbox',{name:'Story'}))
+ fireEvent.click(screen.getByRole('button',{name:'Publicar agora'}))
+ await waitFor(()=>expect(api.mock.calls.some(([,b])=>b?.action==='publication_enqueue')).toBe(true))
+ const envios=api.mock.calls.filter(([,b])=>b?.action==='publication_enqueue').map(([,b])=>b)
+ expect(envios,'os dois destinos vão numa chamada, não em duas').toHaveLength(1)
+ expect(envios[0].format).toBe('reel')
+ expect(envios[0].extra_formats).toEqual(['story'])
+ // Pedido próprio por destino: repetido, o segundo voltaria como o primeiro.
+ expect(envios[0].extra_request_ids.story).not.toBe(envios[0].request_id)
 })
 

@@ -96,6 +96,19 @@ export async function enqueuePublication(db:SupabaseClient,card:SocialCard,body:
  if(existing)return {ok:true,publication:publicPublication(existing)}
  const data=publicationInput(card,body,await publicationAccounts(),actorId)
  if(data.cover_path){const {data:object,error}=await db.storage.from('central-social').info(data.cover_path);if(error||!object)throw new SocialError(400,'A capa não foi encontrada. Envie novamente.')}
+
+ // Reels e Story vão numa transação só. Em duas chamadas a primeira incrementa
+ // a versão da peça e a segunda era recusada por versão velha.
+ const extras=Array.isArray(body.extra_formats)?body.extra_formats.filter((f:unknown)=>typeof f==='string'&&f!==data.format).slice(0,1):[]
+ if(extras.length){
+  const pedidos=[{request_id:body.request_id,format:data.format},...extras.map((f:string)=>({request_id:body.extra_request_ids?.[f]||randomUUID(),format:f}))]
+  const {data:jobs,error:erroMuitos}=await db.rpc('central_social_publication_enqueue_many',{p_id:card.id,p_expected:body.version,p_formats:pedidos,p_data:data,p_actor:actor,p_actor_id:actorId})
+  if(erroMuitos)throw publicationDatabaseError(erroMuitos.message)
+  try{await db.rpc('central_social_client_account_set',{p_client:card.client,p_account_id:data.account_id,p_username:data.account_username,p_actor:actor})}catch{/* a publicação já foi aceita */}
+  const lista=(jobs||[]) as Record<string,unknown>[]
+  return {ok:true,publication:publicPublication(lista[lista.length-1]||null),publications:lista.map(j=>publicPublication(j))}
+ }
+
  const {data:job,error}=await db.rpc('central_social_publication_enqueue',{p_id:card.id,p_expected:body.version,p_request:body.request_id,p_data:data,p_actor:actor,p_actor_id:actorId})
  if(error)throw publicationDatabaseError(error.message)
  // Guarda a conta que a pessoa confirmou, para a próxima peça deste cliente já
