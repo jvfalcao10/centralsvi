@@ -38,3 +38,21 @@ describe('pedido de ajuste da equipe',()=>{
   expect(texto).not.toContain('A tarefa voltou para hoje')
  })
 })
+
+// João, 08/10: o convite chegou no grupo do Dr. Brenno sem prévia do link e com
+// "[SVI retorno 513]" no fim, que é marcador interno que o cliente não devia ler.
+describe('convite que vai para o cliente',()=>{
+ const convite=(channel:'clickup'|'whatsapp')=>({id:1,event_id:513,card_id:'c1',channel,destination:'d',attempts:0,
+  dispatched_at:null,created_at:new Date().toISOString(),
+  payload:{client:'Cliente',title:'Peça',revision:1,actor:'João',action:'enviar_cliente',comment:'',
+   created_at:new Date().toISOString(),files:[],task_id:null,group_label:'Grupo',
+   texto_pronto:'Cliente · Peça\n\nPara aprovar, é só abrir:\nhttps://aprovar.svicompany.com.br/p/abc'}} as never)
+
+ it('não leva código interno para o grupo do cliente',()=>{
+  const texto=feedbackText(convite('whatsapp'))
+  expect(texto).not.toContain('SVI retorno')
+  expect(texto).toContain('Para aprovar')
+ })
+ it('no ClickUp o marcador fica, porque é como o comentário é reencontrado',()=>
+  expect(feedbackText(convite('clickup'))).toContain('[SVI retorno 513]'))
+})

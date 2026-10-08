@@ -48,7 +48,7 @@ export function feedbackText(job:FeedbackJob) {
  const p=job.payload as FeedbackJob['payload']&{texto_pronto?:string}
  // O convite que a Sofia leva ao cliente é escrito na hora do pedido, com a
  // legenda e o link daquela versão. Não cabe no molde de retorno interno.
- if(p.texto_pronto)return `${p.texto_pronto}\n[SVI retorno ${job.event_id}]`
+ if(p.texto_pronto)return job.channel==='clickup'?`${p.texto_pronto}\n[SVI retorno ${job.event_id}]`:p.texto_pronto
  const decision=({cliente_aprovar:'APROVADO',cliente_ajustes:'ALTERAÇÃO SOLICITADA',cliente_reprovar:'REPROVADO',ajustes:'AJUSTE PEDIDO PELA EQUIPE'} as Record<string,string>)[p.action]||'RETORNO DO CLIENTE'
  const date=new Date(p.created_at).toLocaleString('pt-BR',{timeZone:'America/Belem'})
  // Pedido da equipe não é retorno de cliente: quem lê precisa saber de quem
@@ -90,7 +90,7 @@ export const feedbackProvider={
    const hoje=new Date();hoje.setHours(23,59,0,0)
    try{await request('clickup',`/task/${job.destination}`,{status:'fazendo',due_date:hoje.getTime(),due_date_time:true},'PUT')}catch{/* o comentário é o que não pode faltar */}
   }
-  const d=job.channel==='clickup'?await request('clickup',`/task/${job.destination}/comment`,{comment_text:text,notify_all:true}):await request('whatsapp','/send/text',{number:job.destination,text,linkPreview:false,readchat:false,readmessages:false,track_source:'central-social',track_id:`feedback-${job.event_id}`,async:false})
+  const d=job.channel==='clickup'?await request('clickup',`/task/${job.destination}/comment`,{comment_text:text,notify_all:true}):await request('whatsapp','/send/text',{number:job.destination,text,linkPreview:!!(job.payload as {texto_pronto?:string}).texto_pronto,readchat:false,readmessages:false,track_source:'central-social',track_id:`feedback-${job.event_id}`,async:false})
   const id=d.id||d.messageid
   if(!id)throw new DeliveryError('provider_response_invalid',0,true)
   return String(id)
