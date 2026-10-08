@@ -60,6 +60,13 @@ export const MOLDES: Molde[] = [
     "descricao": "Carrossel de valores: cada lâmina diz uma coisa que o profissional se recusa a fazer, numa caixa de borda fina ligada por um fio ao texto de apoio. Capa com a frase em duas partes, a segunda numa caixa clara. Cenas reais do profissional no ambiente dele, em tom quente e escuro, com o texto no espaço vazio da foto, alternando com lâminas lisas.",
     "opcoes": "Regra: foto é cena real (trabalhando, de lado, detalhe da mão ou do instrumento), nunca retrato de estúdio · TEXTO NUNCA EM CIMA DO ROSTO: o gerador detecta o rosto e reprova a lâmina · cor e fundo da marca · bloco em cima ou embaixo, à esquerda, à direita ou no centro",
     "tipo": "carrossel"
+  },
+  {
+    "id": "verdades",
+    "nome": "Verdades",
+    "descricao": "\"Posso pesar o clima?\": o mesmo retrato em preto e branco em todas as lâminas, sobre fundo cinza escuro, e uma verdade que incomoda por lâmina, em minúscula e amarelo-claro, centralizada no peito. A capa é a pergunta.",
+    "opcoes": "Regra: retrato real do profissional, recortado e em preto e branco · texto nunca no rosto (o gerador para se encostar) · brancos comprimidos pra letra não sumir na camisa",
+    "tipo": "carrossel"
   }
 ]
 
@@ -307,6 +314,23 @@ export const POSTS: PostMolde[] = [
       "/moldes/recuso-daniel-s04.webp",
       "/moldes/recuso-daniel-s05.webp",
       "/moldes/recuso-daniel-s06.webp"
+    ]
+  },
+  {
+    "id": "verdades-daniel",
+    "molde": "verdades",
+    "cliente": "Dr. Daniel Peralba",
+    "titulo": "Posso pesar o clima? · Dr. Íntimo",
+    "laminas": [
+      "/moldes/verdades-daniel-s01.webp",
+      "/moldes/verdades-daniel-s02.webp",
+      "/moldes/verdades-daniel-s03.webp",
+      "/moldes/verdades-daniel-s04.webp",
+      "/moldes/verdades-daniel-s05.webp",
+      "/moldes/verdades-daniel-s06.webp",
+      "/moldes/verdades-daniel-s07.webp",
+      "/moldes/verdades-daniel-s08.webp",
+      "/moldes/verdades-daniel-s09.webp"
     ]
   }
 ]
