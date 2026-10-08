@@ -78,10 +78,9 @@ export const POSTS: PostMolde[] = [
     "id": "tweet-2",
     "molde": "tweet",
     "cliente": "Geraldo",
-    "titulo": "Exemplo no molde Tweet",
+    "titulo": "Geraldo no molde Tweet (1)",
     "laminas": [
-      "/moldes/tw-cli-gerald-0.webp",
-      "/moldes/t6-cli-gerald-0.webp"
+      "/moldes/tw-cli-gerald-0.webp"
     ]
   },
   {
@@ -126,13 +125,22 @@ export const POSTS: PostMolde[] = [
     "id": "tweet-7",
     "molde": "tweet",
     "cliente": "Exatta",
-    "titulo": "Exemplo no molde Tweet",
+    "titulo": "Exatta no molde Tweet",
     "laminas": [
       "/moldes/t6-cli-exatta-0.webp"
     ]
   },
   {
     "id": "tweet-8",
+    "molde": "tweet",
+    "cliente": "Geraldo",
+    "titulo": "Geraldo no molde Tweet (2)",
+    "laminas": [
+      "/moldes/t6-cli-gerald-0.webp"
+    ]
+  },
+  {
+    "id": "tweet-9",
     "molde": "tweet",
     "cliente": "João Falcão",
     "titulo": "Série com foto",
@@ -194,20 +202,9 @@ export const POSTS: PostMolde[] = [
     "id": "duelo-2",
     "molde": "duelo",
     "cliente": "Geraldo",
-    "titulo": "Exemplo no molde Duelo",
+    "titulo": "Geraldo no molde Duelo",
     "laminas": [
       "/moldes/t8-cli-gerald-0.webp"
-    ]
-  },
-  {
-    "id": "duelo-3",
-    "molde": "duelo",
-    "cliente": "João Falcão",
-    "titulo": "Cenas em foto",
-    "laminas": [
-      "/moldes/t14-1.webp",
-      "/moldes/t14-2.webp",
-      "/moldes/t14-3.webp"
     ]
   },
   {
@@ -247,7 +244,7 @@ export const POSTS: PostMolde[] = [
     "id": "editorial-2",
     "molde": "editorial",
     "cliente": "Felipe",
-    "titulo": "Exemplo no molde Editorial",
+    "titulo": "Felipe no molde Editorial",
     "laminas": [
       "/moldes/t10-cli-felipe-0.webp"
     ]
@@ -256,7 +253,7 @@ export const POSTS: PostMolde[] = [
     "id": "editorial-3",
     "molde": "editorial",
     "cliente": "Geraldo",
-    "titulo": "Exemplo no molde Editorial",
+    "titulo": "Geraldo no molde Editorial",
     "laminas": [
       "/moldes/t10-cli-gerald-0.webp"
     ]

@@ -12,6 +12,8 @@ import { MOLDES, POSTS, type PostMolde } from '@/data/moldes'
 // Os dados vêm de src/data/moldes.ts, gerado pelo exportador em conteudo-joao/carrosseis.
 
 const CHAVE_ABA = 'moldes:aba'
+/** Os posts do próprio perfil do João; o resto é de cliente. */
+const DONO = 'João Falcão'
 const NOME_MOLDE = Object.fromEntries(MOLDES.map(m => [m.id, m.nome]))
 
 function contar<T extends string>(itens: T[]) {
@@ -129,7 +131,16 @@ export default function Moldes() {
               {molde.opcoes && <p className="text-xs text-muted-foreground">{molde.opcoes}</p>}
             </div>
           )}
-          <Grade posts={postsDaLista} onAbrir={abrir} />
+          <section className="space-y-2">
+            <h2 className="text-sm font-semibold text-muted-foreground">Seus posts neste molde</h2>
+            <Grade posts={postsDaLista.filter(p => p.cliente === DONO)} onAbrir={abrir} />
+          </section>
+          {postsDaLista.some(p => p.cliente !== DONO) && (
+            <section className="space-y-2 pt-2">
+              <h2 className="text-sm font-semibold text-muted-foreground">Clientes que usam este molde</h2>
+              <Grade posts={postsDaLista.filter(p => p.cliente !== DONO)} onAbrir={abrir} />
+            </section>
+          )}
         </TabsContent>
 
         <TabsContent value="clientes" className="space-y-4 pt-2">

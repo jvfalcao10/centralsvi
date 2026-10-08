@@ -17,6 +17,15 @@ describe('Moldes de post', () => {
     }
   })
 
+  it('post de cliente nunca mistura lâmina de outro cliente nem do João, e o post excluído não volta', () => {
+    for (const p of POSTS) {
+      const doCliente = p.laminas.filter(l => l.includes('-cli-'))
+      if (p.cliente === 'João Falcão') expect(doCliente, `lâmina de cliente no post do João: ${p.id}`).toEqual([])
+      else if (doCliente.length) expect(doCliente.length).toBe(1)
+    }
+    expect(POSTS.some(p => p.laminas.some(l => l.includes('/t14-')))).toBe(false)
+  })
+
   it('fica logo abaixo de Social media · Postagens no menu', () => {
     const itens = NAV_AREAS.flatMap(a => a.items).map(i => i.url)
     expect(itens.indexOf('/content/moldes')).toBe(itens.indexOf('/content/social') + 1)
