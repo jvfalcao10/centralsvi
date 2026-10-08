@@ -1,5 +1,5 @@
 import {readFile} from 'node:fs/promises'
-import {suggestAccount,contaDoCliente,enqueuePublication} from '../../api/_lib/social-publication'
+import {suggestAccount,contaDoCliente,enqueuePublication,friendlyPublicationError} from '../../api/_lib/social-publication'
 import {describe,it,expect,vi} from 'vitest'
 import {publicationInput} from '../../api/_lib/social-publication-domain'
 import {allowedUploadURI,publishReady,processPublications} from '../../api/_lib/social-publication-worker'
@@ -91,4 +91,26 @@ it('nenhum .catch no retorno do Supabase, que é PromiseLike',async()=>{
  const fonte=await readFile('api/_lib/social-publication.ts','utf8')
  expect(fonte).not.toMatch(/db\.rpc\([^)]*\)\s*\.catch/)
  expect(fonte).not.toMatch(/db\.from\([^)]*\)[^;]*\.catch\(/)
+})
+
+// João, 08/10: tentou postar um reel três vezes e recebeu "não foi possível
+// salvar ou carregar", que é o 500 genérico e não diz nada. A causa possível é
+// a conversa com a Meta falhar; a tradução desse erro já existia e não era
+// usada no caminho de enfileirar.
+describe('erro da Meta não vira 500 mudo',()=>{
+ it('traduz token expirado em instrução para a pessoa',()=>{
+  const e=Object.assign(new Error('token'),{name:'MetaPublicationError',code:190})
+  Object.setPrototypeOf(e,Object.getPrototypeOf(new Error()))
+  const aviso=friendlyPublicationError(e)
+  expect(typeof aviso).toBe('string')
+  expect(aviso.length).toBeGreaterThan(10)
+ })
+ it('erro desconhecido ainda vira frase, não vazio',()=>{
+  expect(friendlyPublicationError(new Error('qualquer coisa'))).toContain('Não foi possível')
+ })
+ it('o handler usa a tradução, em vez do catch genérico',async()=>{
+  const {readFile}=await import('node:fs/promises')
+  const fonte=await readFile('api/_lib/social.ts','utf8')
+  expect(fonte,'enfileirar precisa traduzir o erro da Meta').toMatch(/publication_enqueue[\s\S]{0,400}friendlyPublicationError/)
+ })
 })

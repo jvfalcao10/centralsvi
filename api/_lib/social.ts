@@ -1,5 +1,6 @@
 import {generateSocialCaption} from './social-caption.js'
 import {publicationContext,publicationPlayback,uploadPublicationCover,enqueuePublication,publicationDatabaseError} from './social-publication.js'
+import {friendlyPublicationError} from './social-publication-meta.js'
 import {publicPublication} from './social-publication-domain.js'
 import {moveManyCards} from './social-bulk.js'
 import { approvalLink, newApprovalLink } from './social-approval-link.js'
@@ -101,7 +102,18 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
   if (!card) fail(400, 'Selecione uma peça.')
   const body = req.body
   if (!body || typeof body !== 'object' || !Number.isInteger(body.version)) fail(400, 'Reabra a peça antes de salvar.')
-  if(!publicAccess&&body.action==='publication_enqueue')return res.json(await enqueuePublication(db,card,body,actor,actorId!))
+  // Falar com a Meta pode falhar por token, limite de uso ou rede. Sem isto o
+  // erro caía no 500 genérico, "não foi possível salvar ou carregar", que não
+  // diz nada a quem está tentando postar. A tradução já existia e não era usada.
+  if(!publicAccess&&body.action==='publication_enqueue'){
+   try{return res.json(await enqueuePublication(db,card,body,actor,actorId!))}
+   catch(e){
+    if(e instanceof SocialError)throw e
+    const aviso=friendlyPublicationError(e)
+    console.error('Publicação não enfileirada',e instanceof Error?e.message:'erro')
+    return res.status(502).json({error:aviso})
+   }
+  }
   if (body.version !== card.version) fail(409, 'Esta peça mudou em outra tela. Reabra antes de salvar.')
   let action = typeof body.action === 'string' ? body.action : ''
   if (publicAccess) {
