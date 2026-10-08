@@ -14,30 +14,18 @@ it('keeps a future date in the explicit Belém timezone',async()=>{render(<Publi
 
 it('does not offer a second publication for a manually posted piece',async()=>{api.mockResolvedValue({card:{...card,stage:'postado'},accounts:[],publication:null});render(<PublicationComposer ids={['qa']} cards={[card]} onClose={()=>{}} onChanged={()=>{}}/>);await screen.findByText('Esta peça já está em Postado. Consulte o registro de publicação nos detalhes.');expect(screen.queryByRole('button',{name:'Publicar agora'})).toBeNull()})
 
-// João, 07/10: "nos dar a opção de postar tanto no reels quanto nos stories".
+// Reels + Story foi DESLIGADO em 07/10 depois de auditoria externa: a fila
+// bloqueia o segundo formato por índice único, o gatilho da peça cancela o
+// segundo quando o primeiro conclui, e `begin` exige etapa "agendado", que o
+// primeiro já mudou. Enquanto os cinco pontos não forem coordenados, a tela
+// oferece um destino por vez, que é o que o sistema sustenta.
 const cardVideo:any={...card,id:'v1',selected_assets:['v'],assets:[{id:'v',name:'Reel',url:'/r.mp4',path:'v',type:'video/mp4'}]}
-it('publica o mesmo vídeo no reels e no story, um envio para cada',async()=>{
- api.mockImplementation(async(_q:string,b:any)=>b?.action==='publication_enqueue'
-  ?{publication:{id:'j-'+b.format,status:'queued',account_username:'qa',format:b.format,scheduled_at:new Date().toISOString()}}
-  :{card:cardVideo,accounts:[{id:'123',username:'qa',name:'Cliente QA'}],publication:null})
- render(<PublicationComposer ids={['v1']} cards={[cardVideo]} onClose={()=>{}} onChanged={()=>{}}/>)
- await screen.findByText('Criativo QA')
- fireEvent.change(screen.getByLabelText('Conta do Instagram'),{target:{value:'123'}})
- fireEvent.click(screen.getByRole('checkbox',{name:'Story'}))
- fireEvent.click(screen.getByRole('button',{name:'Publicar agora'}))
- await waitFor(()=>expect(api.mock.calls.filter(([,b])=>b?.action==='publication_enqueue')).toHaveLength(2))
- const envios=api.mock.calls.filter(([,b])=>b?.action==='publication_enqueue').map(([,b])=>b)
- // O feed sai antes do story, porque o story costuma apontar pra ele.
- expect(envios.map(e=>e.format)).toEqual(['reel','story'])
- // Pedido próprio por formato: repetido, o segundo voltaria como o primeiro.
- expect(envios[0].request_id).not.toBe(envios[1].request_id)
-})
-
-it('não deixa publicar sem escolher nenhum destino',async()=>{
+it('oferece um destino por vez, nunca dois de uma vez',async()=>{
  api.mockImplementation(async(_q:string,b:any)=>b?{publication:null}:{card:cardVideo,accounts:[{id:'123',username:'qa',name:'Cliente QA'}],publication:null})
  render(<PublicationComposer ids={['v1']} cards={[cardVideo]} onClose={()=>{}} onChanged={()=>{}}/>)
  await screen.findByText('Criativo QA')
- fireEvent.change(screen.getByLabelText('Conta do Instagram'),{target:{value:'123'}})
- fireEvent.click(screen.getByRole('checkbox',{name:'Reels'}))
- expect(screen.getByRole('button',{name:'Publicar agora'})).toBeDisabled()
+ expect(screen.queryByRole('checkbox',{name:'Story'})).toBeNull()
+ const destino=screen.getByLabelText('Onde publicar') as HTMLSelectElement
+ expect([...destino.options].map(o=>o.value)).toEqual(['reel','story'])
 })
+

@@ -1,5 +1,5 @@
 import { describe,it,expect } from 'vitest'
-import { clientVerdict,isTeamSender,matchesClient,clientGroupApproval,type Store } from '../../api/_lib/social-client-approval'
+import {clientVerdict,isTeamSender,matchesClient,clientGroupApproval,type Store,receiptStore} from '../../api/_lib/social-client-approval'
 import { socialIntake } from '../../api/_lib/social-intake'
 
 const SORAIA='120363405081976310@g.us'
@@ -213,4 +213,17 @@ describe('pedido de ajuste do cliente move a peça',()=>{
   await w.client('troca a música',5,m1)
   expect(w.changed).toEqual([]);expect(cards[0].stage).toBe('postado')
  })
+})
+
+// Auditoria externa, 07/10: `return !error` tratava QUALQUER erro de banco como
+// "já processado". Uma oscilação do banco faria a aprovação do cliente sumir
+// sem deixar rastro.
+describe('erro de banco não pode virar aprovação duplicada',()=>{
+ const loja=(erro:{code?:string}|null)=>receiptStore({from:()=>({insert:async()=>({error:erro})})} as never)
+ it('chave duplicada é duplicata de verdade',async()=>
+  expect(await loja({code:'23505'}).claim('x','chat',{})).toBe(false))
+ it('qualquer outro erro falha alto, em vez de engolir a aprovação',async()=>
+  await expect(loja({code:'08006'}).claim('x','chat',{})).rejects.toThrow('receipt_claim_failed'))
+ it('sem erro, reivindica',async()=>
+  expect(await loja(null).claim('x','chat',{})).toBe(true))
 })

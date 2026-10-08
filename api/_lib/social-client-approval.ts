@@ -92,7 +92,15 @@ export type Store={
 export function receiptStore(db:ReturnType<typeof createAdminClient>):Store {
  const rows=async(chat:string,prefix:string,since:number)=>{const {data,error}=await db.from('central_social_intake_receipts').select('id,result').eq('chat_id',chat).like('id',prefix+'%').gte('created_at',new Date(since).toISOString()).limit(500);if(error)throw new Error('database_failed');return data||[]}
  return {
-  async claim(id,chat,result){const {error}=await db.from('central_social_intake_receipts').insert({id,chat_id:chat,result});return !error},
+  async claim(id,chat,result){
+   const {error}=await db.from('central_social_intake_receipts').insert({id,chat_id:chat,result})
+   // Só chave duplicada significa "já processado". Qualquer outro erro tratado
+   // como duplicata faria a aprovação do cliente sumir em silêncio quando o
+   // banco oscilasse. Achado por auditoria externa em 07/10.
+   if(error?.code==='23505')return false
+   if(error)throw new Error('receipt_claim_failed')
+   return true
+  },
   async save(id,result){await db.from('central_social_intake_receipts').update({result}).eq('id',id)},
   async media(chat,since){
    const [media,changes,done]=await Promise.all([rows(chat,'cg-media:',since),rows(chat,'cg-change:',since),rows(chat,'client-approval:',since)])
