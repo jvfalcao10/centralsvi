@@ -20,6 +20,19 @@ const cleared = { approved_revision: null, approved_by: null, approved_at: null,
 // que ele viu mudou.
 const {token_hash:_th,token_expires_at:_te,...mantemOLink}=cleared
 /** A staff member explicitly moving a card is the decision; optional details never block it. */
+
+/**
+ * A ordem das lâminas de um carrossel.
+ *
+ * Ordena pelo nome do arquivo tratando número como número, para que _9 venha
+ * antes de _10. Nome igual mantém a ordem em que chegou, então nada embaralha
+ * quando não há numeração.
+ */
+export function ordemDasLaminas<T extends {name?:string}>(assets:T[]):T[] {
+ const comparador=new Intl.Collator('pt-BR',{numeric:true,sensitivity:'base'})
+ return assets.map((a,i)=>({a,i})).sort((x,y)=>comparador.compare(x.a.name||'',y.a.name||'')||x.i-y.i).map(x=>x.a)
+}
+
 export function socialMovePatch(c: SocialCard, target: unknown, actor: string, now = new Date()): Record<string, unknown> {
  const stage = text(target, 30)
  if (!['conferir','aguardando','ajustes','aprovado','para_anuncio','agendado','postado','arquivado'].includes(stage)) reject('Etapa inválida.')
@@ -32,9 +45,13 @@ export function socialMovePatch(c: SocialCard, target: unknown, actor: string, n
  }
  const patch: Record<string, unknown> = stage==='ajustes' ? {stage} : {stage, token_hash:null, token_expires_at:null}
  // Quem não escolheu arquivo quis dizer "é tudo". Num carrossel de 8 lâminas
- // todas são finais, e exigir a seleção travava a peça sem motivo. A ordem de
- // importação é mantida, que é a ordem das lâminas.
- if (!(c.selected_assets||[]).length && (c.assets||[]).length) patch.selected_assets = c.assets.map(a => a.id)
+ // todas são finais, e exigir a seleção travava a peça sem motivo.
+ //
+ // A ordem é a do NOME, não a de importação. Custou caro descobrir: o ClickUp
+ // entregou as lâminas de um carrossel da Dra Érika como _06, _05, _07, nessa
+ // ordem, e o post saiu no Instagram fora de ordem. Lâmina numerada tem ordem
+ // escrita no nome, e é ela que vale.
+ if (!(c.selected_assets||[]).length && (c.assets||[]).length) patch.selected_assets = ordemDasLaminas(c.assets).map(a => a.id)
  // Moving back corrects the current board; the earlier publication stays in the event history.
  if (stage !== 'postado') Object.assign(patch,{posted_at:null,posted_url:null})
  if (['conferir','aguardando','ajustes','arquivado'].includes(stage)) Object.assign(patch,stage==='ajustes'?mantemOLink:cleared)

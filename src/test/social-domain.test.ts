@@ -1,5 +1,5 @@
 import { describe,it,expect } from 'vitest'
-import { socialPatch,socialMovePatch,publicCard,type SocialCard } from '../../api/_lib/social-domain'
+import {socialPatch,socialMovePatch,publicCard,type SocialCard,ordemDasLaminas} from '../../api/_lib/social-domain'
 const now=new Date('2026-09-25T19:30:00Z')
 const card=(patch:Partial<SocialCard>={}):SocialCard=>({id:'qa',client:'Cliente A',title:'Peça A',author:'José',source_url:'https://app.clickup.com/t/qa',source_status:'feito',source_description:'Briefing interno',source_updated:null,assets:[{id:'a',path:'qa/a.jpg',name:'Final',type:'image/jpeg'},{id:'b',path:'qa/b.jpg',name:'Rascunho',type:'image/jpeg'}],selected_assets:['a'],caption:'Legenda',note:'Nota interna',stage:'conferir',revision:1,version:1,approved_revision:null,approved_by:null,approved_at:null,approval_evidence:null,scheduled_at:null,posted_at:null,posted_url:null,channel:null,token_hash:'secret-hash',token_expires_at:'2026-10-25',updated_at:now.toISOString(),...patch})
 const approved=()=>card({stage:'aprovado',approved_revision:1,approved_by:'Maria',approved_at:now.toISOString()})
@@ -67,5 +67,31 @@ describe('peça em ajuste não perde o link',()=>{
  it('as outras etapas continuam derrubando o link',()=>{
   for(const etapa of ['conferir','arquivado'])
    expect(socialMovePatch(comLink(),etapa,'João',now).token_hash,`${etapa} deveria derrubar`).toBeNull()
+ })
+})
+
+// Custou um post errado no perfil da Dra Érika: o ClickUp entregou as lâminas
+// como _06, _05, _07 e eu assumi que a ordem de importação era a ordem do
+// carrossel. Lâmina numerada tem a ordem escrita no nome.
+describe('ordem das lâminas do carrossel',()=>{
+ const n=(...nomes:string[])=>nomes.map((name,i)=>({id:'a'+i,name}))
+ const nomes=(r:{name?:string}[])=>r.map(x=>x.name)
+
+ it('o caso real da Dra Érika sai na ordem certa',()=>
+  expect(nomes(ordemDasLaminas(n('Queda_06.png','Queda_05.png','Queda_07.png'))))
+   .toEqual(['Queda_05.png','Queda_06.png','Queda_07.png']))
+
+ it('trata número como número: 9 vem antes de 10',()=>
+  expect(nomes(ordemDasLaminas(n('slide_10.png','slide_9.png','slide_2.png'))))
+   .toEqual(['slide_2.png','slide_9.png','slide_10.png']))
+
+ it('sem numeração, mantém a ordem em que chegou',()=>{
+  const entrada=n('capa.png','capa.png','capa.png')
+  expect(ordemDasLaminas(entrada).map(x=>x.id)).toEqual(['a0','a1','a2'])
+ })
+
+ it('mover sem seleção grava a ordem do nome, não a de importação',()=>{
+  const c=card({assets:[{id:'x',name:'p_06.png'},{id:'y',name:'p_05.png'}],selected_assets:[]})
+  expect(socialMovePatch(c,'agendado','João',now).selected_assets).toEqual(['y','x'])
  })
 })
