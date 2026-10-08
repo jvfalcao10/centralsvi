@@ -66,7 +66,7 @@ describe('vídeo grande, que é a regra no quadro e não a exceção',()=>{
    return {ok:true,json:async()=>({})}
   }))
   const db={storage:{from:()=>({download:async()=>({data:new Blob(['x']),error:null})})}}
-  await expect(lerVideo(db as never,{...grande,storage:undefined} as never)).resolves.toContain('Cena: consultório')
+  await expect(lerVideo(db as never,{...(grande as object),storage:undefined} as never)).resolves.toContain('Cena: consultório')
   expect(chamadas.some(c=>c.startsWith('DELETE'))).toBe(true)
  })
 
@@ -82,7 +82,7 @@ describe('vídeo grande, que é a regra no quadro e não a exceção',()=>{
    return {ok:true,json:async()=>({})}
   }))
   const db={storage:{from:()=>({download:async()=>({data:new Blob(['x']),error:null})})}}
-  const r=await lerVideo(db as never,{...grande,storage:undefined} as never)
+  const r=await lerVideo(db as never,{...(grande as object),storage:undefined} as never)
   expect(r.startsWith('Oi pessoal')).toBe(true)
  })
 })

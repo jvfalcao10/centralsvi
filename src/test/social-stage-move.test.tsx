@@ -213,7 +213,7 @@ describe('menu do card tem os gestos do dia a dia',()=>{
  })
 
  it('peça já postada não oferece os dois',async()=>{
-  render(<CardContextMenu card={{...peca,stage:'postado'} as never} busy={false} onOpen={()=>{}} onMove={()=>{}}
+  render(<CardContextMenu card={{...(peca as object),stage:'postado'} as never} busy={false} onOpen={()=>{}} onMove={()=>{}}
    onCopy={()=>{}} onEnviarCliente={()=>{}} onPedirAjuste={()=>{}}><div>card2</div></CardContextMenu>)
   fireEvent.contextMenu(screen.getByText('card2'))
   expect(await screen.findByText('Mandar para o cliente aprovar')).toHaveAttribute('aria-disabled','true')

@@ -106,7 +106,7 @@ describe('ordem das lâminas do carrossel',()=>{
  })
 
  it('mover sem seleção grava a ordem do nome, não a de importação',()=>{
-  const c=card({assets:[{id:'x',name:'p_06.png'},{id:'y',name:'p_05.png'}],selected_assets:[]})
+  const c=card({assets:[{id:'x',name:'p_06.png',path:'a',type:'image/png'},{id:'y',name:'p_05.png',path:'b',type:'image/png'}],selected_assets:[]})
   expect(socialMovePatch(c,'agendado','João',now).selected_assets).toEqual(['y','x'])
  })
 })

@@ -1,5 +1,6 @@
 import {readFile} from 'node:fs/promises'
-import {suggestAccount,contaDoCliente,enqueuePublication,friendlyPublicationError} from '../../api/_lib/social-publication'
+import {suggestAccount,contaDoCliente,enqueuePublication} from '../../api/_lib/social-publication'
+import {friendlyPublicationError} from '../../api/_lib/social-publication-meta'
 import {describe,it,expect,vi} from 'vitest'
 import {publicationInput} from '../../api/_lib/social-publication-domain'
 import {allowedUploadURI,publishReady,processPublications} from '../../api/_lib/social-publication-worker'

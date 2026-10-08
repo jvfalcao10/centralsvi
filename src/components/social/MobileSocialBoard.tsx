@@ -10,7 +10,7 @@ import {SOCIAL_STAGES, socialDate, type Card,clientTone} from '@/lib/social-boar
 /** Trello-style columns on phones and tablets; scrolling never starts a card drag. */
 function MobileSocialBoard({cards, columns, filterKey, busy, onOpen, onMove, onCopy,selectedIds,onSelect,onPublish,onEnviarCliente,onPedirAjuste}: CardSelectionProps&{
  cards: Card[]; columns:typeof SOCIAL_STAGES; filterKey: string; busy: boolean
- onPublish?: (id:string)=>void; onCopy: (value: string) => void; onOpen: (id: string) => void; onMove: (id: string, stage: string) => void
+ onPublish?: (id:string)=>void; onEnviarCliente?: (id:string)=>void; onPedirAjuste?: (id:string)=>void; onCopy: (value: string) => void; onOpen: (id: string) => void; onMove: (id: string, stage: string) => void
 }) {
  const board=useRef<HTMLDivElement>(null)
  const [limits,setLimits]=useState<Record<string,number>>({})
