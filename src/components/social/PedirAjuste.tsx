@@ -15,8 +15,9 @@ import {socialApi,type Card} from '@/lib/social-board'
  * entrega e pela tarefa de origem. Escolher de novo a cada ajuste seria repetir
  * uma informação que o sistema já tem.
  */
-export default function PedirAjuste({card,disabled=false,onPedido}:{card:Card;disabled?:boolean;onPedido:()=>Promise<void>}) {
- const [aberto,setAberto]=useState(false),[texto,setTexto]=useState(''),[busy,setBusy]=useState(false),[erro,setErro]=useState('')
+export default function PedirAjuste({card,disabled=false,abrirJa=false,onPedido}:{card:Card;disabled?:boolean;abrirJa?:boolean;onPedido:()=>Promise<void>}) {
+ // Veio pelo menu do card: já abre escrevendo, sem um clique a mais.
+ const [aberto,setAberto]=useState(abrirJa),[texto,setTexto]=useState(''),[busy,setBusy]=useState(false),[erro,setErro]=useState('')
  const encerrada=['postado','arquivado'].includes(card.stage)
 
  const enviar=async()=>{

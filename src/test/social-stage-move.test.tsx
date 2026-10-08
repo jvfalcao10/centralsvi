@@ -1,3 +1,4 @@
+import {CardContextMenu} from '@/components/social/CardActions'
 import {afterEach,beforeEach,describe,it,expect,vi} from 'vitest'
 import {act,cleanup,fireEvent,render,screen,waitFor,createEvent} from '@testing-library/react'
 import {MemoryRouter,useLocation} from 'react-router-dom'
@@ -187,5 +188,34 @@ describe('bulk selection',()=>{
   await screen.findByText('Segunda peça: Esta peça mudou em outra tela.')
   expect(screen.getByRole('combobox',{name:'Mudar etapa de Vídeo QA'})).toHaveValue('postado');expect(screen.getByRole('combobox',{name:'Mudar etapa de Segunda peça'})).toHaveValue('conferir')
   expect(screen.getByRole('checkbox',{name:'Selecionar Segunda peça'})).toBeChecked();expect(screen.getByRole('checkbox',{name:'Selecionar Vídeo QA'})).not.toBeChecked()
+ })
+})
+
+// João, 08/10: "quando eu clicar com botão direito no card vai aparecer enviar
+// pro cliente aprovar?" Não aparecia: os dois gestos estavam só no painel da
+// peça, e é no menu do card que ele trabalha.
+describe('menu do card tem os gestos do dia a dia',()=>{
+ const peca={id:'c1',client:'Cliente',title:'Peça',author:'José',stage:'conferir',version:1,revision:1,
+  assets:[{id:'a',name:'1.png',type:'image/png',path:'p'}],selected_assets:['a'],caption:'',note:'',
+  source_url:'',source_status:'',source_updated:new Date().toISOString(),approved_by:null,approved_at:null,
+  approval_evidence:null,scheduled_at:null,posted_at:null,posted_url:null,channel:null} as never
+
+ it('mostra mandar pro cliente e pedir ajuste, com o nome de quem entregou',async()=>{
+  const enviar=vi.fn(),ajuste=vi.fn()
+  render(<CardContextMenu card={peca} busy={false} onOpen={()=>{}} onMove={()=>{}} onCopy={()=>{}}
+   onEnviarCliente={enviar} onPedirAjuste={ajuste}><div>card</div></CardContextMenu>)
+  fireEvent.contextMenu(screen.getByText('card'))
+  fireEvent.click(await screen.findByText('Mandar para o cliente aprovar'))
+  expect(enviar).toHaveBeenCalledWith('c1')
+  fireEvent.contextMenu(screen.getByText('card'))
+  fireEvent.click(await screen.findByText('Pedir ajuste para José'))
+  expect(ajuste).toHaveBeenCalledWith('c1')
+ })
+
+ it('peça já postada não oferece os dois',async()=>{
+  render(<CardContextMenu card={{...peca,stage:'postado'} as never} busy={false} onOpen={()=>{}} onMove={()=>{}}
+   onCopy={()=>{}} onEnviarCliente={()=>{}} onPedirAjuste={()=>{}}><div>card2</div></CardContextMenu>)
+  fireEvent.contextMenu(screen.getByText('card2'))
+  expect(await screen.findByText('Mandar para o cliente aprovar')).toHaveAttribute('aria-disabled','true')
  })
 })

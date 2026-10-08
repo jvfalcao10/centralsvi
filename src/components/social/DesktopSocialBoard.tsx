@@ -15,13 +15,13 @@ import {SOCIAL_STAGES,socialDate,clientTone,type Card} from '@/lib/social-board'
  * Radix, um de clique direito e um de botão. Com 138 peças no quadro, são 276
  * menus montados: sem isto, mover uma única peça redesenhava todos eles.
  */
-const PecaDoQuadro=memo(function PecaDoQuadro({card,busy,selecionada,onOpen,onMove,onCopy,onPublish,onSelect,arrastar}:{
+const PecaDoQuadro=memo(function PecaDoQuadro({card,busy,selecionada,onOpen,onMove,onCopy,onPublish,onEnviarCliente,onPedirAjuste,onSelect,arrastar}:{
  card:Card;busy:boolean;selecionada:boolean;onOpen:(id:string)=>void;onMove:(id:string,stage:string)=>void
- onCopy:(text:string)=>void;onPublish?:(id:string)=>void;onSelect?:CardSelectionProps['onSelect'];arrastar:DraggableProvided
+ onCopy:(text:string)=>void;onPublish?:(id:string)=>void;onEnviarCliente?:(id:string)=>void;onPedirAjuste?:(id:string)=>void;onSelect?:CardSelectionProps['onSelect'];arrastar:DraggableProvided
 }) {
- return <CardContextMenu card={card} busy={busy} onOpen={onOpen} onMove={onMove} onCopy={onCopy} onPublish={onPublish}>
+ return <CardContextMenu card={card} busy={busy} onOpen={onOpen} onMove={onMove} onCopy={onCopy} onPublish={onPublish} onEnviarCliente={onEnviarCliente} onPedirAjuste={onPedirAjuste}>
   <article ref={arrastar.innerRef} {...arrastar.draggableProps} className={`rounded-lg border bg-card hover:border-primary/60 transition-colors overflow-hidden ${selecionada?'border-primary ring-1 ring-primary/40':''}`}>
-   <div className="flex items-center justify-between border-b pl-2 pr-1">{onSelect&&<CardSelection card={card} checked={selecionada} busy={busy} onSelect={onSelect}/>}<div {...arrastar.dragHandleProps} aria-label={`Arrastar ${card.title}`} className="flex min-h-9 flex-1 cursor-grab items-center gap-2 text-xs text-muted-foreground"><GripVertical className="h-4 w-4"/>Arrastar peça</div><CardActionsButton card={card} busy={busy} onOpen={onOpen} onMove={onMove} onCopy={onCopy} onPublish={onPublish}/></div>
+   <div className="flex items-center justify-between border-b pl-2 pr-1">{onSelect&&<CardSelection card={card} checked={selecionada} busy={busy} onSelect={onSelect}/>}<div {...arrastar.dragHandleProps} aria-label={`Arrastar ${card.title}`} className="flex min-h-9 flex-1 cursor-grab items-center gap-2 text-xs text-muted-foreground"><GripVertical className="h-4 w-4"/>Arrastar peça</div><CardActionsButton card={card} busy={busy} onOpen={onOpen} onMove={onMove} onCopy={onCopy} onPublish={onPublish} onEnviarCliente={onEnviarCliente} onPedirAjuste={onPedirAjuste}/></div>
    <button className="block w-full text-left" aria-label={`Abrir ${card.title}`} onClick={e=>{if(!e.defaultPrevented)onOpen(card.id)}}>
     <VideoCover key={`${card.id}:${card.preview||''}`} asset={card.assets.find(a=>a.id===card.selected_assets[0])||card.assets[0]} preview={card.preview}/>
     <div className="p-3 space-y-2"><span className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide" style={{color:clientTone(card.client),backgroundColor:clientTone(card.client)+'1f'}}><span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{backgroundColor:clientTone(card.client)}}/><span className="truncate">{card.client}</span></span><h3 className="text-sm leading-snug line-clamp-3 font-medium">{card.title}</h3>
@@ -38,8 +38,8 @@ const PecaDoQuadro=memo(function PecaDoQuadro({card,busy,selecionada,onOpen,onMo
  </CardContextMenu>
 })
 
-function DesktopSocialBoard({cards,columns,busy,onOpen,onMove,onCopy,selectedIds,onSelect,onPublish}:CardSelectionProps&{
- onPublish?:(id:string)=>void;cards:Card[];columns:typeof SOCIAL_STAGES;busy:boolean;onOpen:(id:string)=>void;onMove:(id:string,stage:string)=>void;onCopy:(text:string)=>void
+function DesktopSocialBoard({cards,columns,busy,onOpen,onMove,onCopy,selectedIds,onSelect,onPublish,onEnviarCliente,onPedirAjuste}:CardSelectionProps&{
+ onPublish?:(id:string)=>void;onEnviarCliente?:(id:string)=>void;onPedirAjuste?:(id:string)=>void;cards:Card[];columns:typeof SOCIAL_STAGES;busy:boolean;onOpen:(id:string)=>void;onMove:(id:string,stage:string)=>void;onCopy:(text:string)=>void
 }) {
  const board=useRef<HTMLDivElement>(null)
  const [dragging,setDragging]=useState(false)
@@ -89,7 +89,7 @@ function DesktopSocialBoard({cards,columns,busy,onOpen,onMove,onCopy,selectedIds
       <div className="sticky top-0 z-10 rounded-t-xl bg-background"><div className="h-1 rounded-t-xl" style={{background:stage.color}}/><div className="p-4 border-b"><div className="flex items-center justify-between gap-2"><h2 className="text-sm font-semibold">{stage.label}</h2><span className="text-xs rounded-md bg-muted px-2 py-1">{group.length}</span></div><p className="mt-1 text-xs text-muted-foreground">{stage.hint}</p></div></div>
       <Droppable droppableId={stage.id}>{provided=><div ref={provided.innerRef} {...provided.droppableProps} className={`flex-1 p-3 min-h-[260px] ${single?'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 content-start items-start gap-3':'space-y-3'}`}>
        {group.map((card,index)=><Draggable key={card.id} draggableId={card.id} index={index} isDragDisabled={busy}>{p=>
-        <PecaDoQuadro card={card} busy={busy} selecionada={!!selectedIds?.has(card.id)} onOpen={onOpen} onMove={onMove} onCopy={onCopy} onPublish={onPublish} onSelect={onSelect} arrastar={p}/>
+        <PecaDoQuadro card={card} busy={busy} selecionada={!!selectedIds?.has(card.id)} onOpen={onOpen} onMove={onMove} onCopy={onCopy} onPublish={onPublish} onEnviarCliente={onEnviarCliente} onPedirAjuste={onPedirAjuste} onSelect={onSelect} arrastar={p}/>
        }</Draggable>)}{provided.placeholder}{!group.length&&<p className="text-xs text-muted-foreground p-4 text-center">Nenhuma peça nesta etapa.</p>}
       </div>}</Droppable>
      </section>})}

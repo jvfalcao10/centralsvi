@@ -43,6 +43,7 @@ export default function Social() {
  const [approvalUrl,setApprovalUrl]=useState('')
  const detailRequest=useRef(0);const historyRequest=useRef(0);const moving=useRef(false);const boardEpoch=useRef(0);const boardRead=useRef(0)
  const [pendingStage,setPendingStage]=useState('')
+ const [ajusteAberto,setAjusteAberto]=useState('')
  const [publishing,setPublishing]=useState<string[]>([]);const [schedulePublication,setSchedulePublication]=useState(false)
  const publish=useEvent((id:string)=>{setSchedulePublication(false);setPublishing([id])})
  const [selectedCards,setSelectedCards]=useState<Set<string>>(new Set())
@@ -88,18 +89,23 @@ export default function Social() {
    await load();await open(card.id);notify('Versão salva para toda a equipe.')
   }catch(e){notify((e as Error).message)}finally{setBusy(false)}
  }
- const enviarPelaSofia=async()=>{
-  if(!card||busy)return
+ const enviarPelaSofia=useEvent(async(alvo?:string)=>{
+  const peca=alvo?(card?.id===alvo?card:cards.find(c=>c.id===alvo)):card
+  if(!peca||busy)return
   setBusy(true)
   try{
-   const r=await socialApi('',{id:card.id,version:card.version,action:'enviar_cliente'})
+   const r=await socialApi('',{id:peca.id,version:peca.version,action:'enviar_cliente'})
    // Quando o grupo não é encontrado, a peça já foi para Aguardando cliente e o
    // link existe: dizer isso é mais útil que falhar sem saída.
    notify(r.enviado?`A Sofia está mandando no grupo ${r.grupo}.`:(r.motivo||'A peça foi para Aguardando cliente.'))
    if(!r.enviado&&r.approval_url)await copy(r.approval_url)
-   await load();await open(card.id)
+   await load();if(cardId===peca.id)await open(peca.id)
   }catch(e){notify((e as Error).message)}finally{setBusy(false)}
- }
+ })
+
+ // Pedir ajuste precisa do texto, então abre a peça com a caixa já aberta em
+ // vez de agir no escuro a partir do menu.
+ const pedirAjuste=useEvent((id:string)=>{setAjusteAberto(id);choose(id)})
  const generateApprovalLink=async()=>{
   if(!card)throw new Error('Reabra a peça para gerar o link.')
   setBusy(true)
@@ -202,7 +208,7 @@ export default function Social() {
   <div className="flex min-h-6 flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span>{filtered.length} peças · {filtered.reduce((n,c)=>n+c.assets.length,0)} arquivos · mais recentes primeiro</span><span role="status" aria-live="polite" className="flex items-center gap-2">{pendingStage?<><Loader2 className="h-3 w-3 animate-spin"/>Salvando em {pendingStage}…</>:<span className="hidden md:inline">Mudanças de etapa ficam no histórico.</span>}</span></div>
   {sync&&<details className="rounded-lg border bg-card p-3 text-xs"><summary className="min-h-8 cursor-pointer flex flex-wrap items-center gap-2"><RefreshCw className="w-3 h-3"/>Entrada automática · ClickUp, grupos e Sofia{sync.pending>0&&<span className="text-muted-foreground">{sync.pending} na fila</span>}{(sync.issues.length>0||sync.sources.some(s=>s.error||!s.last_success_at||Date.now()-Date.parse(s.last_success_at)>15*60000))&&<span className="text-orange-400">Conferir sincronização</span>}</summary><div className="mt-3 space-y-3"><p className="text-muted-foreground">Novos uploads de José, Laís e Math no ClickUp. Consulta a cada 2 minutos; o quadro se atualiza a cada minuto. Nos respectivos grupos, Math e Sarah podem identificar o vídeo com CLIENTE | TÍTULO | V1. Uma correção usa o mesmo título e V2. Envie como documento para preservar o arquivo. Entrega nova exige conferência. No privado da Sofia, vídeo enviado como arquivo/documento vai para a Central; vídeo enviado normalmente vai para transcrição. Ela pergunta se faltar identificar o cliente. Pastas: ano / mês / cliente. Para indicar outro mês, use POSTAR | CLIENTE | OUTUBRO na legenda do documento. APROVADO registra a liberação quando informado por João ou Letícia.</p><div className="flex flex-wrap gap-3">{sync.sources.map(s=><p key={s.id}>{s.label}: <span className={s.error?'text-orange-400':'text-muted-foreground'}>{s.error?'consulta pendente':s.last_success_at?socialDate(s.last_success_at):'primeira consulta pendente'}</span></p>)}</div>{sync.issues.map(i=><div key={i.key} className="border-l-2 border-orange-400 pl-3"><p className="font-medium">{i.title}</p><p className="text-muted-foreground">{i.reason}</p><a className="underline text-primary" href={i.source_url} target="_blank" rel="noreferrer">Conferir na origem</a></div>)}</div></details>}
   {error&&<div role="alert" className="p-4 rounded-lg border border-destructive/40 text-destructive">{error}<Button variant="ghost" size="sm" onClick={()=>void load()}>Tentar novamente</Button></div>}
-  {loading?<div className="flex gap-2 items-center py-16 text-muted-foreground"><Loader2 className="animate-spin h-5 w-5"/>Carregando o quadro…</div>:isMobile?<MobileSocialBoard selectedIds={selectedCards} onSelect={toggleSelected} cards={filtered} columns={columns} filterKey={`${client}|${author}|${query}|${archived}`} busy={busy||!!cardId} onOpen={choose} onMove={moveStage} onCopy={copy} onPublish={publish}/>:<DesktopSocialBoard selectedIds={selectedCards} onSelect={toggleSelected} cards={filtered} columns={columns} busy={busy||!!cardId} onOpen={choose} onMove={moveStage} onCopy={copy} onPublish={publish}/>}
+  {loading?<div className="flex gap-2 items-center py-16 text-muted-foreground"><Loader2 className="animate-spin h-5 w-5"/>Carregando o quadro…</div>:isMobile?<MobileSocialBoard selectedIds={selectedCards} onSelect={toggleSelected} cards={filtered} columns={columns} filterKey={`${client}|${author}|${query}|${archived}`} busy={busy||!!cardId} onOpen={choose} onMove={moveStage} onCopy={copy} onPublish={publish} onEnviarCliente={enviarPelaSofia} onPedirAjuste={pedirAjuste}/>:<DesktopSocialBoard selectedIds={selectedCards} onSelect={toggleSelected} cards={filtered} columns={columns} busy={busy||!!cardId} onOpen={choose} onMove={moveStage} onCopy={copy} onPublish={publish} onEnviarCliente={enviarPelaSofia} onPedirAjuste={pedirAjuste}/>}
   <Sheet open={!!cardId} onOpenChange={value=>{if(!value)close()}}><SheetContent className="[&>button]:hidden w-full h-dvh sm:max-w-5xl overflow-y-auto overscroll-contain p-4 sm:p-8 pb-[max(1.5rem,env(safe-area-inset-bottom))] break-words">
    <div className="sticky -top-4 sm:-top-8 z-20 -mx-4 sm:-mx-8 -mt-4 sm:-mt-8 mb-4 flex justify-end border-b bg-background/95 backdrop-blur px-2 py-1"><Button size="sm" variant="ghost" onClick={close} disabled={busy} aria-label="Fechar peça"><X className="h-4 w-4"/>Fechar</Button></div>
    {!card?<SheetHeader><SheetTitle>{detailLoading?'Carregando peça…':'Peça indisponível'}</SheetTitle><SheetDescription>Arquivos e histórico da publicação.</SheetDescription></SheetHeader>:<>
@@ -239,7 +245,7 @@ export default function Social() {
        onClick={()=>void enviarPelaSofia()}>
        <Send className="h-4 w-4 mr-2"/>Mandar para o cliente aprovar pela Sofia
       </Button>}
-      <PedirAjuste key={`ajuste:${card.id}:${card.version}`} card={card} disabled={busy||!!dirty} onPedido={async()=>{await load();await open(card.id)}}/>
+      <PedirAjuste key={`ajuste:${card.id}:${card.version}`} card={card} abrirJa={ajusteAberto===card.id} disabled={busy||!!dirty} onPedido={async()=>{setAjusteAberto('');await load();await open(card.id)}}/>
       <section className="space-y-3 border-t pt-4"><h3 className="text-sm font-semibold">Etapa da peça</h3><StageSelect card={card} busy={busy||!!dirty} onMove={(id,target)=>void moveStage(id,target)}/><p className="text-xs text-muted-foreground">A mudança é salva na hora e fica registrada no histórico.</p></section>
       <Button variant="outline" disabled={busy||!!dirty||!['aprovado','agendado','para_anuncio','postado'].includes(card.stage)} onClick={()=>publish(card.id)}>Publicar / programar no Instagram</Button>
       <PublicationDetails key={`${card.id}:${card.version}`} card={card} disabled={busy||!!dirty} onSaved={async()=>{await load();await open(card.id)}}/>
