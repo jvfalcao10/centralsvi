@@ -89,6 +89,8 @@ import NotFound from "./pages/NotFound";
 
 // Criador de Carrossel: carrega sob demanda (exportador de PNG, zip e a base de conhecimento pesam)
 const CriadorCarrossel = lazy(() => import("@/pages/content/CriadorCarrossel"));
+// Moldes de post: vitrine com as lâminas, carrega sob demanda
+const Moldes = lazy(() => import("@/pages/content/Moldes"));
 
 const queryClient = new QueryClient();
 
@@ -270,6 +272,9 @@ const App = () => (
                 <ProtectedRoute requiredRole="admin"><AppLayout><Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando o Criador de carrossel…</div>}><CriadorCarrossel /></Suspense></AppLayout></ProtectedRoute>
               } />
               <Route path="/content/social" element={<ProtectedRoute requiredRole="executor" allowTraffic><AppLayout><Social /></AppLayout></ProtectedRoute>} />
+              <Route path="/content/moldes" element={
+                <ProtectedRoute requiredRole="executor"><AppLayout><Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando os moldes…</div>}><Moldes /></Suspense></AppLayout></ProtectedRoute>
+              } />
               <Route path="/content/organizador" element={
                 <ProtectedRoute requiredRole="executor">
                   <AutoLayout><Organizador /></AutoLayout>

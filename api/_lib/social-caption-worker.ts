@@ -158,8 +158,14 @@ export async function processCaptions(db:SupabaseClient,max=2) {
    // Sem registrar o motivo, peça que desiste depois de três tentativas vira
    // mistério: era o que acontecia com 13 peças.
    const motivo=String((e as Error)?.message||e||'falhou')
-   try{await db.rpc('central_social_caption_fail',{p_id:peca.id,p_motivo:motivo})}catch{/* diagnóstico não derruba a esteira */}
+   // 429 é teto de uso da API, não defeito da peça. Gastar tentativa aqui faria
+   // a peça desistir por causa de um minuto cheio, que foi o que aconteceu com
+   // 13 peças. Ela volta inteira para a fila e a volta termina aqui.
+   const esperando=/_429|_503|_504/.test(motivo)
+   try{await db.rpc('central_social_caption_fail',{p_id:peca.id,p_motivo:esperando?'Limite de uso da API, tenta de novo sozinho: '+motivo:motivo})}catch{/* diagnóstico não derruba a esteira */}
+   if(esperando)try{await db.rpc('central_social_caption_retry',{p_id:peca.id})}catch{/* a peça só perde esta tentativa */}
    feitas.push({id:peca.id,status:motivo.slice(0,80)})
+   if(esperando)break
   }
  }
  return {captions:feitas.length,results:feitas}

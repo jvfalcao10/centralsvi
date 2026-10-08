@@ -30,6 +30,7 @@ export const NAV_AREAS: NavigationArea[] = [
     { title: 'Tarefas', url: '/tarefas', minRole: 'executor', section: 'Demandas' },
     { title: 'Carga de demandas', url: '/operacional/carga', minRole: 'manager', section: 'Demandas' },
     { title: 'Social media · Postagens', url: '/content/social', minRole: 'executor', section: 'Conteúdo' },
+    { title: 'Moldes de post', url: '/content/moldes', minRole: 'executor', section: 'Conteúdo' },
     { title: 'Datas estratégicas', url: '/content/datas', minRole: 'executor', section: 'Conteúdo' },
     { title: 'Criador de carrossel', url: '/conteudo/criador-carrossel', minRole: 'admin', section: 'Conteúdo' },
   ] },
