@@ -137,11 +137,17 @@ export function vitrineDoDia<T>(horarios:T[],chave:string,opcoes:number[]=VITRIN
 export function porDia(instantes:number[],vitrine:number[]=[]) {
  const SEMANA=['domingo','segunda','terça','quarta','quinta','sexta','sábado']
  const MES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
- const mapa=new Map<string,{dia:string;rotulo:string;horarios:{inicio:string;hora:string}[]}>()
+ // `curto` é para a fita de dias no celular ("SEG · 12 OUT") e `rotulo` para
+ // o resumo da confirmação, onde a pessoa precisa ler o dia por extenso antes
+ // de confirmar.
+ const mapa=new Map<string,{dia:string;rotulo:string;curto:string;horarios:{inicio:string;hora:string}[]}>()
  for(const t of instantes){
   const p=emBrasilia(t)
   const chave=`${p.ano}-${String(p.mes).padStart(2,'0')}-${String(p.dia).padStart(2,'0')}`
-  if(!mapa.has(chave))mapa.set(chave,{dia:chave,rotulo:`${SEMANA[p.semana]}, ${p.dia} de ${MES[p.mes-1]}`,horarios:[]})
+  if(!mapa.has(chave))mapa.set(chave,{dia:chave,
+   rotulo:`${SEMANA[p.semana]}, ${p.dia} de ${MES[p.mes-1]}`,
+   curto:`${SEMANA[p.semana].slice(0,3).toUpperCase()} · ${p.dia} ${MES[p.mes-1].toUpperCase()}`,
+   horarios:[]})
   mapa.get(chave)!.horarios.push({inicio:new Date(t).toISOString(),
    hora:`${String(p.hora).padStart(2,'0')}:${String(p.minuto).padStart(2,'0')}`})
  }

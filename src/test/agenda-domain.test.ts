@@ -166,3 +166,14 @@ describe('folga em volta dos compromissos',()=>{
   expect(h).toContain('16:00')
  })
 })
+
+// GPT, revisão de 09/10: datas compactas na fita de dias, por extenso só na
+// confirmação, onde a pessoa precisa ler o dia antes de confirmar.
+describe('rótulos de dia',()=>{
+ const dia=()=>porDia(horariosLivres({agora:deBrasilia(2026,10,9,8,0),ocupados:[],dias:7}))
+  .find(d=>d.dia==='2026-10-12')!
+ it('tem versão curta para a fita e longa para a confirmação',()=>{
+  expect(dia().curto).toBe('SEG · 12 OUT')
+  expect(dia().rotulo).toBe('segunda, 12 de out')
+ })
+})

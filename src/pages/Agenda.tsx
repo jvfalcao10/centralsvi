@@ -3,7 +3,7 @@ import {useParams} from 'react-router-dom'
 import logoSVI from '@/assets/logo-branca.png'
 
 type Horario={inicio:string;hora:string}
-type Dia={dia:string;rotulo:string;horarios:Horario[]}
+type Dia={dia:string;rotulo:string;curto:string;horarios:Horario[]}
 type Resposta={dias:Dia[];duracao:number}
 
 /**
@@ -59,7 +59,7 @@ const Forma=({largura,altura,giro,atraso,...pos}:{largura:number;altura:number;g
  <div className="sviForma absolute" aria-hidden
    style={{...pos,width:largura,height:altura,['--giro' as string]:`${giro}deg`,animationDelay:`${atraso}s, ${atraso+2.1}s`}}>
   <div className="h-full w-full rounded-full"
-    style={{background:`linear-gradient(90deg, ${OURO}26, transparent)`,
+    style={{background:`linear-gradient(90deg, ${OURO}1a, transparent)`,
      border:`1px solid ${OURO}1f`,backdropFilter:'blur(2px)',
      boxShadow:`0 8px 32px 0 ${OURO}14, inset 0 1px 0 ${CREME}1a`}}/>
  </div>
@@ -70,8 +70,8 @@ const Fundo=()=>(
   <div className="absolute inset-0" style={{background:`radial-gradient(70rem 36rem at 50% -15%, ${OURO}1a, transparent 68%)`}}/>
   <Forma largura={560} altura={130} giro={12} atraso={0.2} left="-14%" top="12%"/>
   <Forma largura={440} altura={110} giro={-15} atraso={0.45} right="-10%" top="62%"/>
-  <Forma largura={280} altura={76} giro={-8} atraso={0.65} left="4%" bottom="8%"/>
-  <Forma largura={200} altura={58} giro={20} atraso={0.8} right="12%" top="12%"/>
+  <div className="hidden sm:block"><Forma largura={280} altura={76} giro={-8} atraso={0.65} left="4%" bottom="8%"/></div>
+  <div className="hidden sm:block"><Forma largura={200} altura={58} giro={20} atraso={0.8} right="12%" top="12%"/></div>
   {/* Escurece o pé para o texto nunca brigar com as formas. */}
   <div className="absolute inset-0" style={{background:`linear-gradient(to bottom, ${PRETO}00 55%, ${PRETO}cc)`}}/>
  </div>
@@ -86,10 +86,10 @@ const Moldura=({children}:{children:React.ReactNode})=>{
    <div className="relative mx-auto w-full max-w-2xl px-5 py-8 sm:px-8 sm:py-14">
     <header className="sviEntra mb-10 flex items-center justify-between gap-4">
      <img src={logoSVI} alt="SVI Company, assessoria de marketing" className="h-11 w-auto sm:h-14"/>
-     <span className="text-[11px] uppercase tracking-[0.22em]" style={{color:`${CREME}73`}}>Agendamento</span>
+     <span className="text-[11px] uppercase tracking-[0.22em]" style={{color:`${CREME}cc`}}>Agendamento</span>
     </header>
     {children}
-    <footer className="mt-14 border-t pt-5 text-xs" style={{borderColor:`${CREME}1a`,color:`${CREME}66`}}>
+    <footer className="mt-14 border-t pt-5 text-xs" style={{borderColor:`${CREME}1a`,color:`${CREME}8c`}}>
      Todos os horários em Brasília.
     </footer>
    </div>
@@ -118,10 +118,27 @@ const Recado=({titulo,texto,children}:{titulo:string;texto:string;children?:Reac
   <span aria-hidden className="mt-1 h-10 w-1 shrink-0 rounded-full" style={{background:OURO}}/>
   <div>
    <p className="font-semibold" style={{fontFamily:SORA}}>{titulo}</p>
-   <p className="mt-1 text-sm" style={{color:`${CREME}b3`}}>{texto}</p>
+   <p className="mt-1 text-sm" style={{color:`${CREME}cc`}}>{texto}</p>
    {children&&<div className="mt-4">{children}</div>}
   </div>
  </div></Vidro>
+)
+
+/**
+ * Quem vai estar do outro lado.
+ *
+ * Marcar reunião com desconhecido trava. Sem foto no projeto, entram as
+ * iniciais, o nome e a função, que já dizem com quem a pessoa vai falar.
+ */
+const QuemAtende=()=>(
+ <div className="sviEntra mt-6 flex items-center gap-3" style={{animationDelay:'.26s'}}>
+  <span aria-hidden className="grid h-11 w-11 shrink-0 place-items-center rounded-full font-semibold"
+    style={{background:`linear-gradient(135deg, ${OURO_CLARO}, ${OURO_FUNDO})`,color:PRETO,fontFamily:SORA}}>JF</span>
+  <div className="text-sm">
+   <p className="font-semibold" style={{fontFamily:SORA}}>João Vitor Falcão</p>
+   <p style={{color:`${CREME}99`}}>CEO da SVI Company</p>
+  </div>
+ </div>
 )
 
 const Passos=({atual}:{atual:1|2|3})=>(
@@ -131,8 +148,8 @@ const Passos=({atual}:{atual:1|2|3})=>(
    return (
     <li key={rotulo} className="flex items-center gap-2" aria-current={aqui?'step':undefined}>
      <span className="grid h-6 w-6 place-items-center rounded-full text-[11px] font-semibold"
-       style={feito||aqui?{background:OURO,color:PRETO}:{border:`1px solid ${CREME}33`,color:`${CREME}66`}}>{n}</span>
-     <span className="hidden sm:inline" style={{color:aqui?CREME:`${CREME}73`}}>{rotulo}</span>
+       style={feito||aqui?{background:OURO,color:PRETO}:{border:`1px solid ${CREME}33`,color:`${CREME}8c`}}>{n}</span>
+     <span className="hidden sm:inline" style={{color:aqui?CREME:`${CREME}cc`}}>{rotulo}</span>
      {n<3&&<span aria-hidden className="mx-1 h-px w-4 sm:w-8" style={{background:`${CREME}26`}}/>}
     </li>
    )
@@ -149,10 +166,17 @@ export default function Agenda(){
  const [dados,setDados]=useState<Resposta|null>(null)
  const [erro,setErro]=useState('')
  const [diaAberto,setDiaAberto]=useState<string|null>(null)
- const [escolhido,setEscolhido]=useState<Horario|null>(null)
+ const [escolhido,setEscolhido]=useState<(Horario&{dia:string})|null>(null)
  const [enviando,setEnviando]=useState(false)
  const [pronto,setPronto]=useState<{quando:string;meet:string;email:string;cancelar_url:string}|null>(null)
- const [form,setForm]=useState({nome:'',email:'',whatsapp:'',assunto:''})
+ const [form,setForm]=useState(()=>{
+  // Quem acabou de desmarcar não redigita nome, e-mail e WhatsApp.
+  try{
+   const g=sessionStorage.getItem('svi-agenda-remarcar')
+   if(g)return {assunto:'',...JSON.parse(g)}
+  }catch{/* navegador sem armazenamento não impede marcar */}
+  return {nome:'',email:'',whatsapp:'',assunto:''}
+ })
 
  useEffect(()=>{
   let vivo=true
@@ -171,10 +195,10 @@ export default function Agenda(){
    <Titulo><Ouro>Reunião confirmada</Ouro></Titulo>
    <p className="sviEntra mt-3 text-lg" style={{color:`${CREME}cc`,animationDelay:'.18s'}}>{pronto.quando}</p>
    <Vidro className="mt-8">
-    <p className="text-sm" style={{color:`${CREME}b3`}}>O convite foi para <strong style={{color:CREME}}>{pronto.email}</strong>, com o link da chamada.</p>
+    <p className="text-sm" style={{color:`${CREME}cc`}}>O convite foi para <strong style={{color:CREME}}>{pronto.email}</strong>, com o link da chamada.</p>
     {pronto.meet&&<a href={pronto.meet} target="_blank" rel="noreferrer"
       className={`${botaoOuro} mt-5 w-full sm:w-auto`} style={estiloOuro}>Entrar na chamada</a>}
-    <p className="mt-6 text-xs" style={{color:`${CREME}73`}}>
+    <p className="mt-6 text-xs" style={{color:`${CREME}cc`}}>
      Precisando desmarcar: <a className="underline underline-offset-2" style={{color:OURO}} href={pronto.cancelar_url}>use este link</a>
     </p>
    </Vidro>
@@ -184,11 +208,16 @@ export default function Agenda(){
  return (
   <Moldura>
    <Passos atual={escolhido?2:1}/>
-   <Titulo>Vamos conversar<br/><Ouro>sobre o seu marketing</Ouro></Titulo>
-   <p className="sviEntra mt-4 max-w-xl text-base sm:text-lg" style={{color:`${CREME}b3`,animationDelay:'.18s'}}>
-    {dados?`${dados.duracao} minutos por chamada de vídeo. A conversa começa pelos seus números, não por apresentação pronta.`
-          :'Trinta minutos por chamada de vídeo. A conversa começa pelos seus números.'}
-   </p>
+   {escolhido
+    ?<Titulo>Confirme sua reunião</Titulo>
+    :<>
+      <Titulo>Vamos entender como sua empresa<br/><Ouro>pode atrair mais clientes</Ouro></Titulo>
+      <p className="sviEntra mt-4 max-w-xl text-base sm:text-lg" style={{color:`${CREME}cc`,animationDelay:'.18s'}}>
+       Escolha um horário para uma conversa de {dados?.duracao??30} minutos, por chamada de vídeo.
+       A conversa começa pelos seus números, não por apresentação pronta.
+      </p>
+      <QuemAtende/>
+     </>}
 
    <div className="mt-9 space-y-5">
     {erro&&<Recado titulo="A agenda não abriu agora" texto={erro}>
@@ -211,7 +240,7 @@ export default function Agenda(){
 
     {!escolhido&&!!dias.length&&(
      <Vidro>
-      <p className="mb-4 text-sm font-medium" style={{color:`${CREME}99`}}>Escolha o dia</p>
+      <p className="mb-4 text-sm font-medium" style={{color:`${CREME}cc`}}>Escolha o dia</p>
       <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2" role="tablist" aria-label="Dias disponíveis">
        {dias.map(d=>{
         const ativo=d.dia===diaAberto
@@ -219,22 +248,31 @@ export default function Agenda(){
          <button key={d.dia} role="tab" aria-selected={ativo} onClick={()=>setDiaAberto(d.dia)}
            className="min-h-11 shrink-0 cursor-pointer whitespace-nowrap rounded-xl px-4 text-sm transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
            style={ativo?{background:OURO,color:PRETO,fontWeight:600,boxShadow:`0 8px 24px -10px ${OURO}99`}
-                       :{border:`1px solid ${CREME}26`,color:`${CREME}b3`}}>
-          {d.rotulo}
-          <span className="ml-2 text-xs" style={{color:ativo?`${PRETO}99`:`${CREME}66`}}>{d.horarios.length}</span>
+                       :{border:`1px solid ${CREME}26`,color:`${CREME}cc`}}>
+          {d.curto}
          </button>
         )
        })}
       </div>
 
-      <p className="mb-3 mt-6 text-sm font-medium" style={{color:`${CREME}99`}}>Escolha o horário</p>
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-       {doDia.map(h=>(
-        <button key={h.inicio} onClick={()=>{setEscolhido(h);setErro('')}}
-          className="sviHora min-h-12 cursor-pointer rounded-xl text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
-          style={{border:`1px solid ${CREME}26`,color:CREME}}>{h.hora}</button>
-       ))}
-      </div>
+      <p className="mb-3 mt-6 text-sm font-medium" style={{color:`${CREME}cc`}}>Escolha o horário</p>
+      {([['Manhã',(h:Horario)=>Number(h.hora.slice(0,2))<12],
+         ['Tarde',(h:Horario)=>Number(h.hora.slice(0,2))>=12]] as const).map(([turno,filtro])=>{
+       const lista=doDia.filter(filtro)
+       if(!lista.length)return null
+       return (
+        <div key={turno} className="mb-4 last:mb-0">
+         <p className="mb-2 text-xs uppercase tracking-[0.18em]" style={{color:`${CREME}99`}}>{turno}</p>
+         <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+          {lista.map(h=>(
+           <button key={h.inicio} onClick={()=>{setEscolhido({...h,dia:diaAberto||''});setErro('')}}
+             className="sviHora min-h-12 cursor-pointer rounded-xl text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+             style={{border:`1px solid ${CREME}26`,color:CREME}}>{h.hora}</button>
+          ))}
+         </div>
+        </div>
+       )
+      })}
      </Vidro>
     )}
 
@@ -243,6 +281,7 @@ export default function Agenda(){
        e.preventDefault();setEnviando(true);setErro('')
        try{
         const d=await api({method:'POST',body:JSON.stringify({inicio:escolhido.inicio,...form})})
+        try{sessionStorage.removeItem('svi-agenda-remarcar')}catch{/* nada a limpar */}
         setPronto(d.reuniao)
        }catch(err){
         setErro((err as Error).message)
@@ -254,13 +293,17 @@ export default function Agenda(){
      }}>
       <Vidro className="!p-4" atraso={0}>
        <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* O dia por extenso aparece aqui porque é o último ponto antes de
+            confirmar. Mostrando só a hora, dava para confirmar o dia errado. */}
         <p className="text-sm">
-         <span style={{color:`${CREME}99`}}>Horário escolhido:</span>{' '}
-         <strong style={{color:OURO,fontFamily:SORA}}>{escolhido.hora}</strong>
+         <strong style={{color:OURO,fontFamily:SORA}}>
+          {dias.find(d=>d.dia===escolhido.dia)?.rotulo||''} · {escolhido.hora}
+         </strong>
+         <span className="block text-xs" style={{color:`${CREME}99`}}>horário de Brasília</span>
         </p>
         <button type="button" onClick={()=>setEscolhido(null)}
           className="min-h-9 cursor-pointer rounded-lg px-3 text-sm underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2"
-          style={{color:`${CREME}b3`}}>trocar horário</button>
+          style={{color:`${CREME}cc`}}>trocar horário</button>
        </div>
       </Vidro>
 
@@ -269,7 +312,7 @@ export default function Agenda(){
           ['email','Seu melhor e-mail','email','email'],
           ['whatsapp','WhatsApp com DDD','tel','tel']] as const).map(([campo,rotulo,tipo,auto])=>(
         <label key={campo} className="block">
-         <span className="mb-1.5 block text-sm" style={{color:`${CREME}99`}}>{rotulo}</span>
+         <span className="mb-1.5 block text-sm" style={{color:`${CREME}cc`}}>{rotulo}</span>
          <input required type={tipo} autoComplete={auto} value={form[campo]}
            onChange={e=>setForm(f=>({...f,[campo]:e.target.value}))}
            className="sviCampo h-12 w-full rounded-xl px-4 text-base outline-none transition-colors duration-200 motion-reduce:transition-none"
@@ -277,7 +320,7 @@ export default function Agenda(){
         </label>
        ))}
        <label className="block">
-        <span className="mb-1.5 block text-sm" style={{color:`${CREME}99`}}>O que você quer resolver <span style={{color:`${CREME}66`}}>(opcional)</span></span>
+        <span className="mb-1.5 block text-sm" style={{color:`${CREME}cc`}}>O que você quer resolver <span style={{color:`${CREME}8c`}}>(opcional)</span></span>
         <textarea value={form.assunto} maxLength={600} rows={3}
           onChange={e=>setForm(f=>({...f,assunto:e.target.value}))}
           className="sviCampo w-full rounded-xl p-4 text-base outline-none transition-colors duration-200 motion-reduce:transition-none"
@@ -286,7 +329,7 @@ export default function Agenda(){
        <button disabled={enviando} type="submit" className={`${botaoOuro} w-full`} style={estiloOuro}>
         {enviando?'Confirmando…':'Confirmar reunião'}
        </button>
-       <p className="text-center text-xs" style={{color:`${CREME}66`}}>Você recebe o convite por e-mail e a confirmação no WhatsApp.</p>
+       <p className="text-center text-xs" style={{color:`${CREME}8c`}}>Você recebe o convite por e-mail e a confirmação no WhatsApp.</p>
       </Vidro>
      </form>
     )}
@@ -321,7 +364,7 @@ export function AgendaReuniao(){
       className={`${botaoOuro} w-full sm:w-auto`} style={estiloOuro}>Entrar na chamada</a>}
     {erro&&<p role="alert" className="text-sm" style={{color:OURO}}>{erro}</p>}
     {cancelada
-     ?<a className={`${botaoOuro} w-full sm:w-auto`} style={estiloOuro} href="/">Marcar outro horário</a>
+     ?<a className={`${botaoOuro} w-full sm:w-auto`} style={estiloOuro} href="/">Escolher novo horário</a>
      :<button disabled={ocupado} onClick={async()=>{
         setOcupado(true);setErro('')
         try{
@@ -329,11 +372,13 @@ export function AgendaReuniao(){
           body:JSON.stringify({acao:'cancelar',token})})
          const d=await res.json().catch(()=>({}))
          if(!res.ok)throw new Error(d?.error||'Não foi possível cancelar.')
+         // Guarda os dados para a pessoa remarcar sem digitar tudo de novo.
+         try{if(d?.remarcar)sessionStorage.setItem('svi-agenda-remarcar',JSON.stringify(d.remarcar))}catch{/* segue sem o atalho */}
          setR(a=>a?{...a,status:'cancelada'}:a)
         }catch(e){setErro((e as Error).message)}finally{setOcupado(false)}
        }}
        className="min-h-11 w-full cursor-pointer rounded-xl px-5 text-sm transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 disabled:opacity-60 sm:w-auto motion-reduce:transition-none"
-       style={{border:`1px solid ${CREME}26`,color:`${CREME}b3`}}>
+       style={{border:`1px solid ${CREME}26`,color:`${CREME}cc`}}>
        {ocupado?'Cancelando…':'Preciso desmarcar'}
       </button>}
    </Vidro>

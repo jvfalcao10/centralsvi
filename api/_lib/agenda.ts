@@ -121,12 +121,15 @@ export async function handleAgenda(req:VercelRequest,res:VercelResponse) {
   if(req.body?.acao==='cancelar'){
    if(!formatoToken(token))return res.status(404).json({error:'Este link não está disponível.'})
    const {data:bruto}=await db.rpc('central_agenda_cancelar',{p_token_hash:hash(token),p_por:'quem marcou'})
-   const reuniao=linhaDoRpc<{id:string;inicio:string;nome:string;whatsapp:string;google_event_id:string|null}>(bruto)
+   const reuniao=linhaDoRpc<{id:string;inicio:string;nome:string;email:string;whatsapp:string;google_event_id:string|null}>(bruto)
    if(!reuniao)return res.status(409).json({error:'Esta reunião já estava cancelada.'})
    if(reuniao.google_event_id)try{await cancelarEvento(reuniao.google_event_id)}catch{/* a reserva já caiu */}
    await whats(reuniao.whatsapp,`Sua reunião de ${legivel(Date.parse(reuniao.inicio))} foi cancelada. Se quiser remarcar, é só abrir ${SITE}`)
    await avisarDono(`Reunião CANCELADA\n${reuniao.nome}\n${legivel(Date.parse(reuniao.inicio))}`,reuniao.whatsapp)
-   return res.json({ok:true,cancelada:true})
+   // Quem cancelou tem o link, então são os dados dele mesmo. Devolver aqui
+   // deixa remarcar sem redigitar nome, e-mail e WhatsApp.
+   return res.json({ok:true,cancelada:true,
+    remarcar:{nome:reuniao.nome,email:(reuniao as {email?:string}).email||'',whatsapp:reuniao.whatsapp}})
   }
 
   // Marcar.
