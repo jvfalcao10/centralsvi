@@ -83,90 +83,52 @@ describe('status da tarefa carrega a origem do ajuste',()=>{
  })
 })
 
-// João, 08/10: "O melhor é enviar o vídeo do whats app mesmo". O cliente já
-// está no WhatsApp; abrir página só para assistir é passo a mais.
-describe('vídeo vai no WhatsApp antes do link',()=>{
+// João, 09/10: "ela mandou vídeo E link". Duas mensagens punham dois blocos
+// iguais na tela do cliente, porque a prévia do link usa o mesmo quadro de
+// capa. Agora é uma mensagem só, com o texto na legenda do vídeo.
+describe('entrega no grupo do cliente',()=>{
  const job=(midia_url?:string)=>({id:2,event_id:77,card_id:'c2',channel:'whatsapp',destination:'5594@g.us',
   attempts:0,dispatched_at:null,created_at:new Date().toISOString(),
   payload:{client:'GM GAS',title:'vídeo 04',revision:1,actor:'João',action:'enviar_cliente',comment:'',
    created_at:new Date().toISOString(),files:[],task_id:null,texto_pronto:'abra para aprovar',midia_url}} as never)
 
- const gravar=()=>{
+ const gravar=(mediaFalha=false)=>{
   const chamadas:{url:string;body:Record<string,unknown>|null}[]=[]
   if(!AbortSignal.timeout)vi.stubGlobal('AbortSignal',{...AbortSignal,timeout:()=>new AbortController().signal})
   vi.stubGlobal('fetch',vi.fn(async(url:string,init?:RequestInit)=>{
-   const body=init?.body?JSON.parse(String(init.body)):null
-   chamadas.push({url:String(url),body})
-   if(String(url).endsWith('/message/find'))return {ok:true,json:async()=>({messages:[]})}
+   chamadas.push({url:String(url),body:init?.body?JSON.parse(String(init.body)):null})
+   if(mediaFalha&&String(url).endsWith('/send/media'))return {ok:false,status:415,json:async()=>({error:'formato'})}
    return {ok:true,json:async()=>({id:'m1'})}
   }))
   vi.stubEnv('SOCIAL_UAZ_TOKEN','t')
   return chamadas
  }
 
- it('manda a cópia leve como vídeo e só depois o link',async()=>{
+ it('vídeo e link saem numa mensagem só, com o link na legenda',async()=>{
   const chamadas=gravar()
   await feedbackProvider.send(job('https://exemplo/leve.mp4'))
-  const media=chamadas.find(c=>c.url.endsWith('/send/media'))
-  const texto=chamadas.find(c=>c.url.endsWith('/send/text'))
-  expect(media?.body).toMatchObject({type:'video',file:'https://exemplo/leve.mp4',number:'5594@g.us'})
-  expect(texto).toBeTruthy()
-  // o vídeo vem antes do link
-  expect(chamadas.findIndex(c=>c.url.endsWith('/send/media')))
-   .toBeLessThan(chamadas.findIndex(c=>c.url.endsWith('/send/text')))
+  expect(chamadas.filter(c=>c.url.includes('/send/'))).toHaveLength(1)
+  const media=chamadas.find(c=>c.url.endsWith('/send/media'))!
+  expect(media.body).toMatchObject({type:'video',file:'https://exemplo/leve.mp4'})
+  expect(String(media.body?.text)).toContain('abra para aprovar')
+  // mesma marca do envio de texto: a reconciliação de tentativa repetida vale
+  expect(media.body).toMatchObject({track_id:'feedback-77'})
   vi.unstubAllGlobals();vi.unstubAllEnvs()
  })
 
- it('com vídeo no grupo, o link vai sem prévia para não parecer peça dobrada',async()=>{
-  const chamadas=gravar()
-  await feedbackProvider.send(job('https://exemplo/leve.mp4'))
-  const texto=chamadas.find(c=>c.url.endsWith('/send/text'))
-  expect(texto?.body).toMatchObject({linkPreview:false})
-  vi.unstubAllGlobals();vi.unstubAllEnvs()
- })
-
- it('sem vídeo, a prévia continua ligada para reconhecer a peça',async()=>{
-  const chamadas=gravar()
-  await feedbackProvider.send(job())
-  const texto=chamadas.find(c=>c.url.endsWith('/send/text'))
-  expect(texto?.body).toMatchObject({linkPreview:true})
-  vi.unstubAllGlobals();vi.unstubAllEnvs()
- })
-
- it('peça sem vídeo segue só com o link',async()=>{
+ it('peça sem vídeo continua indo por texto, com prévia',async()=>{
   const chamadas=gravar()
   await feedbackProvider.send(job())
   expect(chamadas.some(c=>c.url.endsWith('/send/media'))).toBe(false)
-  expect(chamadas.some(c=>c.url.endsWith('/send/text'))).toBe(true)
+  expect(chamadas.find(c=>c.url.endsWith('/send/text'))?.body).toMatchObject({linkPreview:true})
   vi.unstubAllGlobals();vi.unstubAllEnvs()
  })
 
- it('mídia recusada não impede o cliente de receber o link',async()=>{
-  const chamadas:{url:string}[]=[]
-  if(!AbortSignal.timeout)vi.stubGlobal('AbortSignal',{...AbortSignal,timeout:()=>new AbortController().signal})
-  vi.stubGlobal('fetch',vi.fn(async(url:string)=>{
-   chamadas.push({url:String(url)})
-   if(String(url).endsWith('/message/find'))return {ok:true,json:async()=>({messages:[]})}
-   if(String(url).endsWith('/send/media'))return {ok:false,status:415,json:async()=>({error:'formato'})}
-   return {ok:true,json:async()=>({id:'m1'})}
-  }))
-  vi.stubEnv('SOCIAL_UAZ_TOKEN','t')
+ it('mídia recusada não deixa o cliente sem o link',async()=>{
+  const chamadas=gravar(true)
   await expect(feedbackProvider.send(job('https://exemplo/leve.mp4'))).resolves.toBe('m1')
   expect(chamadas.some(c=>c.url.endsWith('/send/text'))).toBe(true)
   vi.unstubAllGlobals();vi.unstubAllEnvs()
  })
-
- it('não manda o mesmo vídeo duas vezes se a tentativa anterior chegou',async()=>{
-  const chamadas:{url:string}[]=[]
-  if(!AbortSignal.timeout)vi.stubGlobal('AbortSignal',{...AbortSignal,timeout:()=>new AbortController().signal})
-  vi.stubGlobal('fetch',vi.fn(async(url:string)=>{
-   chamadas.push({url:String(url)})
-   if(String(url).endsWith('/message/find'))return {ok:true,json:async()=>({messages:[{track_id:'midia-77'}]})}
-   return {ok:true,json:async()=>({id:'m1'})}
-  }))
-  vi.stubEnv('SOCIAL_UAZ_TOKEN','t')
-  await feedbackProvider.send(job('https://exemplo/leve.mp4'))
-  expect(chamadas.some(c=>c.url.endsWith('/send/media'))).toBe(false)
-  vi.unstubAllGlobals();vi.unstubAllEnvs()
- })
 })
+

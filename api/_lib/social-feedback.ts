@@ -62,32 +62,31 @@ export function feedbackText(job:FeedbackJob) {
   p.task_id?`ClickUp: https://app.clickup.com/t/${p.task_id}`:'',`[SVI retorno ${job.event_id}]`].filter(Boolean).join('\n')
 }
 /**
- * O vídeo vai no WhatsApp mesmo, antes do link.
+ * Entrega no WhatsApp: uma mensagem só.
  *
- * O cliente já está no WhatsApp e assiste ali, sem abrir página nenhuma. Sai a
- * cópia leve (7,4 MB no vídeo medido), nunca o arquivo do editor.
+ * Com vídeo, ele vai com o texto na própria legenda. Mandar o vídeo e depois
+ * o link em separado punha dois blocos iguais na tela do cliente, porque o
+ * WhatsApp monta a prévia do link com o mesmo quadro de capa da peça, e isso
+ * lia como peça enviada duas vezes.
  *
- * Nada aqui pode derrubar o envio do link: se a mídia falhar, o cliente ainda
- * recebe o endereço para aprovar, que é o que não pode faltar.
+ * A marca é a MESMA do envio de texto, então a reconciliação que já existia
+ * continua valendo e uma tentativa repetida não duplica nada.
+ *
+ * Se a mídia for recusada, o texto vai sozinho: o link é o que não pode
+ * faltar, porque é por ele que a aprovação acontece.
  */
-async function enviarVideo(job:FeedbackJob):Promise<boolean> {
- const p=job.payload as {midia_url?:string}
- if(job.channel!=='whatsapp'||!p.midia_url)return false
- const track=`midia-${job.event_id}`
- try{
-  // Uma tentativa anterior pode ter chegado ao provedor antes de estourar o
-  // tempo. Conferir evita o cliente receber o mesmo vídeo duas vezes.
-  const d=await request('whatsapp','/message/find',{chatid:job.destination,track_source:'central-social',track_id:track,limit:50,offset:0})
-  // Já está lá: devolve true para a prévia do link continuar desligada.
-  if(Array.isArray(d.messages)&&d.messages.some((m:{track_id?:string})=>m.track_id===track))return true
- }catch{/* não conseguir conferir não pode impedir o envio */}
- try{
-  await request('whatsapp','/send/media',{number:job.destination,type:'video',file:p.midia_url,text:'',
-   readchat:false,readmessages:false,track_source:'central-social',track_id:track,async:false})
-  return true
- }catch{/* o link é o que não pode faltar */}
- return false
+async function entregarNoWhats(job:FeedbackJob,text:string) {
+ const base={number:job.destination,readchat:false,readmessages:false,
+  track_source:'central-social',track_id:`feedback-${job.event_id}`,async:false}
+ const video=(job.payload as {midia_url?:string}).midia_url
+ if(video){
+  try{return await request('whatsapp','/send/media',{...base,type:'video',file:video,text})}
+  catch{/* cai para o texto puro */}
+ }
+ return request('whatsapp','/send/text',{...base,text,
+  linkPreview:!!(job.payload as {texto_pronto?:string}).texto_pronto})
 }
+
 export const feedbackProvider={
  async find(job:FeedbackJob):Promise<string|null> {
   if(job.channel==='whatsapp'){
@@ -110,7 +109,6 @@ export const feedbackProvider={
  },
  async send(job:FeedbackJob):Promise<string> {
   const text=feedbackText(job)
-  const mandouVideo=await enviarVideo(job)
   // Pedido de ajuste devolve a tarefa para a bancada e para o dia de hoje, que
   // é o que faz ela subir na lista de quem vai executar. Falhar aqui não pode
   // impedir o comentário: o aviso vale mais que o prazo.
@@ -119,10 +117,9 @@ export const feedbackProvider={
    const status=(job.payload as {status_tarefa?:string}).status_tarefa||'fazendo'
    try{await request('clickup',`/task/${job.destination}`,{status,due_date:hoje.getTime(),due_date_time:true},'PUT')}catch{/* o comentário é o que não pode faltar */}
   }
-  const d=job.channel==='clickup'?await request('clickup',`/task/${job.destination}/comment`,{comment_text:text,notify_all:true}):await request('whatsapp','/send/text',{number:job.destination,text,// Com o vídeo no grupo, a prévia do link vira um segundo bloco com o MESMO
-   // quadro de capa, e na tela do cliente parece que a peça foi mandada duas
-   // vezes. Sem vídeo, a prévia continua ajudando a reconhecer a peça.
-   linkPreview:!mandouVideo&&!!(job.payload as {texto_pronto?:string}).texto_pronto,readchat:false,readmessages:false,track_source:'central-social',track_id:`feedback-${job.event_id}`,async:false})
+  const d=job.channel==='clickup'
+   ?await request('clickup',`/task/${job.destination}/comment`,{comment_text:text,notify_all:true})
+   :await entregarNoWhats(job,text)
   const id=d.id||d.messageid
   if(!id)throw new DeliveryError('provider_response_invalid',0,true)
   return String(id)
