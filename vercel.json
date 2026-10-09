@@ -25,6 +25,30 @@
   ],
   "rewrites": [
     {
+      "source": "/api/agenda",
+      "has": [
+        {
+          "type": "host",
+          "value": "agenda.svicompany.com.br"
+        }
+      ],
+      "destination": "/api/r?__rota=agenda"
+    },
+    {
+      "source": "/api/:caminho*",
+      "has": [
+        {
+          "type": "host",
+          "value": "agenda.svicompany.com.br"
+        }
+      ],
+      "destination": "/api/:caminho*"
+    },
+    {
+      "source": "/api/agenda",
+      "destination": "/api/r?__rota=agenda"
+    },
+    {
       "source": "/api/social",
       "has": [
         {

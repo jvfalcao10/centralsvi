@@ -86,6 +86,7 @@ import TrafegoApprove from "@/pages/r/TrafegoApprove";
 import ConteudoApprove from "@/pages/r/ConteudoApprove";
 
 import NotFound from "./pages/NotFound";
+import Agenda, { AgendaReuniao } from './pages/Agenda';
 
 // Criador de Carrossel: carrega sob demanda (exportador de PNG, zip e a base de conhecimento pesam)
 const CriadorCarrossel = lazy(() => import("@/pages/content/CriadorCarrossel"));
@@ -101,6 +102,7 @@ function AutoLayout({ children }: { children: React.ReactNode }) {
 }
 
 const ehDominioDeAprovacao = typeof window !== 'undefined' && window.location.hostname === 'aprovar.svicompany.com.br'
+const ehDominioDeAgenda = typeof window !== 'undefined' && window.location.hostname === 'agenda.svicompany.com.br'
 
 /** Endereço errado no domínio de aprovação não mostra a Central: vai pro site. */
 const ParaOSite = () => {
@@ -120,6 +122,14 @@ const App = () => (
               {/* O domínio de aprovação só serve as telas do cliente. As rotas
                   entram antes porque "/:slug/:token" casaria com caminhos da
                   Central se o endereço fosse o mesmo. */}
+              {/* O domínio da agenda é público e só serve as telas de marcar
+                  reunião. Entra antes porque "/r/:token" casaria com rota da
+                  Central se o endereço fosse o mesmo. */}
+              {ehDominioDeAgenda && <>
+                <Route path="/" element={<Agenda />} />
+                <Route path="/r/:token" element={<AgendaReuniao />} />
+                <Route path="*" element={<ParaOSite />} />
+              </>}
               {ehDominioDeAprovacao && <>
                 <Route path="/p/:token" element={<SocialApprove />} />
                 <Route path="/:slug/:token" element={<SocialClientApprove />} />
@@ -137,6 +147,8 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/client-signup" element={<ClientSignup />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/agenda" element={<Agenda />} />
+              <Route path="/agenda/r/:token" element={<AgendaReuniao />} />
               <Route path="/pending-approval" element={<PendingApproval />} />
 
               {/* Staff-only */}

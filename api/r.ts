@@ -6,6 +6,7 @@ import { handleAprovarConteudo } from './_lib/aprovar-conteudo.js';
 import { handleVagaTrafego } from './_lib/vaga-trafego.js';
 import { handleRadarColetar } from './_lib/radar-coletar.js';
 import { handleRadarTrends } from './_lib/radar-trends.js';
+import { handleAgenda } from './_lib/agenda.js';
 import { handleEquipeDia } from './_lib/equipe-dia.js';
 
 const CSS = `
@@ -97,6 +98,7 @@ function deltaHtml(pct: any): string {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.query.__rota === 'social-share') return handleSocialShare(req, res);
   if (req.query.__rota === 'social') return handleSocial(req, res);
+  if (req.query.__rota === 'agenda') return handleAgenda(req, res);
   // Aprovacao de conteudo entra por aqui: o plano Hobby limita as functions.
   if (req.query.__rota === 'vaga-trafego') {
     return handleVagaTrafego(req, res);
