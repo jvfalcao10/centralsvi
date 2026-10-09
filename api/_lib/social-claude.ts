@@ -40,7 +40,9 @@ export async function lerQuadros(db:SupabaseClient,asset:SocialAsset,prazo=Date.
  const content=[...urls.map(url=>({type:'image',source:{type:'url',url}})),{type:'text',text:PEDIDO}]
  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
   headers:{'x-api-key':key,'anthropic-version':'2023-06-01','content-type':'application/json'},
-  body:JSON.stringify({model:MODELO,max_tokens:2000,temperature:0,messages:[{role:'user',content}]}),
+    // Sem temperature: os modelos Claude 5 recusam o campo, e o pedido já é de
+  // copiar o que está na tela, não de criar.
+  body:JSON.stringify({model:MODELO,max_tokens:2000,messages:[{role:'user',content}]}),
   signal:AbortSignal.timeout(Math.min(90000,Math.max(10000,prazo-Date.now())))})
  // O nome do erro guarda o código de propósito: a esteira trata 429, 503 e 504
  // como teto de uso, devolve a peça inteira para a fila e não gasta tentativa.
