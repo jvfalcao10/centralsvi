@@ -19,6 +19,20 @@ async function avisarDono(texto:string,numeroDeQuemMarcou?:string) {
 /** Minutos de respiro em volta de cada compromisso, ajustável sem deploy. */
 const folgaMin=()=>{const n=Number(process.env.AGENDA_FOLGA_MIN);return Number.isFinite(n)&&n>=0&&n<=180?n:FOLGA_MIN}
 const hash=(v:string)=>createHash('sha256').update(v).digest('hex')
+
+/**
+ * A linha que o RPC devolveu, ou nada.
+ *
+ * Função que retorna um composto pode chegar como objeto, como lista de um,
+ * ou como uma linha inteira de nulos quando nada casou. Confiar no formato
+ * custou um 500 em produção: o cancelamento gravou certo no banco e estourou
+ * depois, ao formatar a data de uma linha vazia. A presença do id é o que
+ * diz se achou de verdade.
+ */
+function linhaDoRpc<T extends {id?:string}>(bruto:unknown):T|null {
+ const v=Array.isArray(bruto)?bruto[0]:bruto
+ return v&&typeof v==='object'&&(v as T).id?v as T:null
+}
 const codigo=()=>randomBytes(16).toString('base64url')
 const formatoToken=(v:string)=>/^[A-Za-z0-9_-]{20,24}$/.test(v)
 
@@ -106,7 +120,8 @@ export async function handleAgenda(req:VercelRequest,res:VercelResponse) {
 
   if(req.body?.acao==='cancelar'){
    if(!formatoToken(token))return res.status(404).json({error:'Este link não está disponível.'})
-   const {data:reuniao}=await db.rpc('central_agenda_cancelar',{p_token_hash:hash(token),p_por:'quem marcou'})
+   const {data:bruto}=await db.rpc('central_agenda_cancelar',{p_token_hash:hash(token),p_por:'quem marcou'})
+   const reuniao=linhaDoRpc<{id:string;inicio:string;nome:string;whatsapp:string;google_event_id:string|null}>(bruto)
    if(!reuniao)return res.status(409).json({error:'Esta reunião já estava cancelada.'})
    if(reuniao.google_event_id)try{await cancelarEvento(reuniao.google_event_id)}catch{/* a reserva já caiu */}
    await whats(reuniao.whatsapp,`Sua reunião de ${legivel(Date.parse(reuniao.inicio))} foi cancelada. Se quiser remarcar, é só abrir ${SITE}`)
@@ -134,9 +149,11 @@ export async function handleAgenda(req:VercelRequest,res:VercelResponse) {
   const bruto=codigo()
   // A reserva entra ANTES de falar com o Google: é o índice único do banco que
   // impede duas pessoas de pegarem o mesmo horário no mesmo segundo.
-  const {data:reuniao}=await db.rpc('central_agenda_marcar',{
+  const {data:gravado}=await db.rpc('central_agenda_marcar',{
    p_token_hash:hash(bruto),p_nome:dados.nome,p_email:dados.email,p_whatsapp:dados.whatsapp,
    p_assunto:dados.assunto,p_inicio:new Date(inicio).toISOString(),p_fim:new Date(fim).toISOString()})
+  // Sem id não houve reserva: criar o evento aqui daria convite sem dono.
+  const reuniao=linhaDoRpc<{id:string}>(gravado)
   if(!reuniao)return res.status(409).json({error:'Esse horário acabou de ser marcado por outra pessoa. Escolha outro.'})
 
   const cancelarUrl=`${SITE}/r/${bruto}`
