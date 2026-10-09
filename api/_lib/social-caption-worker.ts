@@ -144,7 +144,13 @@ export async function lerVideo(db:SupabaseClient,asset:SocialAsset,prazo?:number
  // do mesmo passe da cópia leve, e o que se OUVE sai da transcrição da cópia,
  // que agora cabe no limite de 25 MB. Nenhum dos dois depende de fila de cota,
  // que é o que derrubava Dr. Felipe, Christo Rei e Dr. Daniel.
- if(Number(asset.frames||0)&&(process.env.SOCIAL_VISION_KEY||process.env.ANTHROPIC_API_KEY)){
+ const comClaude=!!(process.env.SOCIAL_VISION_KEY||process.env.ANTHROPIC_API_KEY)
+ // Vídeo do Drive ainda sem quadros, com o Claude ligado: o passe que gera os
+ // quadros roda de 2 em 2 minutos, então vale esperar. Tentar pelo Gemini aqui
+ // gastaria uma das três tentativas num caminho que já sabemos que falha, que
+ // foi exatamente como nove peças desistiram.
+ if(comClaude&&asset.storage==='drive'&&!Number(asset.frames||0))throw new Error('aguardando_quadros')
+ if(Number(asset.frames||0)&&comClaude){
   // Os quadros vêm primeiro: são baratos, e se o teto de uso bater aqui a peça
   // volta inteira para a fila sem pagar o custo da transcrição.
   const visual=await lerQuadros(db,asset,prazo)
@@ -191,8 +197,8 @@ export async function processCaptions(db:SupabaseClient,max=2,prazo=Date.now()+2
    // 429 é teto de uso da API, não defeito da peça. Gastar tentativa aqui faria
    // a peça desistir por causa de um minuto cheio, que foi o que aconteceu com
    // 13 peças. Ela volta inteira para a fila e a volta termina aqui.
-   const esperando=/_429|_503|_504/.test(motivo)
-   try{await db.rpc('central_social_caption_fail',{p_id:peca.id,p_motivo:esperando?'Limite de uso da API, tenta de novo sozinho: '+motivo:motivo})}catch{/* diagnóstico não derruba a esteira */}
+   const esperando=/_429|_503|_504|aguardando_quadros/.test(motivo)
+   try{await db.rpc('central_social_caption_fail',{p_id:peca.id,p_motivo:motivo==='aguardando_quadros'?'Preparando os quadros do vídeo para escrever a legenda.':esperando?'Limite de uso da API, tenta de novo sozinho: '+motivo:motivo})}catch{/* diagnóstico não derruba a esteira */}
    if(esperando)try{await db.rpc('central_social_caption_retry',{p_id:peca.id})}catch{/* a peça só perde esta tentativa */}
    feitas.push({id:peca.id,status:motivo.slice(0,80)})
    if(esperando)break
