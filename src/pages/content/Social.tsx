@@ -97,7 +97,7 @@ export default function Social() {
    const r=await socialApi('',{id:peca.id,version:peca.version,action:'enviar_cliente'})
    // Quando o grupo não é encontrado, a peça já foi para Aguardando cliente e o
    // link existe: dizer isso é mais útil que falhar sem saída.
-   notify(r.enviado?`A Sofia está mandando no grupo ${r.grupo}.`:(r.motivo||'A peça foi para Aguardando cliente.'))
+   notify(r.enviado?(r.aguardando_video?`A Sofia manda no grupo ${r.grupo} em instantes, junto com o vídeo.`:`A Sofia está mandando no grupo ${r.grupo}.`):(r.motivo||'A peça foi para Aguardando cliente.'))
    if(!r.enviado&&r.approval_url)await copy(r.approval_url)
    await load();if(cardId===peca.id)await open(peca.id)
   }catch(e){notify((e as Error).message)}finally{setBusy(false)}

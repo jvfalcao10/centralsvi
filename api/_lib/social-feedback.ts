@@ -61,6 +61,30 @@ export function feedbackText(job:FeedbackJob) {
   `\nCentral: https://central.svicompany.com.br/content/social?peca=${encodeURIComponent(job.card_id)}`,
   p.task_id?`ClickUp: https://app.clickup.com/t/${p.task_id}`:'',`[SVI retorno ${job.event_id}]`].filter(Boolean).join('\n')
 }
+/**
+ * O vídeo vai no WhatsApp mesmo, antes do link.
+ *
+ * O cliente já está no WhatsApp e assiste ali, sem abrir página nenhuma. Sai a
+ * cópia leve (7,4 MB no vídeo medido), nunca o arquivo do editor.
+ *
+ * Nada aqui pode derrubar o envio do link: se a mídia falhar, o cliente ainda
+ * recebe o endereço para aprovar, que é o que não pode faltar.
+ */
+async function enviarVideo(job:FeedbackJob) {
+ const p=job.payload as {midia_url?:string}
+ if(job.channel!=='whatsapp'||!p.midia_url)return
+ const track=`midia-${job.event_id}`
+ try{
+  // Uma tentativa anterior pode ter chegado ao provedor antes de estourar o
+  // tempo. Conferir evita o cliente receber o mesmo vídeo duas vezes.
+  const d=await request('whatsapp','/message/find',{chatid:job.destination,track_source:'central-social',track_id:track,limit:50,offset:0})
+  if(Array.isArray(d.messages)&&d.messages.some((m:{track_id?:string})=>m.track_id===track))return
+ }catch{/* não conseguir conferir não pode impedir o envio */}
+ try{
+  await request('whatsapp','/send/media',{number:job.destination,type:'video',file:p.midia_url,text:'',
+   readchat:false,readmessages:false,track_source:'central-social',track_id:track,async:false})
+ }catch{/* o link é o que não pode faltar */}
+}
 export const feedbackProvider={
  async find(job:FeedbackJob):Promise<string|null> {
   if(job.channel==='whatsapp'){
@@ -83,6 +107,7 @@ export const feedbackProvider={
  },
  async send(job:FeedbackJob):Promise<string> {
   const text=feedbackText(job)
+  await enviarVideo(job)
   // Pedido de ajuste devolve a tarefa para a bancada e para o dia de hoje, que
   // é o que faz ela subir na lista de quem vai executar. Falhar aqui não pode
   // impedir o comentário: o aviso vale mais que o prazo.
@@ -114,6 +139,13 @@ export async function processFeedback(db:DB,limit=4) {
  for(let i=0;i<limit&&Date.now()-start<30000;i++){
   const {data:job}=checked(await db.rpc('central_social_feedback_claim',{}));if(!job)break
   const j=job as FeedbackJob
+  // Assinar aqui, e não na hora de enfileirar: uma tentativa que acontece
+  // horas depois precisa de um endereço vivo.
+  const caminho=(j.payload as {midia_path?:string}).midia_path
+  if(j.channel==='whatsapp'&&caminho){
+   const {data:assinado}=await db.storage.from('central-social').createSignedUrl(caminho,21600)
+   if(assinado?.signedUrl)(j.payload as {midia_url?:string}).midia_url=assinado.signedUrl
+  }
   const result=await deliverFeedback(j,async()=>{
    const {data}=checked(await db.from('central_social_feedback_outbox').update({dispatched_at:new Date().toISOString()}).eq('id',j.id).eq('status','processing').eq('attempts',j.attempts).gt('lease_until',new Date().toISOString()).select('id').maybeSingle())
    if(!data)throw new Error('lease_expired')

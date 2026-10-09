@@ -20,6 +20,15 @@ import { publicCard, socialPatch, socialMovePatch, staffMoveState, SocialError, 
 
 const fail = (status: number, message: string): never => { throw new SocialError(status, message) }
 const hash = (value: string) => createHash('sha256').update(value).digest('hex')
+/** A cópia leve do vídeo selecionado, quando já existe. */
+function videoDaPeca(card:SocialCard) {
+ const a=card.assets.find(x=>card.selected_assets.includes(x.id)&&x.type.startsWith('video/')&&x.approval_path)
+ return a?.approval_path||null
+}
+/** Tem vídeo do Drive esperando a cópia leve que o cron ainda vai fazer. */
+function videoAindaComprimindo(card:SocialCard) {
+ return card.assets.some(x=>card.selected_assets.includes(x.id)&&x.type.startsWith('video/')&&x.storage==='drive'&&!x.approval_path)
+}
 export async function handleSocial(req: VercelRequest, res: VercelResponse) {
  if(req.query.robot==='1')return handleSocialRobot(req,res)
  if(req.query.publication_stream)return publicationPlayback(req,res)
@@ -163,17 +172,28 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
    // histórico da peça. O apply acabou de registrar um; é esse que se usa.
    const {data:evento}=await db.from('central_social_events').select('id')
     .eq('card_id',atual.id).order('id',{ascending:false}).limit(1).maybeSingle()
+   const esperandoVideo=videoAindaComprimindo(atual)
    // A fila recusa duas linhas do mesmo canal para o mesmo evento. O gatilho
    // deixou de tratar esta ação justamente por isso: o destino aqui é o grupo
    // do CLIENTE, e quem sabe qual é só o código.
    const {error:erroFila}=evento?.id?await db.from('central_social_feedback_outbox').insert({
     event_id:evento.id,card_id:atual.id,channel:'whatsapp',destination:grupo.jid,
     payload:{client:atual.client,title:atual.title,revision:atual.revision,actor,action:'enviar_cliente',
-     comment:'',created_at:new Date().toISOString(),files:[],task_id:null,group_label:grupo.nome,texto_pronto:aviso},
+     comment:'',created_at:new Date().toISOString(),files:[],task_id:null,group_label:grupo.nome,texto_pronto:aviso,
+     // O cliente assiste no WhatsApp mesmo, que é onde ele já está. Vai o
+     // caminho, não a URL: quem envia assina na hora, então tentativa atrasada
+     // nunca cai em endereço vencido. Só a cópia leve viaja, porque o arquivo
+     // do editor tem bitrate de câmera e não passa no WhatsApp.
+     midia_path:videoDaPeca(atual)},
+    // Peça mandada minutos depois da entrega ainda não tem cópia leve. Segurar
+    // três minutos faz o cliente receber o vídeo junto do link, em vez de só o
+    // link. O cron pega por updated_at desc, e mandar para o cliente acabou de
+    // mexer na peça, então ela entra na frente.
+    ...(esperandoVideo?{next_attempt_at:new Date(Date.now()+180000).toISOString()}:{}),
     status:'pending'}):{error:{message:'evento_nao_encontrado'}}
    if(erroFila)return res.json({ok:true,approval_url:approvalUrl,enviado:false,
     motivo:'A peça foi para Aguardando cliente, mas o envio não entrou na fila. Copie o link e mande você mesmo.'})
-   return res.json({ok:true,approval_url:approvalUrl,enviado:true,grupo:grupo.nome})
+   return res.json({ok:true,approval_url:approvalUrl,enviado:true,grupo:grupo.nome,aguardando_video:esperandoVideo})
   }
   return res.json({ ok:true, approval_url: approvalUrl })
  } catch (error) {
