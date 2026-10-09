@@ -13,6 +13,8 @@ interface Props {
   allowClient?: boolean
   /** Se true, a rota é exclusiva para role 'client'. */
   clientOnly?: boolean
+  /** Se true, permite role 'social' (social media, escopo restrito). */
+  allowSocial?: boolean
   /** Se true, permite role 'traffic' (gestor de tráfego, escopo restrito). */
   allowTraffic?: boolean
 }
@@ -23,8 +25,9 @@ export default function ProtectedRoute({
   allowClient = false,
   clientOnly = false,
   allowTraffic = false,
+  allowSocial = false,
 }: Props) {
-  const { user, profile, role, signupStatus, loading, can, isClient, isTraffic, signOut } = useAuth()
+  const { user, profile, role, signupStatus, loading, can, isClient, isTraffic, isSocial, signOut } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const { toast } = useToast()
@@ -60,6 +63,9 @@ export default function ProtectedRoute({
   }
 
   // Gestor de Tráfego (escopo restrito) tentando acessar rota não autorizada
+  if (isSocial && !allowSocial) {
+    return <Navigate to="/content/social" replace />
+  }
   if (isTraffic && !allowTraffic) {
     return <Navigate to="/operacional/trafego" replace />
   }
@@ -88,7 +94,7 @@ export default function ProtectedRoute({
     navigate('/login', { replace: true })
   }
 
-  if (requiredRole && !can(requiredRole) && !(allowClient && isClient) && !(clientOnly && isClient) && !(allowTraffic && isTraffic)) {
+  if (requiredRole && !can(requiredRole) && !(allowClient && isClient) && !(clientOnly && isClient) && !(allowTraffic && isTraffic) && !(allowSocial && isSocial)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <div className="max-w-md w-full text-center space-y-5">

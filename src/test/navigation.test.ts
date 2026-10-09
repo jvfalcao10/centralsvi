@@ -78,3 +78,21 @@ describe('Áreas de navegação', () => {
     expect(getNavigationBreadcrumb('/desconhecida')).toEqual(['Central SVI'])
   })
 })
+
+// João, 09/10: a Rayana entrou e vê só a área de postagens. Papel lateral,
+// igual ao de tráfego, fora da escada de hierarquia.
+describe('papel social media', () => {
+  const nav = getVisibleNavigation({ can: () => false, isSocial: true })
+
+  it('vê Postagens, Moldes e Datas', () => {
+    const urls = nav.main.flatMap(a => a.items.map(i => i.url))
+    expect(urls).toEqual(['/content/social', '/content/moldes', '/content/datas'])
+  })
+
+  it('não vê financeiro, resultados, comercial nem administração', () => {
+    const tudo = JSON.stringify(nav)
+    for (const fora of ['/financial', '/pipeline', '/dashboard', '/clients', '/tarefas'])
+      expect(tudo).not.toContain(fora)
+    expect(nav.footer).toHaveLength(0)
+  })
+})

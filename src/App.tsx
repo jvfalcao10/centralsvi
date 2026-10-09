@@ -273,7 +273,7 @@ const App = () => (
                 <ProtectedRoute requiredRole="executor"><AppLayout><Aprovacoes /></AppLayout></ProtectedRoute>
               } />
               <Route path="/content/datas" element={
-                <ProtectedRoute requiredRole="executor" allowClient>
+                <ProtectedRoute requiredRole="executor" allowClient allowSocial>
                   <AutoLayout><Datas /></AutoLayout>
                 </ProtectedRoute>
               } />
@@ -285,9 +285,9 @@ const App = () => (
               <Route path="/conteudo/criador-carrossel" element={
                 <ProtectedRoute requiredRole="admin"><AppLayout><Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando o Criador de carrossel…</div>}><CriadorCarrossel /></Suspense></AppLayout></ProtectedRoute>
               } />
-              <Route path="/content/social" element={<ProtectedRoute requiredRole="executor" allowTraffic><AppLayout><Social /></AppLayout></ProtectedRoute>} />
+              <Route path="/content/social" element={<ProtectedRoute requiredRole="executor" allowTraffic allowSocial><AppLayout><Social /></AppLayout></ProtectedRoute>} />
               <Route path="/content/moldes" element={
-                <ProtectedRoute requiredRole="executor"><AppLayout><Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando os moldes…</div>}><Moldes /></Suspense></AppLayout></ProtectedRoute>
+                <ProtectedRoute requiredRole="executor" allowSocial><AppLayout><Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando os moldes…</div>}><Moldes /></Suspense></AppLayout></ProtectedRoute>
               } />
               <Route path="/content/organizador" element={
                 <ProtectedRoute requiredRole="executor">

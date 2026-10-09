@@ -78,6 +78,7 @@ const ROLE_CONFIG: Record<UserRole, { label: string; description: string; icon: 
   seller: { label: 'Vendedor', description: 'Prospecção + Scripts + Pipeline', icon: Crosshair, className: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
   executor: { label: 'Executor', description: 'Entregas + Scripts (apenas próprias)', icon: Wrench, className: 'bg-green-500/20 text-green-400 border-green-500/30' },
   traffic: { label: 'Gestor de Tráfego', description: 'Acesso restrito ao módulo Tráfego', icon: Wrench, className: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
+  social: { label: 'Social Media', description: 'Acesso restrito a Postagens, Moldes e Datas', icon: Wrench, className: 'bg-sky-500/20 text-sky-400 border-sky-500/30' },
   client: { label: 'Cliente', description: 'Acesso ao painel de conteúdo (cliente externo)', icon: User, className: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
   user: { label: 'Usuário', description: 'Acesso básico', icon: UserCog, className: 'bg-slate-500/20 text-slate-400 border-slate-500/30' },
 }
@@ -194,7 +195,7 @@ export default function Team() {
   useEffect(() => { fetchData() }, [fetchData])
 
   function roleRank(r: UserRole): number {
-    return { admin: 4, manager: 3, seller: 2, executor: 1, traffic: 1, user: 0 }[r] ?? 0
+    return { admin: 4, manager: 3, seller: 2, executor: 1, traffic: 1, social: 1, user: 0 }[r] ?? 0
   }
 
   async function updateRole(userId: string, newRole: UserRole) {
@@ -460,6 +461,7 @@ export default function Team() {
                               <SelectItem value="seller">Vendedor</SelectItem>
                               <SelectItem value="executor">Executor</SelectItem>
                               <SelectItem value="traffic">Gestor de Tráfego</SelectItem>
+                              <SelectItem value="social">Social Media</SelectItem>
                             </SelectContent>
                           </Select>
                         </TableCell>
@@ -634,6 +636,7 @@ export default function Team() {
                               <SelectItem value="seller">Vendedor</SelectItem>
                               <SelectItem value="executor">Executor</SelectItem>
                               <SelectItem value="traffic">Gestor de Tráfego</SelectItem>
+                              <SelectItem value="social">Social Media</SelectItem>
                               <SelectItem value="client">Cliente externo</SelectItem>
                             </SelectContent>
                           </Select>
@@ -791,27 +794,32 @@ export default function Team() {
                 <SelectContent>
                   <SelectItem value="admin">
                     <div className="flex items-center gap-2">
-                      <Crown className="h-3.5 w-3.5 text-amber-400" /> Admin — Acesso total
+                      <Crown className="h-3.5 w-3.5 text-amber-400" /> Admin: acesso total
                     </div>
                   </SelectItem>
                   <SelectItem value="manager">
                     <div className="flex items-center gap-2">
-                      <Shield className="h-3.5 w-3.5 text-blue-400" /> Gestor — Tudo, menos Financeiro
+                      <Shield className="h-3.5 w-3.5 text-blue-400" /> Gestor: tudo, menos Financeiro
                     </div>
                   </SelectItem>
                   <SelectItem value="seller">
                     <div className="flex items-center gap-2">
-                      <Crosshair className="h-3.5 w-3.5 text-purple-400" /> Vendedor — Prospecção, Scripts
+                      <Crosshair className="h-3.5 w-3.5 text-purple-400" /> Vendedor: prospecção e Scripts
                     </div>
                   </SelectItem>
                   <SelectItem value="executor">
                     <div className="flex items-center gap-2">
-                      <Wrench className="h-3.5 w-3.5 text-green-400" /> Executor — Entregas, Scripts
+                      <Wrench className="h-3.5 w-3.5 text-green-400" /> Executor: entregas e Scripts
                     </div>
                   </SelectItem>
                   <SelectItem value="traffic">
                     <div className="flex items-center gap-2">
-                      <Wrench className="h-3.5 w-3.5 text-rose-400" /> Gestor de Tráfego — Acesso restrito ao módulo Tráfego
+                      <Wrench className="h-3.5 w-3.5 text-rose-400" /> Gestor de Tráfego: acesso restrito ao módulo Tráfego
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="social">
+                    <div className="flex items-center gap-2">
+                      <Wrench className="h-3.5 w-3.5 text-sky-400" /> Social Media: Postagens, Moldes e Datas
                     </div>
                   </SelectItem>
                 </SelectContent>
@@ -823,7 +831,7 @@ export default function Team() {
                 <Clock className="h-3.5 w-3.5" /> Como funciona:
               </p>
               <ol className="text-xs text-muted-foreground space-y-1 ml-5 list-decimal">
-                <li><strong>Envie o link completo abaixo</strong> (não use central.svicompany.com.br/login direto — a pessoa cai em Entrar e não vai saber que precisa criar conta)</li>
+                <li><strong>Envie o link completo abaixo</strong> (não use central.svicompany.com.br/login direto, porque a pessoa cai em Entrar e não descobre que precisa criar conta)</li>
                 <li>O link já abre na aba "Criar conta" com o email pré-preenchido</li>
                 <li>Após o cadastro, o sistema aplica o nível de acesso automaticamente</li>
               </ol>

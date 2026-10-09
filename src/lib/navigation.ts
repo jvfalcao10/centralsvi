@@ -79,13 +79,33 @@ export const TRAFFIC_AREAS: NavigationArea[] = [
   ] },
 ]
 
-export function getVisibleNavigation({ can, isTraffic = false, isClient = false }: {
+/**
+ * O que a social media vê.
+ *
+ * Papel lateral, igual ao de tráfego: só a área dela. Datas e moldes entram
+ * porque é de onde a pauta sai; financeiro, resultados e comercial ficam fora.
+ */
+export const SOCIAL_AREAS: NavigationArea[] = [
+  { id: 'social', title: 'Postagens', icon: 'operations', direct: true, items: [
+    { title: 'Social media · Postagens', url: '/content/social', minRole: 'social' },
+  ] },
+  { id: 'moldes', title: 'Moldes', icon: 'carousel', direct: true, items: [
+    { title: 'Moldes de post', url: '/content/moldes', minRole: 'social' },
+  ] },
+  { id: 'datas', title: 'Datas', icon: 'resources', direct: true, items: [
+    { title: 'Datas estratégicas', url: '/content/datas', minRole: 'social' },
+  ] },
+]
+
+export function getVisibleNavigation({ can, isTraffic = false, isSocial = false, isClient = false }: {
   can: (role: UserRole) => boolean
   isTraffic?: boolean
+  isSocial?: boolean
   isClient?: boolean
 }): { main: NavigationArea[]; footer: NavigationArea[] } {
   if (isClient) return { main: [], footer: [] }
   if (isTraffic) return { main: TRAFFIC_AREAS, footer: [] }
+  if (isSocial) return { main: SOCIAL_AREAS, footer: [] }
   const visible = (areas: NavigationArea[]) => areas
     .map(area => ({ ...area, items: area.items.filter(item => can(item.minRole)) }))
     .filter(area => area.items.length > 0)

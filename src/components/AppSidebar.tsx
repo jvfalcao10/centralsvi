@@ -38,10 +38,10 @@ export function AppSidebar() {
   const { state, setOpen, isMobile, setOpenMobile } = useSidebar()
   const collapsed = state === 'collapsed' && !isMobile
   const location = useLocation()
-  const { profile, role, signOut, can, isTraffic, isClient } = useAuth()
+  const { profile, role, signOut, can, isTraffic, isSocial, isClient } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const badges = useNavBadges()
-  const navigation = getVisibleNavigation({ can, isTraffic, isClient })
+  const navigation = getVisibleNavigation({ can, isTraffic, isSocial, isClient })
   const active = findActiveNavigation(location.pathname, [...navigation.main, ...navigation.footer])
   const activeAreaId = active && !active.area.direct ? active.area.id : null
   const [openAreaId, setOpenAreaId] = useState<string | null>(activeAreaId)

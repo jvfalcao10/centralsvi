@@ -54,7 +54,7 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
     db.from('user_roles').select('role').eq('user_id', data.user.id),
     db.from('profiles').select('name').eq('user_id', data.user.id).maybeSingle(),
    ])
-   if (roleError || !roles?.some(r => ['admin','manager','seller','executor','traffic'].includes(r.role))) fail(403, 'Acesso restrito à equipe SVI.')
+   if (roleError || !roles?.some(r => ['admin','manager','seller','executor','traffic','social'].includes(r.role))) fail(403, 'Acesso restrito à equipe SVI.')
    actorId = data.user.id; actor = profile?.name || data.user.email || 'Equipe SVI'
   } else if (!formatoValido(token||bundle)) fail(404, 'Este link não está disponível.')
 
