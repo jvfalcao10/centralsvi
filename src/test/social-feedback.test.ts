@@ -117,6 +117,22 @@ describe('vídeo vai no WhatsApp antes do link',()=>{
   vi.unstubAllGlobals();vi.unstubAllEnvs()
  })
 
+ it('com vídeo no grupo, o link vai sem prévia para não parecer peça dobrada',async()=>{
+  const chamadas=gravar()
+  await feedbackProvider.send(job('https://exemplo/leve.mp4'))
+  const texto=chamadas.find(c=>c.url.endsWith('/send/text'))
+  expect(texto?.body).toMatchObject({linkPreview:false})
+  vi.unstubAllGlobals();vi.unstubAllEnvs()
+ })
+
+ it('sem vídeo, a prévia continua ligada para reconhecer a peça',async()=>{
+  const chamadas=gravar()
+  await feedbackProvider.send(job())
+  const texto=chamadas.find(c=>c.url.endsWith('/send/text'))
+  expect(texto?.body).toMatchObject({linkPreview:true})
+  vi.unstubAllGlobals();vi.unstubAllEnvs()
+ })
+
  it('peça sem vídeo segue só com o link',async()=>{
   const chamadas=gravar()
   await feedbackProvider.send(job())
