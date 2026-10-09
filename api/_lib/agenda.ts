@@ -5,6 +5,17 @@ import {AgendaIndisponivel,cancelarEvento,criarEvento,ocupados} from './agenda-g
 import {AVISO_MINIMO_MIN,DURACAO_MIN,FOLGA_MIN,FUSO,JANELA_DIAS,dadosDaReuniao,emBrasilia,horarioValido,horariosLivres,lerVitrine,porDia} from './agenda-domain.js'
 
 const SITE='https://agenda.svicompany.com.br'
+/**
+ * Avisa o dono da agenda, quando houver número configurado.
+ *
+ * Pula quando quem marcou é o próprio dono: senão ele recebe a mesma coisa
+ * duas vezes, uma como quem marcou e outra como aviso.
+ */
+async function avisarDono(texto:string,numeroDeQuemMarcou?:string) {
+ const dono=(process.env.AGENDA_AVISO_WHATSAPP||'').replace(/\D+/g,'')
+ if(!dono||dono===(numeroDeQuemMarcou||'').replace(/\D+/g,''))return
+ await whats(dono,texto)
+}
 /** Minutos de respiro em volta de cada compromisso, ajustável sem deploy. */
 const folgaMin=()=>{const n=Number(process.env.AGENDA_FOLGA_MIN);return Number.isFinite(n)&&n>=0&&n<=180?n:FOLGA_MIN}
 const hash=(v:string)=>createHash('sha256').update(v).digest('hex')
@@ -99,8 +110,7 @@ export async function handleAgenda(req:VercelRequest,res:VercelResponse) {
    if(!reuniao)return res.status(409).json({error:'Esta reunião já estava cancelada.'})
    if(reuniao.google_event_id)try{await cancelarEvento(reuniao.google_event_id)}catch{/* a reserva já caiu */}
    await whats(reuniao.whatsapp,`Sua reunião de ${legivel(Date.parse(reuniao.inicio))} foi cancelada. Se quiser remarcar, é só abrir ${SITE}`)
-   if(process.env.AGENDA_AVISO_WHATSAPP)
-    await whats(process.env.AGENDA_AVISO_WHATSAPP,`Reunião CANCELADA\n${reuniao.nome}\n${legivel(Date.parse(reuniao.inicio))}`)
+   await avisarDono(`Reunião CANCELADA\n${reuniao.nome}\n${legivel(Date.parse(reuniao.inicio))}`,reuniao.whatsapp)
    return res.json({ok:true,cancelada:true})
   }
 
@@ -143,8 +153,7 @@ export async function handleAgenda(req:VercelRequest,res:VercelResponse) {
 
   const quando=legivel(inicio)
   await whats(dados.whatsapp,`Reunião confirmada para ${quando}, horário de Brasília.\n\nO convite foi para ${dados.email}${meet?`\nLink da chamada: ${meet}`:''}\n\nPrecisando desmarcar: ${cancelarUrl}`)
-  if(process.env.AGENDA_AVISO_WHATSAPP)
-   await whats(process.env.AGENDA_AVISO_WHATSAPP,`Reunião NOVA\n${dados.nome}\n${quando}\n${dados.whatsapp}\n${dados.email}${dados.assunto?`\n\n${dados.assunto}`:''}`)
+  await avisarDono(`Reunião NOVA\n${dados.nome}\n${quando}\n${dados.whatsapp}\n${dados.email}${dados.assunto?`\n\n${dados.assunto}`:''}`,dados.whatsapp)
 
   return res.json({ok:true,reuniao:{inicio:new Date(inicio).toISOString(),quando,meet,cancelar_url:cancelarUrl,email:dados.email}})
  }catch(e){
