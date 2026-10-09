@@ -197,8 +197,12 @@ export async function processCaptions(db:SupabaseClient,max=2,prazo=Date.now()+2
    // 429 é teto de uso da API, não defeito da peça. Gastar tentativa aqui faria
    // a peça desistir por causa de um minuto cheio, que foi o que aconteceu com
    // 13 peças. Ela volta inteira para a fila e a volta termina aqui.
-   const esperando=/_429|_503|_504|aguardando_quadros/.test(motivo)
-   try{await db.rpc('central_social_caption_fail',{p_id:peca.id,p_motivo:motivo==='aguardando_quadros'?'Preparando os quadros do vídeo para escrever a legenda.':esperando?'Limite de uso da API, tenta de novo sozinho: '+motivo:motivo})}catch{/* diagnóstico não derruba a esteira */}
+   // Saldo zerado, chave inválida ou sem permissão são problema de configuração,
+   // não da peça. Se gastassem tentativa, todas as peças desistiriam antes de
+   // alguém trocar a chave, e aí a fila estaria vazia pelo motivo errado.
+   const configuracao=/credit balance|claude_http_401|claude_http_403|_key_missing/i.test(motivo)
+   const esperando=configuracao||/_429|_503|_504|aguardando_quadros/.test(motivo)
+   try{await db.rpc('central_social_caption_fail',{p_id:peca.id,p_motivo:motivo==='aguardando_quadros'?'Preparando os quadros do vídeo para escrever a legenda.':configuracao?'Conta de IA sem saldo ou chave inválida. Avise o João.':esperando?'Limite de uso da API, tenta de novo sozinho: '+motivo:motivo})}catch{/* diagnóstico não derruba a esteira */}
    if(esperando)try{await db.rpc('central_social_caption_retry',{p_id:peca.id})}catch{/* a peça só perde esta tentativa */}
    feitas.push({id:peca.id,status:motivo.slice(0,80)})
    if(esperando)break
