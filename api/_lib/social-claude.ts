@@ -44,7 +44,13 @@ export async function lerQuadros(db:SupabaseClient,asset:SocialAsset,prazo=Date.
   signal:AbortSignal.timeout(Math.min(90000,Math.max(10000,prazo-Date.now())))})
  // O nome do erro guarda o código de propósito: a esteira trata 429, 503 e 504
  // como teto de uso, devolve a peça inteira para a fila e não gasta tentativa.
- if(!r.ok)throw new Error(`claude_http_${r.status}`)
+ // O motivo entra junto: guardar só o código deixa um 400 virar mistério, que
+ // foi exatamente o que aconteceu com a peça do Spa Nature.
+ if(!r.ok){
+  let motivo=''
+  try{const e=await r.json() as {error?:{message?:string}};motivo=String(e?.error?.message||'').slice(0,160)}catch{/* corpo ilegível */}
+  throw new Error(`claude_http_${r.status}${motivo?': '+motivo:''}`)
+ }
  const d=await r.json() as {content?:{type:string;text?:string}[]}
  const texto=(d.content||[]).filter(c=>c.type==='text').map(c=>c.text||'').join('').trim()
  if(!texto)throw new Error('claude_sem_resposta')
