@@ -2,7 +2,7 @@ import {createHash,randomBytes} from 'node:crypto'
 import type {VercelRequest,VercelResponse} from '@vercel/node'
 import {createAdminClient} from './supabase.js'
 import {AgendaIndisponivel,cancelarEvento,criarEvento,ocupados} from './agenda-google.js'
-import {AVISO_MINIMO_MIN,DURACAO_MIN,FUSO,JANELA_DIAS,dadosDaReuniao,emBrasilia,horarioValido,horariosLivres,porDia} from './agenda-domain.js'
+import {AVISO_MINIMO_MIN,DURACAO_MIN,FUSO,JANELA_DIAS,dadosDaReuniao,emBrasilia,horarioValido,horariosLivres,lerVitrine,porDia} from './agenda-domain.js'
 
 const SITE='https://agenda.svicompany.com.br'
 const hash=(v:string)=>createHash('sha256').update(v).digest('hex')
@@ -88,7 +88,7 @@ export async function handleAgenda(req:VercelRequest,res:VercelResponse) {
    // sabe disso.
    const todos=[...daAgenda,...(marcadas||[]).map(m=>({inicio:Date.parse(m.inicio),fim:Date.parse(m.fim)}))]
    const livres=horariosLivres({agora,ocupados:todos})
-   return res.json({dias:porDia(livres),duracao:DURACAO_MIN,fuso:FUSO,aviso_minimo_min:AVISO_MINIMO_MIN})
+   return res.json({dias:porDia(livres,lerVitrine(process.env.AGENDA_VITRINE)),duracao:DURACAO_MIN,fuso:FUSO,aviso_minimo_min:AVISO_MINIMO_MIN})
   }
 
   if(req.body?.acao==='cancelar'){

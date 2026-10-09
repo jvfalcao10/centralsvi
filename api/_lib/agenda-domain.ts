@@ -80,17 +80,24 @@ export function horariosLivres(opts:{
 /**
  * Quantos horários o dia mostra.
  *
- * Dezoito horários livres num dia dizem ao prospect que a agência está parada.
- * A escolha do João: no máximo 2, 4, 5 ou 7 por dia.
+ * Dia com dezoito vagas livres pode dizer ao prospect que a agência está
+ * parada. Em 09/10 o João pediu para limitar e, vendo o resultado, preferiu
+ * mostrar tudo. Fica como chave de operação, não como decisão gravada em
+ * código: `AGENDA_VITRINE=2,4,5,7` liga o limite, vazio mostra todos.
  *
- * O número sai do próprio dia, sempre o mesmo: se variasse a cada visita, a
- * pessoa recarregaria a página e veria horário sumir, o que parece defeito.
+ * Quando ligado, o número sai do próprio dia e é sempre o mesmo: se variasse
+ * a cada visita, a pessoa recarregaria a página e veria horário sumir, o que
+ * parece defeito e derruba mais confiança do que agenda cheia de vaga.
  */
-export const VITRINE=[2,4,5,7]
-export function quantosNoDia(chave:string) {
+export const VITRINE_PADRAO=[2,4,5,7]
+export function lerVitrine(bruto:string|undefined):number[] {
+ return String(bruto||'').split(',').map(n=>Number(n.trim()))
+  .filter(n=>Number.isInteger(n)&&n>0&&n<=24)
+}
+export function quantosNoDia(chave:string,opcoes:number[]=VITRINE_PADRAO) {
  let h=7
  for(const c of chave)h=(h*31+c.charCodeAt(0))|0
- return VITRINE[Math.abs(h)%VITRINE.length]
+ return opcoes[Math.abs(h)%opcoes.length]
 }
 
 /**
@@ -102,8 +109,9 @@ export function quantosNoDia(chave:string) {
  *
  * Isto só ESCONDE horário livre, nunca oferece horário ocupado.
  */
-export function vitrineDoDia<T>(horarios:T[],chave:string):T[] {
- const n=quantosNoDia(chave)
+export function vitrineDoDia<T>(horarios:T[],chave:string,opcoes:number[]=VITRINE_PADRAO):T[] {
+ if(!opcoes.length)return horarios
+ const n=quantosNoDia(chave,opcoes)
  if(horarios.length<=n)return horarios
  const passo=(horarios.length-1)/(n-1)
  const escolhidos=new Set<number>()
@@ -112,7 +120,7 @@ export function vitrineDoDia<T>(horarios:T[],chave:string):T[] {
 }
 
 /** Agrupa por dia para a tela, já com rótulo em português. */
-export function porDia(instantes:number[]) {
+export function porDia(instantes:number[],vitrine:number[]=[]) {
  const SEMANA=['domingo','segunda','terça','quarta','quinta','sexta','sábado']
  const MES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
  const mapa=new Map<string,{dia:string;rotulo:string;horarios:{inicio:string;hora:string}[]}>()
@@ -123,8 +131,9 @@ export function porDia(instantes:number[]) {
   mapa.get(chave)!.horarios.push({inicio:new Date(t).toISOString(),
    hora:`${String(p.hora).padStart(2,'0')}:${String(p.minuto).padStart(2,'0')}`})
  }
- // A vitrine entra aqui, depois do agrupamento, porque o corte é por DIA.
- return [...mapa.values()].map(d=>({...d,horarios:vitrineDoDia(d.horarios,d.dia)}))
+ // O corte, quando ligado, entra aqui porque é por DIA. Lista vazia de
+ // opções significa mostrar tudo, que é o padrão.
+ return [...mapa.values()].map(d=>({...d,horarios:vitrineDoDia(d.horarios,d.dia,vitrine)}))
 }
 
 /** Só aceita um horário que a própria regra ofereceria. */

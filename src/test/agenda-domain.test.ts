@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest'
-import {deBrasilia,emBrasilia,horariosLivres,porDia,horarioValido,dadosDaReuniao,vitrineDoDia,VITRINE} from '../../api/_lib/agenda-domain'
+import {deBrasilia,emBrasilia,horariosLivres,porDia,horarioValido,dadosDaReuniao,vitrineDoDia,lerVitrine,VITRINE_PADRAO} from '../../api/_lib/agenda-domain'
 
 // 2026 começa numa quinta. 12/10/2026 é uma segunda-feira.
 const SEG=Date.UTC(2026,9,12) // 12/10/2026
@@ -83,22 +83,35 @@ describe('dados de quem marca',()=>{
  })
 })
 
-// João, 09/10: "pra não falar que somos à toa, deixe no máximo 4,5,7,2 horários".
-// Dia com 18 vagas livres anuncia agência parada.
+// João, 09/10: pediu limitar ("pra não falar que somos à toa") e, vendo o
+// resultado, preferiu mostrar todos. Virou chave de operação, desligada por
+// padrão, e os testes cobrem os dois estados.
 describe('vitrine de horários',()=>{
  const cheio=Array.from({length:18},(_,i)=>i)
 
- it('mostra no máximo o que o João definiu',()=>{
+ it('por padrão não esconde nada',()=>{
+  expect(porDia(horariosLivres({agora:deBrasilia(2026,10,9,8,0),ocupados:[],dias:7}))
+   .find(d=>d.dia==='2026-10-12')!.horarios).toHaveLength(18)
+ })
+
+ it('a chave aceita lista e ignora lixo',()=>{
+  expect(lerVitrine('2,4,5,7')).toEqual([2,4,5,7])
+  expect(lerVitrine('')).toEqual([])
+  expect(lerVitrine(undefined)).toEqual([])
+  expect(lerVitrine('abc, 0, -3, 99, 5')).toEqual([5])
+ })
+
+ it('ligada, mostra no máximo o que a chave define',()=>{
   for(const chave of ['2026-10-12','2026-10-13','2026-10-14','2026-11-03'])
-   expect(VITRINE).toContain(vitrineDoDia(cheio,chave).length)
+   expect(VITRINE_PADRAO).toContain(vitrineDoDia(cheio,chave,VITRINE_PADRAO).length)
  })
 
  it('não muda entre visitas do mesmo dia',()=>{
-  expect(vitrineDoDia(cheio,'2026-10-12')).toEqual(vitrineDoDia(cheio,'2026-10-12'))
+  expect(vitrineDoDia(cheio,'2026-10-12',VITRINE_PADRAO)).toEqual(vitrineDoDia(cheio,'2026-10-12',VITRINE_PADRAO))
  })
 
  it('espalha pelo dia e mantém o primeiro e o último',()=>{
-  const v=vitrineDoDia(cheio,'2026-10-12')
+  const v=vitrineDoDia(cheio,'2026-10-12',VITRINE_PADRAO)
   expect(v[0]).toBe(0)
   expect(v.at(-1)).toBe(17)
   // sem repetir e em ordem
@@ -107,12 +120,12 @@ describe('vitrine de horários',()=>{
  })
 
  it('dia com poucas vagas aparece inteiro',()=>{
-  expect(vitrineDoDia([1,2],'2026-10-12')).toEqual([1,2])
+  expect(vitrineDoDia([1,2],'2026-10-12',VITRINE_PADRAO)).toEqual([1,2])
  })
 
  it('esconder não é bloquear: horário fora da vitrine continua podendo ser marcado',()=>{
   const lista=horariosLivres({agora:deBrasilia(2026,10,9,8,0),ocupados:[],dias:7})
-  const mostrados=new Set(porDia(lista).flatMap(d=>d.horarios.map(h=>Date.parse(h.inicio))))
+  const mostrados=new Set(porDia(lista,VITRINE_PADRAO).flatMap(d=>d.horarios.map(h=>Date.parse(h.inicio))))
   const escondido=lista.find(t=>!mostrados.has(t))!
   expect(escondido).toBeDefined()
   expect(horarioValido(new Date(escondido).toISOString(),lista)).toBe(escondido)
