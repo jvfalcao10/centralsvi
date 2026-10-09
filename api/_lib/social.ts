@@ -1,6 +1,6 @@
 import {generateSocialCaption} from './social-caption.js'
 import {publicationContext,publicationPlayback,uploadPublicationCover,enqueuePublication,publicationDatabaseError} from './social-publication.js'
-import {friendlyPublicationError} from './social-publication-meta.js'
+import {friendlyPublicationError,MetaPublicationError} from './social-publication-meta.js'
 import {publicPublication} from './social-publication-domain.js'
 import {moveManyCards} from './social-bulk.js'
 import { approvalLink, newApprovalLink } from './social-approval-link.js'
@@ -176,6 +176,13 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
  } catch (error) {
   if (error instanceof SocialError) return res.status(error.status).json({ error:error.message })
   if(error instanceof Error&&error.message.includes('publication_in_progress'))return res.status(409).json({error:'Esta peça está sendo publicada. Aguarde a confirmação do Instagram.'})
+  // Erro vindo da Meta em QUALQUER rota, inclusive só ao abrir a janela de
+  // publicar, que lista as contas pela Graph API. Sem isto, um token expirado
+  // aparece como "não foi possível salvar ou carregar", que não diz onde mexer.
+  if(error instanceof MetaPublicationError){
+   console.error('Central social: Meta recusou',error.code,error.message)
+   return res.status(502).json({error:friendlyPublicationError(error)})
+  }
   console.error('Central social request failed', error instanceof Error ? error.message : 'database_error')
   return res.status(500).json({ error:'Não foi possível salvar ou carregar. Tente novamente.' })
  }
