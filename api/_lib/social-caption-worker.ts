@@ -144,7 +144,7 @@ export async function lerVideo(db:SupabaseClient,asset:SocialAsset,prazo?:number
  // do mesmo passe da cópia leve, e o que se OUVE sai da transcrição da cópia,
  // que agora cabe no limite de 25 MB. Nenhum dos dois depende de fila de cota,
  // que é o que derrubava Dr. Felipe, Christo Rei e Dr. Daniel.
- if(Number(asset.frames||0)&&process.env.ANTHROPIC_API_KEY){
+ if(Number(asset.frames||0)&&(process.env.SOCIAL_VISION_KEY||process.env.ANTHROPIC_API_KEY)){
   // Os quadros vêm primeiro: são baratos, e se o teto de uso bater aqui a peça
   // volta inteira para a fila sem pagar o custo da transcrição.
   const visual=await lerQuadros(db,asset,prazo)
