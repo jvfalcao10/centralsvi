@@ -4,7 +4,7 @@ import { TECNICAS, ABERTAS, PESO_TECNICO, PESO_ABERTO } from '../../src/data/vag
 import { GABARITO, PARCIAL, CRITERIOS } from './gabarito-trafego.js';
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-sonnet-4-6';
+const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
 
 /**
  * Recebe a candidatura da vaga de trafego, corrige e salva com nota.

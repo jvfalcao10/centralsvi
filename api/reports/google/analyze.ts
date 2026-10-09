@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { createUserClient, createAdminClient } from '../../_lib/supabase.js';
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-sonnet-4-6';
+const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
 const BUCKET = 'gbp-reports';
 
 /** Quebra linha (uma em branco) depois de cada frase, pra mensagem ficar boa de ler no WhatsApp. Protege abreviacoes. */
