@@ -55,16 +55,6 @@
       "destination": "/index.html"
     },
     {
-      "source": "/",
-      "has": [
-        {
-          "type": "host",
-          "value": "agenda.svicompany.com.br"
-        }
-      ],
-      "destination": "/api/r?__rota=agenda-share"
-    },
-    {
       "source": "/api/agenda",
       "destination": "/api/r?__rota=agenda"
     },
