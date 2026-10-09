@@ -1,6 +1,7 @@
 import type {SupabaseClient} from '@supabase/supabase-js'
 import {generateSocialCaption} from './social-caption.js'
 import {driveVideoRange} from './social-drive.js'
+import {lerQuadros} from './social-claude.js'
 import type {SocialAsset,SocialCard} from './social-domain.js'
 
 // Limite de upload da transcrição da OpenAI, com folga para o envelope multipart.
@@ -13,6 +14,13 @@ const GOOGLE='https://generativelanguage.googleapis.com'
 
 /** Baixa o arquivo da peça, esteja ele no Drive ou no Storage. */
 async function baixar(db:SupabaseClient,asset:SocialAsset,teto:number):Promise<Blob> {
+ // A cópia leve tem cerca de 7 MB; o original tem 116 MB de média e não passa
+ // no limite de 25 MB da transcrição. Era por isso que só 9 dos 70 vídeos do
+ // quadro conseguiam ser transcritos.
+ if(asset.approval_path){
+  const {data,error}=await db.storage.from('central-social').download(asset.approval_path)
+  if(!error&&data)return data
+ }
  const bytes=Number(asset.bytes||0)
  if(bytes>teto)throw new Error('video_grande_demais')
  if(asset.storage==='drive'){
@@ -132,6 +140,20 @@ export async function transcribeAsset(db:SupabaseClient,asset:SocialAsset):Promi
  * da OpenAI, que só aceita 25 MB e hoje atende 9 dos 70 vídeos.
  */
 export async function lerVideo(db:SupabaseClient,asset:SocialAsset,prazo?:number):Promise<string> {
+ // Caminho preferido: o que se VÊ sai dos quadros, que já existem porque saem
+ // do mesmo passe da cópia leve, e o que se OUVE sai da transcrição da cópia,
+ // que agora cabe no limite de 25 MB. Nenhum dos dois depende de fila de cota,
+ // que é o que derrubava Dr. Felipe, Christo Rei e Dr. Daniel.
+ if(Number(asset.frames||0)&&process.env.ANTHROPIC_API_KEY){
+  // Os quadros vêm primeiro: são baratos, e se o teto de uso bater aqui a peça
+  // volta inteira para a fila sem pagar o custo da transcrição.
+  const visual=await lerQuadros(db,asset,prazo)
+  let fala='',transcreveu=false
+  try{fala=(await transcribeAsset(db,asset)).trim();transcreveu=true}catch{/* o texto da tela já basta para muita peça */}
+  // 'SEM FALA' só quando a transcrição RODOU e voltou vazia. Dizer isso depois
+  // de uma falha seria afirmar que o vídeo é mudo sem ter ouvido.
+  return [transcreveu?(fala||'SEM FALA'):'',visual].filter(Boolean).join('\n').slice(0,12000)
+ }
  if(process.env.GEMINI_API_KEY)return understandVideo(db,asset,prazo)
  return transcribeAsset(db,asset)
 }

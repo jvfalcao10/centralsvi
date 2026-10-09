@@ -1,5 +1,5 @@
 import { clientFacingTitle } from './social-client-title.js'
-export type SocialAsset = { id: string; name: string; path: string; storage?: 'drive'; sha256?:string; delivery_period?:string; drive_id?: string; folder_url?: string; folder_label?: string; thumbnail?: string; duration_ms?:number; width?:number; height?:number; preview_retry_at?:string; approval_path?:string; approval_retry_at?:string; playback_url?:string; type: string; bytes?: number; date?: string; url?: string; preview?: string }
+export type SocialAsset = { id: string; name: string; path: string; storage?: 'drive'; sha256?:string; delivery_period?:string; drive_id?: string; folder_url?: string; folder_label?: string; thumbnail?: string; duration_ms?:number; width?:number; height?:number; preview_retry_at?:string; approval_path?:string; approval_retry_at?:string; frames?:number; playback_url?:string; type: string; bytes?: number; date?: string; url?: string; preview?: string }
 export type SocialCard = {
  caption_draft?:boolean
  transcript?:string|null
