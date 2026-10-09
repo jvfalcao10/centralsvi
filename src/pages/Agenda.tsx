@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useState} from 'react'
 import {useParams} from 'react-router-dom'
 import logoSVI from '@/assets/logo-branca.png'
+import fotoJoao from '@/assets/joao-falcao.jpg'
 
 type Horario={inicio:string;hora:string}
 type Dia={dia:string;rotulo:string;curto:string;horarios:Horario[]}
@@ -127,13 +128,15 @@ const Recado=({titulo,texto,children}:{titulo:string;texto:string;children?:Reac
 /**
  * Quem vai estar do outro lado.
  *
- * Marcar reunião com desconhecido trava. Sem foto no projeto, entram as
- * iniciais, o nome e a função, que já dizem com quem a pessoa vai falar.
+ * Marcar reunião com desconhecido trava. A foto é a mesma do site da SVI,
+ * recortada no rosto e reduzida, porque aqui ela aparece num círculo pequeno
+ * e a original de 268 KB não se justifica numa página que abre no celular.
  */
 const QuemAtende=()=>(
  <div className="sviEntra mt-6 flex items-center gap-3" style={{animationDelay:'.26s'}}>
-  <span aria-hidden className="grid h-11 w-11 shrink-0 place-items-center rounded-full font-semibold"
-    style={{background:`linear-gradient(135deg, ${OURO_CLARO}, ${OURO_FUNDO})`,color:PRETO,fontFamily:SORA}}>JF</span>
+  <img src={fotoJoao} alt="" width={44} height={44} loading="lazy"
+    className="h-11 w-11 shrink-0 rounded-full object-cover"
+    style={{boxShadow:`0 0 0 2px ${OURO}66`}}/>
   <div className="text-sm">
    <p className="font-semibold" style={{fontFamily:SORA}}>João Vitor Falcão</p>
    <p style={{color:`${CREME}99`}}>CEO da SVI Company</p>
