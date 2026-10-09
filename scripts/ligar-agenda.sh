@@ -26,15 +26,21 @@ cd "$GA"
 
 GUARDADO=""
 if [ -f token.json ]; then
-  GUARDADO="token.json.antes-agenda-$(date +%s)"
+  # Caminho ABSOLUTO: o restauro roda no trap, depois de o script ter trocado
+  # de pasta, e com caminho relativo ele não acharia o arquivo e deixaria o
+  # token do Search Console perdido.
+  GUARDADO="$GA/token.json.antes-agenda-$(date +%s)"
   cp token.json "$GUARDADO"
   echo "Token atual guardado em $GUARDADO"
 fi
 
 devolver () {
   if [ -n "$GUARDADO" ] && [ -f "$GUARDADO" ]; then
-    mv -f "$GUARDADO" token.json
-    echo "Token do Search Console devolvido ao lugar."
+    if mv -f "$GUARDADO" "$GA/token.json"; then
+      echo "Token do Search Console devolvido ao lugar."
+    else
+      echo "ATENÇÃO: não consegui devolver o token. Ele está em $GUARDADO"
+    fi
   fi
 }
 trap devolver EXIT
@@ -44,7 +50,10 @@ echo "Vai abrir o navegador. Entre com svicompanyy@gmail.com e autorize o acesso
 echo
 python3 gauth.py login --scopes cal,cal_ro --secret "$SEGREDO"
 
-python3 - <<'PY' | ( cd "$CENTRAL" && vercel env rm AGENDA_GOOGLE_OAUTH production --yes >/dev/null 2>&1; cd "$CENTRAL" && vercel env add AGENDA_GOOGLE_OAUTH production )
+# A credencial vai pela memória e por um cano só. Na primeira versão o
+# "env rm" ficava no mesmo cano e engolia o valor antes do "env add" ler,
+# e a variável acabava não sendo gravada.
+CRED=$(python3 - <<'PY'
 import json
 d = json.load(open('token.json'))
 faltando = [k for k in ('client_id','client_secret','refresh_token') if not d.get(k)]
@@ -52,10 +61,16 @@ if faltando:
     raise SystemExit('token.json veio sem: ' + ', '.join(faltando))
 print(json.dumps({k: d[k] for k in ('client_id','client_secret','refresh_token')}), end='')
 PY
+)
+[ -n "$CRED" ] || { echo "Não consegui montar a credencial."; exit 1; }
+
+cd "$CENTRAL"
+vercel env rm AGENDA_GOOGLE_OAUTH production --yes </dev/null >/dev/null 2>&1 || true
+printf '%s' "$CRED" | vercel env add AGENDA_GOOGLE_OAUTH production
+unset CRED
 
 echo
 echo "Credencial gravada. Publicando."
-cd "$CENTRAL"
 vercel --prod --yes >/dev/null
 echo
 echo "Pronto. Abra https://agenda.svicompany.com.br e confira se os horários aparecem."
