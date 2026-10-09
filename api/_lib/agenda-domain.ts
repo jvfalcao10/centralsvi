@@ -4,6 +4,15 @@ export const ABRE_HORA=9
 export const FECHA_HORA=18
 /** Ninguém marca com dez minutos de antecedência e aparece. */
 export const AVISO_MINIMO_MIN=120
+/**
+ * Respiro em volta de cada compromisso da agenda.
+ *
+ * João, 09/10: "15h tem gravação, não pode pôr 14h30". Uma reunião de 14h30
+ * termina no minuto em que a gravação começa: ele sairia da chamada e já
+ * teria de estar gravando. A folga vale dos dois lados, porque sair de uma
+ * gravação direto para uma reunião tem o mesmo problema.
+ */
+export const FOLGA_MIN=30
 export const JANELA_DIAS=21
 
 type Partes={ano:number;mes:number;dia:number;hora:number;minuto:number;semana:number}
@@ -55,10 +64,15 @@ export function horariosLivres(opts:{
  dias?:number
  duracaoMin?:number
  avisoMinimoMin?:number
+ folgaMin?:number
 }):number[] {
  const dias=opts.dias??JANELA_DIAS
  const duracao=(opts.duracaoMin??DURACAO_MIN)*60000
  const cedoDemais=opts.agora+(opts.avisoMinimoMin??AVISO_MINIMO_MIN)*60000
+ // Cada compromisso cresce pelos dois lados: é isso que impede oferecer o
+ // horário que termina colado no começo de uma gravação.
+ const folga=Math.max(0,opts.folgaMin??FOLGA_MIN)*60000
+ const ocupados=opts.ocupados.map(o=>({inicio:o.inicio-folga,fim:o.fim+folga}))
  const livres:number[]=[]
  const hoje=emBrasilia(opts.agora)
  for(let d=0;d<dias;d++){
@@ -70,7 +84,7 @@ export function horariosLivres(opts:{
    const inicio=deBrasilia(base.ano,base.mes,base.dia,Math.floor(h/60),h%60)
    const fim=inicio+duracao
    if(inicio<cedoDemais)continue
-   if(cruza(inicio,fim,opts.ocupados))continue
+   if(cruza(inicio,fim,ocupados))continue
    livres.push(inicio)
   }
  }

@@ -2,9 +2,11 @@ import {createHash,randomBytes} from 'node:crypto'
 import type {VercelRequest,VercelResponse} from '@vercel/node'
 import {createAdminClient} from './supabase.js'
 import {AgendaIndisponivel,cancelarEvento,criarEvento,ocupados} from './agenda-google.js'
-import {AVISO_MINIMO_MIN,DURACAO_MIN,FUSO,JANELA_DIAS,dadosDaReuniao,emBrasilia,horarioValido,horariosLivres,lerVitrine,porDia} from './agenda-domain.js'
+import {AVISO_MINIMO_MIN,DURACAO_MIN,FOLGA_MIN,FUSO,JANELA_DIAS,dadosDaReuniao,emBrasilia,horarioValido,horariosLivres,lerVitrine,porDia} from './agenda-domain.js'
 
 const SITE='https://agenda.svicompany.com.br'
+/** Minutos de respiro em volta de cada compromisso, ajustável sem deploy. */
+const folgaMin=()=>{const n=Number(process.env.AGENDA_FOLGA_MIN);return Number.isFinite(n)&&n>=0&&n<=180?n:FOLGA_MIN}
 const hash=(v:string)=>createHash('sha256').update(v).digest('hex')
 const codigo=()=>randomBytes(16).toString('base64url')
 const formatoToken=(v:string)=>/^[A-Za-z0-9_-]{20,24}$/.test(v)
@@ -87,7 +89,7 @@ export async function handleAgenda(req:VercelRequest,res:VercelResponse) {
    // existe uma janela em que o horário já é de alguém e o freeBusy ainda não
    // sabe disso.
    const todos=[...daAgenda,...(marcadas||[]).map(m=>({inicio:Date.parse(m.inicio),fim:Date.parse(m.fim)}))]
-   const livres=horariosLivres({agora,ocupados:todos})
+   const livres=horariosLivres({agora,ocupados:todos,folgaMin:folgaMin()})
    return res.json({dias:porDia(livres,lerVitrine(process.env.AGENDA_VITRINE)),duracao:DURACAO_MIN,fuso:FUSO,aviso_minimo_min:AVISO_MINIMO_MIN})
   }
 
@@ -108,7 +110,7 @@ export async function handleAgenda(req:VercelRequest,res:VercelResponse) {
   const agora=Date.now()
   const daAgenda=await ocupados(agora,agora+(JANELA_DIAS+1)*86400000)
   const {data:marcadas}=await db.from('central_agenda_reunioes').select('inicio,fim').eq('status','confirmada').gte('inicio',new Date(agora).toISOString())
-  const livres=horariosLivres({agora,ocupados:[...daAgenda,...(marcadas||[]).map(m=>({inicio:Date.parse(m.inicio),fim:Date.parse(m.fim)}))]})
+  const livres=horariosLivres({agora,ocupados:[...daAgenda,...(marcadas||[]).map(m=>({inicio:Date.parse(m.inicio),fim:Date.parse(m.fim)}))],folgaMin:folgaMin()})
   const inicio=horarioValido(String(req.body?.inicio||''),livres)
   if(!inicio)return res.status(409).json({error:'Esse horário não está mais livre. Escolha outro, por favor.'})
 

@@ -40,8 +40,9 @@ describe('horários oferecidos',()=>{
  it('pula o que já está ocupado na agenda, inclusive sobreposição parcial',()=>{
   const ocupados=[{inicio:deBrasilia(2026,10,12,10,15),fim:deBrasilia(2026,10,12,11,0)}]
   // Medido na lista completa, não na vitrine: aqui o que importa é a REGRA de
-  // disponibilidade, não quantos horários a tela resolve mostrar.
-  const horas=livres({ocupados})
+  // disponibilidade, não quantos horários a tela resolve mostrar. Folga zero
+  // porque o respiro em volta do compromisso tem teste próprio.
+  const horas=livres({ocupados,folgaMin:0})
    .filter(t=>new Date(t).toISOString().startsWith('2026-10-12'))
    .map(t=>{const p=emBrasilia(t);return `${String(p.hora).padStart(2,'0')}:${String(p.minuto).padStart(2,'0')}`})
   // 10:00-10:30 e 10:30-11:00 encostam no compromisso e saem
@@ -129,5 +130,39 @@ describe('vitrine de horários',()=>{
   const escondido=lista.find(t=>!mostrados.has(t))!
   expect(escondido).toBeDefined()
   expect(horarioValido(new Date(escondido).toISOString(),lista)).toBe(escondido)
+ })
+})
+
+// João, 09/10: "15h tem gravação, não pode pôr 14h30". Reunião que termina no
+// minuto em que a gravação começa não é horário livre, é armadilha.
+describe('folga em volta dos compromissos',()=>{
+ const horas=(ocupados:{inicio:number;fim:number}[],folgaMin?:number)=>
+  horariosLivres({agora:deBrasilia(2026,10,9,8,0),ocupados,dias:7,folgaMin})
+   .filter(t=>new Date(t).toISOString().startsWith('2026-10-12'))
+   .map(t=>{const p=emBrasilia(t);return `${String(p.hora).padStart(2,'0')}:${String(p.minuto).padStart(2,'0')}`})
+
+ const gravacao=[{inicio:deBrasilia(2026,10,12,15,0),fim:deBrasilia(2026,10,12,16,0)}]
+
+ it('não oferece o horário que termina colado na gravação',()=>{
+  const h=horas(gravacao)
+  expect(h).not.toContain('14:30')
+  expect(h).not.toContain('15:00')
+  expect(h).not.toContain('15:30')
+ })
+
+ it('deixa respiro também na saída da gravação',()=>{
+  const h=horas(gravacao)
+  expect(h).not.toContain('16:00')
+  expect(h).toContain('16:30')
+ })
+
+ it('o que está a meia hora de distância continua valendo',()=>{
+  expect(horas(gravacao)).toContain('14:00')
+ })
+
+ it('folga zero volta ao encaixe colado',()=>{
+  const h=horas(gravacao,0)
+  expect(h).toContain('14:30')
+  expect(h).toContain('16:00')
  })
 })
