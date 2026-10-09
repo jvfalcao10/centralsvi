@@ -16,7 +16,12 @@ export function clientFacingTitle(client: string, title: string, video = false, 
  // a página nem a prévia por causa de um campo vazio.
  // O genérico nunca mente: descreve o que a pessoa vai abrir.
  const generico = video ? 'Vídeo para aprovação' : files > 1 ? `Carrossel de ${files} artes para aprovação` : 'Arte para aprovação'
- let t = String(title || '').replace(/\s+/g, ' ').trim()
+ // normalize('NFC') antes de tudo: arquivo vindo do WhatsApp às vezes traz o
+ // acento decomposto ("a" + acento separados). Nesse caso a versão sem acento
+ // fica mais curta que o original, e o corte do nome do cliente, que era feito
+ // por diferença de comprimento, saía deslocado: "GM Gás - vídeo 04" virava
+ // "Ídeo 04" na tela do cliente.
+ let t = String(title || '').normalize('NFC').replace(/\s+/g, ' ').trim()
 
  // 1. Data ou urgência da fila interna, no começo: "28/09 ·", "HOJE ·", "QUI 24/09 ·", "AMANHÃ 18h ·".
  t = t.replace(/^(?:\p{Lu}{3,}\s+)?(?:\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\s*)?(?:\d{1,2}h\d{0,2}\s*)?[·\-|–—:]\s*/u, '')
@@ -39,7 +44,10 @@ export function clientFacingTitle(client: string, title: string, video = false, 
   const termos = alvo.split(' ').filter(p => p.length > 2)
   for (const corte of [alvo, ...termos]) {
    const re = new RegExp(`^${corte.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\s*[·\\-|–—:]\\s*`, 'i')
-   if (re.test(semAcento(t))) { t = t.slice(t.length - (semAcento(t).replace(re, '').length)); break }
+   // Corta pelo tamanho do trecho que casou, não por diferença de tamanho
+   // entre duas strings diferentes.
+   const casou = re.exec(semAcento(t))
+   if (casou) { t = t.slice(casou[0].length); break }
   }
  }
  // 7. Recado interno no fim: "(pedido da diretora)", "(AGOSTO)", "(ia)", "(versão para...)".

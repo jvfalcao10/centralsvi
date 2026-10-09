@@ -31,6 +31,17 @@ describe('título que o cliente lê', () => {
   expect(clientFacingTitle('Qualquer', '')).toBe('Arte para aprovação')
  })
 
+ it('trata acento decomposto igual ao acento normal', () => {
+  // Arquivo vindo do WhatsApp traz o acento separado da letra. O corte do nome
+  // do cliente era feito por diferença de comprimento e saía deslocado: o
+  // cliente da GM Gás via "Ídeo 04" no lugar do título.
+  const composto = 'GM G\u00e1s - v\u00eddeo 04'
+  const decomposto = 'GM Ga\u0301s - vi\u0301deo 04'
+  expect(clientFacingTitle('GM GAS', decomposto, true)).toBe(clientFacingTitle('GM GAS', composto, true))
+  expect(clientFacingTitle('GM GAS', decomposto, true)).not.toMatch(/^.?deo/i)
+  expect(clientFacingTitle('Dra Enia', 'Dra Enia - ansiedade vi\u0301deo 06', true)).toBe('Ansiedade vídeo 06')
+ })
+
  it('deixa em paz o título que já fala com o cliente', () => {
   expect(clientFacingTitle('ESPAÇO SORAIA', 'Coisas que eu acho chique')).toBe('Coisas que eu acho chique')
   expect(clientFacingTitle('Dra Enia', 'Dra Enia - ansiedade vídeo 06', true)).toBe('Ansiedade vídeo 06')
