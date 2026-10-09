@@ -33,6 +33,38 @@ export async function handleAgenda(req:VercelRequest,res:VercelResponse) {
  if(!['GET','POST'].includes(req.method||''))return res.status(405).json({error:'Método não permitido.'})
  const db=createAdminClient()
  try{
+  // Tela da equipe: só quem entra na Central vê quem marcou, com contato.
+  if(req.query.equipe==='1'||req.body?.acao==='cancelar_equipe'){
+   const bearer=(req.headers.authorization||'').replace(/^Bearer\s+/i,'')
+   if(!bearer)return res.status(401).json({error:'Entre na Central para ver a agenda.'})
+   const {data:usuario,error:erroAuth}=await db.auth.getUser(bearer)
+   if(erroAuth||!usuario.user)return res.status(401).json({error:'Sua sessão expirou. Entre novamente.'})
+   const {data:papeis}=await db.from('user_roles').select('role').eq('user_id',usuario.user.id)
+   if(!papeis?.some(p=>['admin','manager','seller'].includes(p.role)))
+    return res.status(403).json({error:'Acesso restrito à equipe SVI.'})
+
+   if(req.body?.acao==='cancelar_equipe'){
+    const id=typeof req.body?.id==='string'?req.body.id:''
+    const {data:alvo}=await db.from('central_agenda_reunioes').select('*').eq('id',id).eq('status','confirmada').maybeSingle()
+    if(!alvo)return res.status(409).json({error:'Esta reunião já estava cancelada.'})
+    await db.from('central_agenda_reunioes').update({status:'cancelada',cancelada_em:new Date().toISOString(),
+     cancelada_por:usuario.user.email||'equipe SVI'}).eq('id',id).eq('status','confirmada')
+    if(alvo.google_event_id)try{await cancelarEvento(alvo.google_event_id)}catch{/* a reserva já caiu */}
+    await whats(alvo.whatsapp,`Precisamos remarcar a reunião de ${legivel(Date.parse(alvo.inicio))}. Escolha outro horário em ${SITE}`)
+    return res.json({ok:true})
+   }
+
+   const {data:lista}=await db.from('central_agenda_reunioes')
+    .select('id,nome,email,whatsapp,assunto,inicio,status,meet_url,criado_em,cancelada_por')
+    .gte('inicio',new Date(Date.now()-30*86400000).toISOString())
+    .order('inicio',{ascending:true})
+   const agora=Date.now()
+   const comQuando=(lista||[]).map(r=>({...r,quando:legivel(Date.parse(r.inicio)),passou:Date.parse(r.inicio)<agora}))
+   return res.json({link:SITE,
+    proximas:comQuando.filter(r=>!r.passou&&r.status==='confirmada'),
+    passadas:comQuando.filter(r=>r.passou||r.status==='cancelada').reverse()})
+  }
+
   const token=typeof req.query.r==='string'?req.query.r:typeof req.body?.token==='string'?req.body.token:''
 
   // Ver uma reunião já marcada, pelo link que a pessoa recebeu.

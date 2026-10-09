@@ -36,6 +36,7 @@ export const NAV_AREAS: NavigationArea[] = [
   ] },
   { id: 'comercial', title: 'Comercial', icon: 'commercial', items: [
     { title: 'Pipeline comercial', url: '/pipeline', minRole: 'seller' },
+    { title: 'Agenda de reuniões', url: '/agenda', minRole: 'seller' },
     { title: 'Scripts', url: '/scripts', minRole: 'executor' },
     { title: 'Catálogo', url: '/catalogo', minRole: 'manager' },
   ] },

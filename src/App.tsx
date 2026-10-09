@@ -87,6 +87,7 @@ import ConteudoApprove from "@/pages/r/ConteudoApprove";
 
 import NotFound from "./pages/NotFound";
 import Agenda, { AgendaReuniao } from './pages/Agenda';
+import AgendaEquipe from './pages/AgendaEquipe';
 
 // Criador de Carrossel: carrega sob demanda (exportador de PNG, zip e a base de conhecimento pesam)
 const CriadorCarrossel = lazy(() => import("@/pages/content/CriadorCarrossel"));
@@ -147,8 +148,9 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/client-signup" element={<ClientSignup />} />
               <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/agenda" element={<Agenda />} />
-              <Route path="/agenda/r/:token" element={<AgendaReuniao />} />
+              <Route path="/agenda" element={
+                <ProtectedRoute requiredRole="seller"><AppLayout><AgendaEquipe /></AppLayout></ProtectedRoute>
+              } />
               <Route path="/pending-approval" element={<PendingApproval />} />
 
               {/* Staff-only */}
