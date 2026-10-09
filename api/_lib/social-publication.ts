@@ -79,7 +79,7 @@ export async function publicationContext(db:SupabaseClient,card:SocialCard){
  const [accounts,media,{data:jobs,error}]=await Promise.all([publicationAccounts(),socialMedia(db,card),db.from('central_social_publications').select('*').eq('card_id',card.id).order('created_at',{ascending:false}).limit(1)])
  if(error)throw error
  const {token_hash:_hash,token_expires_at:_expires,source_description:_description,...safe}=media
- return {accounts,suggested_account:await contaDoCliente(db,card.client,accounts),card:{...safe,assets:media.assets.map(a=>({...a,...(a.storage==='drive'&&a.type.startsWith('video/')&&card.selected_assets.includes(a.id)?{playback_url:staffPlayback(card,a.id)}:{})}))},publication:publicPublication(jobs?.[0]||null)}
+ return {accounts,suggested_account:await contaDoCliente(db,card.client,accounts),card:{...safe,assets:media.assets.map(a=>({...a,...(!a.playback_url&&a.storage==='drive'&&a.type.startsWith('video/')&&card.selected_assets.includes(a.id)?{playback_url:staffPlayback(card,a.id)}:{})}))},publication:publicPublication(jobs?.[0]||null)}
 }
 export async function uploadPublicationCover(db:SupabaseClient,body:Record<string,any>,actorId:string){
  if(typeof body.image!=='string'||body.image.length>3*1024*1024||!/^data:image\/(jpeg|png|webp);base64,/.test(body.image))throw new SocialError(400,'Envie uma imagem JPG, PNG ou WebP de até 2 MB.')

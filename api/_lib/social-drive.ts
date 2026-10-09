@@ -16,6 +16,18 @@ async function access() {
 async function google(path:string,init:RequestInit={}) {
  return fetch(API+path,{...init,headers:{Authorization:`Bearer ${await access()}`,...init.headers},signal:AbortSignal.timeout(30000)})
 }
+/**
+ * O arquivo inteiro, em uma requisição só.
+ *
+ * driveVideoRange serve o player em pedaços de 3 MB, que é o teto de resposta
+ * da função. Para comprimir é preciso o arquivo todo, e pedir 42 pedaços de
+ * 3 MB custava 97s no teste real. Em uma requisição o tempo cai para o que a
+ * banda do Drive der, por isso o prazo aqui é próprio e bem maior.
+ */
+export async function driveVideoFull(id:string,prazo=180000) {
+ if(!/^[A-Za-z0-9_-]+$/.test(id))throw new Error('drive_id_invalid')
+ return fetch(`${API}/files/${id}?alt=media`,{headers:{Authorization:`Bearer ${await access()}`},signal:AbortSignal.timeout(prazo)})
+}
 export async function driveVideoRange(id:string,start:number,end:number) {
  if(!/^[A-Za-z0-9_-]+$/.test(id))throw new Error('drive_id_invalid')
  return google(`/files/${id}?alt=media`,{headers:{Range:`bytes=${start}-${end}`}})
