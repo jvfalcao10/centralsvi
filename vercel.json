@@ -45,6 +45,16 @@
       "destination": "/api/:caminho*"
     },
     {
+      "source": "/r/:token",
+      "has": [
+        {
+          "type": "host",
+          "value": "agenda.svicompany.com.br"
+        }
+      ],
+      "destination": "/index.html"
+    },
+    {
       "source": "/api/agenda",
       "destination": "/api/r?__rota=agenda"
     },
