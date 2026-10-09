@@ -154,7 +154,10 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
    if(!grupo)return res.json({ok:true,approval_url:approvalUrl,enviado:false,
     motivo:'Não encontrei o grupo deste cliente no WhatsApp. Copie o link e mande você mesmo.'})
    const atual=data as SocialCard
-   const aviso=[`${atual.client} · ${atual.title}`,'',atual.caption?`Legenda:\n${atual.caption}\n`:'',
+   // Sem a legenda de propósito: ela já aparece na prévia do link e na própria
+   // página de aprovação. Repetir tudo no corpo deixa a mensagem longa e o
+   // cliente rola bastante antes de achar o que precisa fazer.
+   const aviso=[`${atual.client} · ${atual.title}`,'',
     'Para aprovar ou pedir alteração, é só abrir:',approvalUrl||''].filter(Boolean).join('\n')
    // A fila exige o evento que originou o envio, e é ele que dá rastro no
    // histórico da peça. O apply acabou de registrar um; é esse que se usa.
