@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest'
-import {deBrasilia,emBrasilia,horariosLivres,porDia,horarioValido,dadosDaReuniao} from '../../api/_lib/agenda-domain'
+import {deBrasilia,emBrasilia,horariosLivres,porDia,horarioValido,dadosDaReuniao,vitrineDoDia,VITRINE} from '../../api/_lib/agenda-domain'
 
 // 2026 começa numa quinta. 12/10/2026 é uma segunda-feira.
 const SEG=Date.UTC(2026,9,12) // 12/10/2026
@@ -20,11 +20,15 @@ describe('horários oferecidos',()=>{
  const livres=(extra:Partial<Parameters<typeof horariosLivres>[0]>={})=>
   horariosLivres({agora:deBrasilia(2026,10,9,8,0),ocupados:[],dias:7,...extra})
 
+ it('o dia inteiro tem 18 encaixes, das 9h às 17h30',()=>{
+  const doDia=livres().filter(t=>new Date(t).toISOString().startsWith('2026-10-12'))
+  expect(doDia).toHaveLength(18)
+ })
+
  it('abre às 9h e o último começa 17h30',()=>{
   const dia=porDia(livres()).find(d=>d.dia==='2026-10-12')!
   expect(dia.horarios[0].hora).toBe('09:00')
   expect(dia.horarios.at(-1)!.hora).toBe('17:30')
-  expect(dia.horarios).toHaveLength(18)
  })
 
  it('não oferece sábado nem domingo',()=>{
@@ -35,7 +39,11 @@ describe('horários oferecidos',()=>{
 
  it('pula o que já está ocupado na agenda, inclusive sobreposição parcial',()=>{
   const ocupados=[{inicio:deBrasilia(2026,10,12,10,15),fim:deBrasilia(2026,10,12,11,0)}]
-  const horas=porDia(livres({ocupados})).find(d=>d.dia==='2026-10-12')!.horarios.map(h=>h.hora)
+  // Medido na lista completa, não na vitrine: aqui o que importa é a REGRA de
+  // disponibilidade, não quantos horários a tela resolve mostrar.
+  const horas=livres({ocupados})
+   .filter(t=>new Date(t).toISOString().startsWith('2026-10-12'))
+   .map(t=>{const p=emBrasilia(t);return `${String(p.hora).padStart(2,'0')}:${String(p.minuto).padStart(2,'0')}`})
   // 10:00-10:30 e 10:30-11:00 encostam no compromisso e saem
   expect(horas).not.toContain('10:00')
   expect(horas).not.toContain('10:30')
@@ -72,5 +80,41 @@ describe('dados de quem marca',()=>{
   expect(dadosDaReuniao({...base,email:'joao@svicompany'}).erro).toBeTruthy()
   expect(dadosDaReuniao({...base,nome:'Jo'}).erro).toBeTruthy()
   expect(dadosDaReuniao({...base,whatsapp:'123'}).erro).toBeTruthy()
+ })
+})
+
+// João, 09/10: "pra não falar que somos à toa, deixe no máximo 4,5,7,2 horários".
+// Dia com 18 vagas livres anuncia agência parada.
+describe('vitrine de horários',()=>{
+ const cheio=Array.from({length:18},(_,i)=>i)
+
+ it('mostra no máximo o que o João definiu',()=>{
+  for(const chave of ['2026-10-12','2026-10-13','2026-10-14','2026-11-03'])
+   expect(VITRINE).toContain(vitrineDoDia(cheio,chave).length)
+ })
+
+ it('não muda entre visitas do mesmo dia',()=>{
+  expect(vitrineDoDia(cheio,'2026-10-12')).toEqual(vitrineDoDia(cheio,'2026-10-12'))
+ })
+
+ it('espalha pelo dia e mantém o primeiro e o último',()=>{
+  const v=vitrineDoDia(cheio,'2026-10-12')
+  expect(v[0]).toBe(0)
+  expect(v.at(-1)).toBe(17)
+  // sem repetir e em ordem
+  expect([...v].sort((a,b)=>a-b)).toEqual(v)
+  expect(new Set(v).size).toBe(v.length)
+ })
+
+ it('dia com poucas vagas aparece inteiro',()=>{
+  expect(vitrineDoDia([1,2],'2026-10-12')).toEqual([1,2])
+ })
+
+ it('esconder não é bloquear: horário fora da vitrine continua podendo ser marcado',()=>{
+  const lista=horariosLivres({agora:deBrasilia(2026,10,9,8,0),ocupados:[],dias:7})
+  const mostrados=new Set(porDia(lista).flatMap(d=>d.horarios.map(h=>Date.parse(h.inicio))))
+  const escondido=lista.find(t=>!mostrados.has(t))!
+  expect(escondido).toBeDefined()
+  expect(horarioValido(new Date(escondido).toISOString(),lista)).toBe(escondido)
  })
 })
