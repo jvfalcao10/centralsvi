@@ -2,6 +2,7 @@ import {generateSocialCaption} from './social-caption.js'
 import {publicationContext,publicationPlayback,uploadPublicationCover,enqueuePublication,publicationDatabaseError} from './social-publication.js'
 import {friendlyPublicationError,MetaPublicationError} from './social-publication-meta.js'
 import {publicPublication} from './social-publication-domain.js'
+import {criarPecaManual,enderecoDeUpload} from './social-nova-peca.js'
 import {moveManyCards} from './social-bulk.js'
 import { approvalLink, newApprovalLink } from './social-approval-link.js'
 import {clientReview,clientReviewCard,getClientLink,pendingClientCards} from './social-client.js'
@@ -59,6 +60,10 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
   } else if (!formatoValido(token||bundle)) fail(404, 'Este link não está disponível.')
 
   if(!publicAccess&&req.method==='POST'&&req.body?.action==='publication_cover')return res.json(await uploadPublicationCover(db,req.body,actorId!))
+  // Peça que não vem do ClickUp nem do WhatsApp entra por aqui. O arquivo sobe
+  // direto do navegador para o Supabase, porque não caberia no corpo da função.
+  if(!publicAccess&&req.method==='POST'&&req.body?.action==='upload_url')return res.json(await enderecoDeUpload(db,req.body))
+  if(!publicAccess&&req.method==='POST'&&req.body?.action==='nova_peca')return res.json(await criarPecaManual(db,req.body,actor))
   if(!publicAccess&&req.method==='POST'&&req.body?.action==='mover_lote')return res.json(await moveManyCards(db,req.body,actor,actorId!))
 
   const media=<T extends {id:string;assets:SocialCard['assets']}>(card:T)=>socialMedia(db,card,{token,bundle})

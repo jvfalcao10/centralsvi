@@ -1,4 +1,5 @@
 import CaptionAssistant from '@/components/social/CaptionAssistant'
+import {NovaPeca} from '@/components/social/NovaPeca'
 import PedirAjuste from '@/components/social/PedirAjuste'
 import PublicationComposer from '@/components/social/PublicationComposer'
 import MobileSocialBoard from '@/components/social/MobileSocialBoard'
@@ -187,6 +188,8 @@ export default function Social() {
     <select aria-label="Responsável" className="h-11 md:h-10 min-w-0 rounded-md border bg-background px-3 text-base md:text-sm" value={author} onChange={e=>setAuthor(e.target.value)}><option value="">Todos os responsáveis</option>{authors.map(a=><option key={a}>{a}</option>)}</select>
     <label className="flex min-h-11 items-center gap-3 px-2 text-sm text-muted-foreground"><input type="checkbox" className="h-5 w-5 md:h-4 md:w-4" checked={archived} onChange={e=>{setArchived(e.target.checked);if(!e.target.checked&&stage==='arquivado')setStage('')}}/>Mostrar arquivo</label>
    </div>}
+   {/* Peça que não veio do ClickUp nem do WhatsApp entra por aqui. */}
+   <div className="md:ml-auto"><NovaPeca clientes={clients} aoCriar={()=>void load()}/></div>
   </section>
   {!!clientTags.length&&<section aria-label="Filtrar por cliente" className="flex flex-wrap items-center gap-1.5">
    <button type="button" onClick={()=>{setClient('');setParams(p=>{p.delete('cliente');return p})}} className={`rounded-full border px-3 py-1 text-xs transition-colors ${client?'text-muted-foreground hover:bg-muted':'border-primary bg-primary/10 text-primary font-semibold'}`}>Todos</button>
