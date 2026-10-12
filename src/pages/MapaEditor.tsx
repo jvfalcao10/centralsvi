@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Transformer } from 'markmap-lib/no-plugins'
 import {
   ArrowLeft, Minus, Plus, Expand, ZoomIn, ZoomOut, Maximize, Sun, Moon, Download, ExternalLink, Save, Loader2, Trash2, StickyNote,
+  Maximize2, Minimize2, AppWindow,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -54,7 +55,7 @@ function guardarFundo(f: Fundo) {
   try { localStorage.setItem(CHAVE_FUNDO, f) } catch { /* sem localStorage, segue sem guardar */ }
 }
 
-export default function MapaEditor() {
+export default function MapaEditor({ telaInteira = false }: { telaInteira?: boolean } = {}) {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
   const { theme } = useTheme()
@@ -91,6 +92,26 @@ export default function MapaEditor() {
   const [edicao, setEdicao] = useState<Edicao | null>(null)
   const [confirmaApagarNo, setConfirmaApagarNo] = useState(false)
   const canvas = useRef<MapaCanvasHandle>(null)
+  const raizEl = useRef<HTMLDivElement>(null)
+  const [emTelaCheia, setEmTelaCheia] = useState(false)
+
+  // Tela cheia do navegador (F11 sem F11). No iPhone a API não existe pra
+  // elemento comum, então cai na rota /tela, que já ocupa a janela inteira.
+  useEffect(() => {
+    const atualiza = () => setEmTelaCheia(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', atualiza)
+    return () => document.removeEventListener('fullscreenchange', atualiza)
+  }, [])
+  const urlTela = `/mapas/${id}/tela`
+  const alternarTelaCheia = async () => {
+    try {
+      if (document.fullscreenElement) { await document.exitFullscreen(); return }
+      const el = raizEl.current
+      if (el && el.requestFullscreen) { await el.requestFullscreen(); return }
+    } catch { /* navegador recusou, cai no plano B abaixo */ }
+    if (!telaInteira) window.open(urlTela, '_blank', 'noopener')
+  }
+  const abrirNovaAba = () => window.open(urlTela, '_blank', 'noopener')
 
   useEffect(() => {
     if (!mapa || hidratado.current) return
@@ -271,10 +292,12 @@ export default function MapaEditor() {
   const estadoSalvo = salvando ? 'Salvando...' : pendente ? 'Alterações não salvas' : salvoAs ? `Salvo às ${salvoAs}` : ''
 
   return (
-    <div className="flex flex-col gap-2 h-[calc(100svh-5.5rem)] sm:h-[calc(100svh-7rem)] min-h-[480px]">
+    <div ref={raizEl} className={`flex flex-col gap-2 bg-background ${telaInteira || emTelaCheia ? 'h-[100svh] p-2 sm:p-3' : 'h-[calc(100svh-5.5rem)] sm:h-[calc(100svh-7rem)] min-h-[480px]'}`}>
       <div className="flex flex-wrap items-center gap-2">
         <Button asChild variant="ghost" size="sm" className="h-9 px-2">
-          <Link to="/mapas" aria-label="Voltar para a lista de mapas"><ArrowLeft className="h-4 w-4" /><span className="ml-1 hidden sm:inline">Mapas</span></Link>
+          {telaInteira
+            ? <Link to={`/mapas/${id}`} aria-label="Voltar para a Central"><ArrowLeft className="h-4 w-4" /><span className="ml-1 hidden sm:inline">Central</span></Link>
+            : <Link to="/mapas" aria-label="Voltar para a lista de mapas"><ArrowLeft className="h-4 w-4" /><span className="ml-1 hidden sm:inline">Mapas</span></Link>}
         </Button>
         <h1 className="text-base sm:text-lg font-semibold truncate min-w-0 flex-1">{mapa.titulo}</h1>
         <Badge variant="outline" className="shrink-0">{rotuloPasta(mapa.pasta)}</Badge>
@@ -305,6 +328,15 @@ export default function MapaEditor() {
           <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => canvas.current?.zoom(0.8)} aria-label="Afastar" title="Afastar"><ZoomOut className="h-4 w-4" /></Button>
           <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => canvas.current?.zoom(1.25)} aria-label="Aproximar" title="Aproximar"><ZoomIn className="h-4 w-4" /></Button>
           <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => canvas.current?.centralizar()} aria-label="Centralizar" title="Centralizar"><Maximize className="h-4 w-4" /></Button>
+        </div>
+
+        <div className="flex items-center rounded-md border border-border">
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={alternarTelaCheia} aria-label={emTelaCheia ? 'Sair da tela cheia' : 'Tela cheia'} title={emTelaCheia ? 'Sair da tela cheia (Esc)' : 'Tela cheia'}>
+            {emTelaCheia ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </Button>
+          {!telaInteira && (
+            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={abrirNovaAba} aria-label="Abrir em nova aba, só o mapa" title="Abrir em nova aba, só o mapa"><AppWindow className="h-4 w-4" /></Button>
+          )}
         </div>
 
         <Button variant="outline" size="icon" className="h-9 w-9" onClick={trocarFundo} aria-label={fundo === 'preto' ? 'Fundo branco' : 'Fundo preto'} title={fundo === 'preto' ? 'Fundo branco' : 'Fundo preto'}>

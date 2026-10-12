@@ -297,6 +297,9 @@ const App = () => (
               <Route path="/mapas" element={
                 <ProtectedRoute {...MAPAS_ROTA}><AppLayout><Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando os mapas…</div>}><Mapas /></Suspense></AppLayout></ProtectedRoute>
               } />
+              <Route path="/mapas/:id/tela" element={
+                <ProtectedRoute {...MAPAS_ROTA}><Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando o mapa…</div>}><MapaEditor telaInteira /></Suspense></ProtectedRoute>
+              } />
               <Route path="/mapas/:id" element={
                 <ProtectedRoute {...MAPAS_ROTA}><AppLayout><Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando o mapa…</div>}><MapaEditor /></Suspense></AppLayout></ProtectedRoute>
               } />
