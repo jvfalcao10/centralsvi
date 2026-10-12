@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { Clock, CheckCircle2, XCircle, LogOut, RefreshCw, Mail, Instagram, Sparkles } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth, defaultRouteForRole } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase'
@@ -20,7 +20,7 @@ interface SignupReq {
 }
 
 export default function PendingApproval() {
-  const { user, role, signupStatus, isClient, isStaff, loading, signOut, refresh } = useAuth()
+  const { user, role, signupStatus, isClient, isStaff, loading, roleLoaded, signOut, refresh } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
   const [req, setReq] = useState<SignupReq | null>(null)
@@ -34,6 +34,13 @@ export default function PendingApproval() {
       checkInvitation()
     }
   }, [user])
+
+  // Quem tem papel não pertence a esta tela: assim que ele chega, vai pra área certa
+  useEffect(() => {
+    if (loading || roleLoaded === false || !role) return
+    if (isClient) navigate('/minha-area', { replace: true })
+    else if (isStaff) navigate(defaultRouteForRole(role), { replace: true })
+  }, [loading, roleLoaded, role, isClient, isStaff, navigate])
 
   // Auto-tentativa de claim quando o usuário caiu aqui sem role e sem signup_request
   useEffect(() => {

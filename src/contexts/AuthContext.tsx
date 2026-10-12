@@ -34,6 +34,8 @@ interface AuthContextType {
   role: UserRole | null
   signupStatus: SignupStatus
   loading: boolean
+  // false enquanto o papel do usuário logado ainda não foi buscado; evita cair em /pending-approval por corrida
+  roleLoaded: boolean
   signOut: () => Promise<void>
   /** Checa se o usuário atende ao role mínimo de staff (hierarquia). Client e Traffic sempre retornam false. */
   can: (requiredRole: UserRole) => boolean
@@ -62,6 +64,7 @@ const AuthContext = createContext<AuthContextType>({
   role: null,
   signupStatus: null,
   loading: true,
+  roleLoaded: false,
   signOut: async () => {},
   can: () => false,
   isClient: false,
@@ -78,6 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<UserRole | null>(null)
   const [signupStatus, setSignupStatus] = useState<SignupStatus>(null)
   const [loading, setLoading] = useState(true)
+  const [roleLoaded, setRoleLoaded] = useState(false)
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -175,11 +179,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (user) {
-      hydrate(user.id)
+      setRoleLoaded(false)
+      hydrate(user.id).finally(() => setRoleLoaded(true))
     } else {
       setProfile(null)
       setRole(null)
       setSignupStatus(null)
+      setRoleLoaded(false)
     }
   }, [user])
 
@@ -206,7 +212,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        user, session, profile, role, signupStatus, loading,
+        user, session, profile, role, signupStatus, loading, roleLoaded,
         signOut, can, isClient, isTraffic, isSocial, isStaff, refresh,
       }}
     >

@@ -13,7 +13,7 @@ import logoBranca from '@/assets/logo-branca.png'
 type Mode = 'login' | 'signup' | 'forgot'
 
 export default function Login() {
-  const { user, loading, isClient, isStaff, signupStatus, role } = useAuth()
+  const { user, loading, isClient, isStaff, signupStatus, role, roleLoaded } = useAuth()
   const { toast } = useToast()
   const [searchParams] = useSearchParams()
   const initialMode = (searchParams.get('mode') === 'signup' ? 'signup' : 'login') as Mode
@@ -46,6 +46,14 @@ export default function Login() {
   })
 
   if (!loading && user) {
+    // Sessão restaurada mas papel ainda não lido: esperar, senão admin cai em /pending-approval
+    if (roleLoaded === false) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        </div>
+      )
+    }
     if (isClient) {
       if (firstPainelSlug) return <Navigate to={`/cliente/${firstPainelSlug}`} replace />
       return <Navigate to="/minha-area" replace />

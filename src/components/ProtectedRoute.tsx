@@ -27,7 +27,7 @@ export default function ProtectedRoute({
   allowTraffic = false,
   allowSocial = false,
 }: Props) {
-  const { user, profile, role, signupStatus, loading, can, isClient, isTraffic, isSocial, signOut } = useAuth()
+  const { user, profile, role, signupStatus, loading, roleLoaded, can, isClient, isTraffic, isSocial, signOut } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const { toast } = useToast()
@@ -46,6 +46,15 @@ export default function ProtectedRoute({
   }
 
   if (!user) return <Navigate to="/login" replace />
+
+  // Logado, mas o papel ainda está sendo lido: não decidir nada ainda
+  if (roleLoaded === false) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      </div>
+    )
+  }
 
   // Cliente sem role ainda mas com signup pendente/rejeitado → tela de espera
   if (!role && signupStatus) {
