@@ -204,6 +204,10 @@ export async function processCaptions(db:SupabaseClient,max=2,prazo=Date.now()+2
    const esperando=configuracao||/_429|_503|_504|aguardando_quadros/.test(motivo)
    try{await db.rpc('central_social_caption_fail',{p_id:peca.id,p_motivo:motivo==='aguardando_quadros'?'Preparando os quadros do vídeo para escrever a legenda.':configuracao?'Conta de IA sem saldo ou chave inválida. Avise o João.':esperando?'Limite de uso da API, tenta de novo sozinho: '+motivo:motivo})}catch{/* diagnóstico não derruba a esteira */}
    if(esperando)try{await db.rpc('central_social_caption_retry',{p_id:peca.id})}catch{/* a peça só perde esta tentativa */}
+   // Limite de API vale para a fila inteira: pausa todas as peças, senão a
+   // próxima volta (um minuto depois) baixa outro vídeo só para ouvir o mesmo 429.
+   // Foi isso que estourou a cota de saída do Supabase em outubro/2026.
+   if(esperando)try{await db.rpc('central_social_caption_pause',{p_minutos:configuracao?120:motivo==='aguardando_quadros'?10:30})}catch{/* a espera por peça já segura o grosso */}
    feitas.push({id:peca.id,status:motivo.slice(0,80)})
    if(esperando)break
   }
