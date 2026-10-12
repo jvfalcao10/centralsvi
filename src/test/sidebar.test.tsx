@@ -79,11 +79,12 @@ describe('Sidebar compacto', () => {
     expect(admin.queryByLabelText('14 pendências')).not.toBeInTheDocument()
   })
 
-  it('preserva as três entradas de tráfego e destaca apenas análises em uma conta', () => {
+  it('preserva as entradas de tráfego, inclui Mapas e destaca apenas análises em uma conta', () => {
     fake.role = 'traffic'
     renderSidebar('/operacional/trafego/analises/conta-123')
     const main = within(screen.getByRole('navigation', { name: 'Navegação principal' }))
-    expect(main.getAllByRole('link')).toHaveLength(3)
+    expect(main.getAllByRole('link')).toHaveLength(4)
+    expect(main.getByRole('link', { name: 'Mapas' })).toHaveAttribute('href', '/mapas')
     expect(main.getByRole('link', { name: 'Análises' })).toHaveAttribute('aria-current', 'page')
     expect(main.getByRole('link', { name: 'Tráfego' })).not.toHaveAttribute('aria-current')
     expect(screen.queryByRole('button', { name: 'Administração' })).not.toBeInTheDocument()

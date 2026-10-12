@@ -1,7 +1,7 @@
 import type { UserRole } from '@/contexts/AuthContext'
 
 export type NavigationBadge = 'approvals' | 'team' | 'invoices' | 'clients'
-export type NavigationIcon = 'home' | 'clients' | 'operations' | 'commercial' | 'financial' | 'results' | 'resources' | 'admin' | 'traffic' | 'carousel'
+export type NavigationIcon = 'home' | 'clients' | 'operations' | 'commercial' | 'financial' | 'results' | 'resources' | 'admin' | 'traffic' | 'carousel' | 'map'
 
 export interface NavigationItem {
   title: string
@@ -57,6 +57,10 @@ export const NAV_AREAS: NavigationArea[] = [
     { title: 'Processos', url: '/processos', minRole: 'executor' },
     { title: 'Inteligência', url: '/inteligencia', minRole: 'executor' },
   ] },
+  // Mapas mentais: toda a equipe interna vê; cliente não.
+  { id: 'mapas', title: 'Mapas', icon: 'map', direct: true, items: [
+    { title: 'Mapas', url: '/mapas', minRole: 'executor' },
+  ] },
 ]
 
 export const ADMIN_AREA: NavigationArea = {
@@ -77,6 +81,9 @@ export const TRAFFIC_AREAS: NavigationArea[] = [
   { id: 'analises', title: 'Análises', icon: 'results', direct: true, items: [
     { title: 'Análises', url: '/operacional/trafego/analises', minRole: 'traffic' },
   ] },
+  { id: 'mapas', title: 'Mapas', icon: 'map', direct: true, items: [
+    { title: 'Mapas', url: '/mapas', minRole: 'traffic' },
+  ] },
 ]
 
 /**
@@ -94,6 +101,9 @@ export const SOCIAL_AREAS: NavigationArea[] = [
   ] },
   { id: 'datas', title: 'Datas', icon: 'resources', direct: true, items: [
     { title: 'Datas estratégicas', url: '/content/datas', minRole: 'social' },
+  ] },
+  { id: 'mapas', title: 'Mapas', icon: 'map', direct: true, items: [
+    { title: 'Mapas', url: '/mapas', minRole: 'social' },
   ] },
 ]
 

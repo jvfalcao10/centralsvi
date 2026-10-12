@@ -10,9 +10,9 @@ const urlsFor = (role: UserRole) => {
 }
 
 describe('Áreas de navegação', () => {
-  it('organiza os destinos do administrador em sete áreas e administração no rodapé', () => {
+  it('organiza os destinos do administrador em oito áreas e administração no rodapé', () => {
     const navigation = getVisibleNavigation({ can: canFor('admin') })
-    expect(navigation.main.map(area => area.title)).toEqual(['Início', 'Clientes', 'Operação', 'Comercial', 'Financeiro', 'Resultados', 'Recursos'])
+    expect(navigation.main.map(area => area.title)).toEqual(['Início', 'Clientes', 'Operação', 'Comercial', 'Financeiro', 'Resultados', 'Recursos', 'Mapas'])
     expect(navigation.footer.map(area => area.title)).toEqual(['Administração'])
   })
 
@@ -44,7 +44,7 @@ describe('Áreas de navegação', () => {
   })
 
   it('preserva o menu exclusivo de tráfego e não entrega navegação staff a clientes ou usuários sem permissão', () => {
-    expect(urlsFor('traffic')).toEqual(['/operacional/trafego', '/content/social', '/operacional/trafego/analises'])
+    expect(urlsFor('traffic')).toEqual(['/operacional/trafego', '/content/social', '/operacional/trafego/analises', '/mapas'])
     expect(getVisibleNavigation({ can: () => true, isClient: true })).toEqual({ main: [], footer: [] })
     expect(getVisibleNavigation({ can: canFor('user') })).toEqual({ main: [], footer: [] })
   })
@@ -84,9 +84,9 @@ describe('Áreas de navegação', () => {
 describe('papel social media', () => {
   const nav = getVisibleNavigation({ can: () => false, isSocial: true })
 
-  it('vê Postagens, Moldes e Datas', () => {
+  it('vê Postagens, Moldes, Datas e Mapas', () => {
     const urls = nav.main.flatMap(a => a.items.map(i => i.url))
-    expect(urls).toEqual(['/content/social', '/content/moldes', '/content/datas'])
+    expect(urls).toEqual(['/content/social', '/content/moldes', '/content/datas', '/mapas'])
   })
 
   it('não vê financeiro, resultados, comercial nem administração', () => {

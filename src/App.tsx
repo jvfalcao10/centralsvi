@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/AppLayout";
 import { ClientLayout } from "@/components/ClientLayout";
+import { MAPAS_ROTA } from "@/lib/mapas";
 
 // Public pages
 import Login from "@/pages/Login";
@@ -93,6 +94,9 @@ import AgendaEquipe from './pages/AgendaEquipe';
 const CriadorCarrossel = lazy(() => import("@/pages/content/CriadorCarrossel"));
 // Moldes de post: vitrine com as lâminas, carrega sob demanda
 const Moldes = lazy(() => import("@/pages/content/Moldes"));
+// Mapas mentais: a lista é leve, o editor carrega markmap e d3 sob demanda
+const Mapas = lazy(() => import("@/pages/Mapas"));
+const MapaEditor = lazy(() => import("@/pages/MapaEditor"));
 
 const queryClient = new QueryClient();
 
@@ -288,6 +292,13 @@ const App = () => (
               <Route path="/content/social" element={<ProtectedRoute requiredRole="executor" allowTraffic allowSocial><AppLayout><Social /></AppLayout></ProtectedRoute>} />
               <Route path="/content/moldes" element={
                 <ProtectedRoute requiredRole="executor" allowSocial><AppLayout><Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando os moldes…</div>}><Moldes /></Suspense></AppLayout></ProtectedRoute>
+              } />
+              {/* Mapas mentais: toda a equipe interna (admin, manager, seller, executor, traffic, social); cliente não entra. */}
+              <Route path="/mapas" element={
+                <ProtectedRoute {...MAPAS_ROTA}><AppLayout><Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando os mapas…</div>}><Mapas /></Suspense></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/mapas/:id" element={
+                <ProtectedRoute {...MAPAS_ROTA}><AppLayout><Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando o mapa…</div>}><MapaEditor /></Suspense></AppLayout></ProtectedRoute>
               } />
               <Route path="/content/organizador" element={
                 <ProtectedRoute requiredRole="executor">

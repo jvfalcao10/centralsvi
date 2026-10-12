@@ -303,6 +303,42 @@ export type Database = {
         }
         Relationships: []
       }
+      mapas_mentais: {
+        Row: {
+          atualizado_por: string | null
+          created_at: string
+          criado_por: string | null
+          id: string
+          markdown: string
+          pasta: string
+          slug: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          atualizado_por?: string | null
+          created_at?: string
+          criado_por?: string | null
+          id?: string
+          markdown?: string
+          pasta?: string
+          slug: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          atualizado_por?: string | null
+          created_at?: string
+          criado_por?: string | null
+          id?: string
+          markdown?: string
+          pasta?: string
+          slug?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
