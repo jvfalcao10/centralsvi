@@ -29,7 +29,11 @@ export function videoDaPeca(card: SocialCard) {
  * A fila, e não um disparo na hora, porque ela tem nova tentativa e registro:
  * uma falha de rede não pode sumir com o pedido de aprovação.
  */
-export async function filaDoEnvioAoCliente(db: DB, atual: SocialCard, approvalUrl: string, actor: string) {
+export async function filaDoEnvioAoCliente(
+ db: DB, atual: SocialCard, approvalUrl: string, actor: string,
+ /** Posição e tamanho do lote que vai para o mesmo grupo agora. */
+ lote: { posicao: number; total: number } = { posicao: 1, total: 1 },
+) {
  const grupo = grupoDoCliente(atual.client)
  if (!grupo) return { enviado: false, motivo: 'Não encontrei o grupo deste cliente no WhatsApp. Copie o link e mande você mesmo.' }
  const selecionados = atual.assets.filter(a => atual.selected_assets.includes(a.id))
@@ -43,6 +47,7 @@ export async function filaDoEnvioAoCliente(db: DB, atual: SocialCard, approvalUr
  const aviso = mensagemDeAprovacao({
   client: atual.client, title: atual.title, url: approvalUrl, altaUrl,
   video: selecionados.some(a => a.type.startsWith('video/')), arquivos: selecionados.length,
+  posicao: lote.posicao, total: lote.total,
  })
  // A fila exige o evento que originou o envio, e é ele que dá rastro no
  // histórico da peça. O apply acabou de registrar um; é esse que se usa.
@@ -118,7 +123,16 @@ export function podeAutoEnviar(card: SocialCard, agora = Date.now()): string {
  return 'ok'
 }
 
-export async function autoEnviarPecas(db: DB, limite = 2, agora = Date.now()) {
+/**
+ * Quantas peças do MESMO cliente saem numa volta.
+ *
+ * O lote é fechado por cliente de propósito: a mensagem diz "separei três
+ * vídeos, o primeiro é...", e esse número só é verdade se as três saírem
+ * agora. Partir o lote entre voltas faria a Sofia mentir a contagem.
+ */
+const LOTE_MAXIMO = 5
+
+export async function autoEnviarPecas(db: DB, limite = LOTE_MAXIMO, agora = Date.now()) {
  if (!AUTO_ENVIO) return { enviadas: 0, motivos: { desligado: 1 } }
  // O filtro aqui tem que ser o MESMO de podeAutoEnviar. Numa primeira versão a
  // trava passou a aceitar peça criada na mão e a consulta continuou em 'wa-%':
@@ -129,11 +143,19 @@ export async function autoEnviarPecas(db: DB, limite = 2, agora = Date.now()) {
   .order('updated_at', { ascending: true }).limit(20)
  if (error) return { enviadas: 0, motivos: { erro_de_leitura: 1 } }
  const motivos: Record<string, number> = {}
- let enviadas = 0
+ const prontas: SocialCard[] = []
  for (const card of (data || []) as SocialCard[]) {
-  if (enviadas >= limite) break
   const razao = podeAutoEnviar(card, agora)
-  if (razao !== 'ok') { motivos[razao] = (motivos[razao] || 0) + 1; continue }
+  if (razao === 'ok') prontas.push(card)
+  else motivos[razao] = (motivos[razao] || 0) + 1
+ }
+ if (!prontas.length) return { enviadas: 0, motivos }
+ // Uma volta atende UM cliente, o da peça mais antiga, e leva todas as dele.
+ // Assim a contagem na mensagem bate com o que o grupo recebe, e o próximo
+ // cliente entra na volta seguinte.
+ const lote = prontas.filter(c => c.client === prontas[0].client).slice(0, limite)
+ let enviadas = 0
+ for (const [i, card] of lote.entries()) {
   try {
    const link = newApprovalLink(card.id)
    const patch = {
@@ -145,10 +167,10 @@ export async function autoEnviarPecas(db: DB, limite = 2, agora = Date.now()) {
     p_actor: 'Sofia', p_actor_id: null, p_action: 'enviar_cliente',
    })
    if (erroRpc || !aplicado) { motivos.nao_foi_possivel_mover = (motivos.nao_foi_possivel_mover || 0) + 1; continue }
-   const r = await filaDoEnvioAoCliente(db, aplicado as SocialCard, link.url, 'Sofia')
+   const r = await filaDoEnvioAoCliente(db, aplicado as SocialCard, link.url, 'Sofia', { posicao: i + 1, total: lote.length })
    if (r.enviado) enviadas++
    else motivos[r.motivo || 'fila_recusou'] = (motivos[r.motivo || 'fila_recusou'] || 0) + 1
   } catch { motivos.falha_inesperada = (motivos.falha_inesperada || 0) + 1 }
  }
- return { enviadas, motivos }
+ return { enviadas, cliente: lote[0].client, motivos }
 }
