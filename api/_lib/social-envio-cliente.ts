@@ -186,44 +186,68 @@ export async function autoEnviarPecas(db: DB, limite = LOTE_MAXIMO, agora = Date
  * (event_id, channel), e o evento aqui é o `publicacao_concluida` daquela
  * publicação. Segundo aviso para a mesma publicação simplesmente não entra.
  */
+/**
+ * Nada publicado ANTES daqui vira aviso.
+ *
+ * João, 13/10/2026, vendo a Sofia anunciar post de 10/10 como novidade:
+ * "ela tá enviando pra todos, mas quero só a partir de hoje". Sem este piso,
+ * o primeiro passe depois de qualquer deploy despeja o histórico no grupo do
+ * cliente como se tivesse acabado de subir.
+ */
+const INICIO_DO_AVISO = Date.parse('2026-10-13T15:45:00-03:00')
+/** Aviso de "foi ao ar" tem validade curta. Fora disso é ruído, não notícia. */
+const JANELA_NO_AR = 6 * 3600000
+
 export async function avisarNoAr(db: DB, limite = 4, agora = Date.now()) {
- const desde = new Date(agora - 3 * 86400000).toISOString()
+ const desde = new Date(Math.max(INICIO_DO_AVISO, agora - JANELA_NO_AR)).toISOString()
  const { data: eventos, error } = await db.from('central_social_events')
   .select('id,card_id,details').eq('action', 'publicacao_concluida')
-  .gte('created_at', desde).order('id', { ascending: false }).limit(40)
+  .gte('created_at', desde).order('id', { ascending: true }).limit(40)
  if (error) return { avisadas: 0, motivos: { erro_de_leitura: 1 } }
  const lista = (eventos || []) as { id: number; card_id: string; details: Record<string, unknown> }[]
  if (!lista.length) return { avisadas: 0, motivos: {} }
- const { data: jaNaFila } = await db.from('central_social_feedback_outbox')
-  .select('event_id').in('event_id', lista.map(e => e.id)).eq('channel', 'whatsapp')
- const avisados = new Set(((jaNaFila || []) as { event_id: number }[]).map(r => r.event_id))
- const pendentes = lista.filter(e => !avisados.has(e.id)).reverse().slice(0, limite)
- if (!pendentes.length) return { avisadas: 0, motivos: {} }
+
+ // Um aviso por PEÇA, não por publicação. Feed e story da mesma peça são duas
+ // publicações, e o cliente recebia o mesmo título duas vezes seguidas, como
+ // aconteceu com o "Dia da Saúde Mental" da Dra. Ênia em 13/10.
+ const porCard = new Map<string, typeof lista>()
+ for (const e of lista) porCard.set(e.card_id, [...(porCard.get(e.card_id) || []), e])
+ const { data: jaAvisados } = await db.from('central_social_feedback_outbox')
+  .select('card_id').in('card_id', [...porCard.keys()]).eq('payload->>action', 'no_ar')
+ for (const r of ((jaAvisados || []) as { card_id: string }[])) porCard.delete(r.card_id)
+ if (!porCard.size) return { avisadas: 0, motivos: {} }
+
  const motivos: Record<string, number> = {}
  let avisadas = 0
- const { data: cards } = await db.from('central_social_cards').select('*').in('id', [...new Set(pendentes.map(e => e.card_id))])
+ const { data: cards } = await db.from('central_social_cards').select('*').in('id', [...porCard.keys()])
  const porId = new Map(((cards || []) as SocialCard[]).map(c => [c.id, c]))
  // Mesma regra do envio: várias peças do mesmo grupo numa tacada só saúdam
  // uma vez. Postagem em lote às 18h é comum.
- const porGrupo = new Map<string, { nome: string; eventos: typeof pendentes }>()
- for (const e of pendentes) {
-  const card = porId.get(e.card_id)
+ const porGrupo = new Map<string, { nome: string; cards: string[] }>()
+ for (const cardId of porCard.keys()) {
+  const card = porId.get(cardId)
   const grupo = card ? grupoDoCliente(card.client) : null
   if (!card || !grupo) { motivos.sem_grupo = (motivos.sem_grupo || 0) + 1; continue }
-  const atual = porGrupo.get(grupo.jid) || { nome: grupo.nome, eventos: [] }
-  porGrupo.set(grupo.jid, { nome: grupo.nome, eventos: [...atual.eventos, e] })
+  const atual = porGrupo.get(grupo.jid) || { nome: grupo.nome, cards: [] }
+  porGrupo.set(grupo.jid, { nome: grupo.nome, cards: [...atual.cards, cardId] })
  }
- for (const [jid, { nome, eventos: doGrupo }] of porGrupo) {
-  for (const [i, e] of doGrupo.entries()) {
-   const card = porId.get(e.card_id)!
-   const link = String(e.details?.permalink || card.posted_url || '')
+ for (const [jid, { nome, cards: doGrupo }] of porGrupo) {
+  const lote = doGrupo.slice(0, limite)
+  for (const [i, cardId] of lote.entries()) {
+   const card = porId.get(cardId)!
+   const publicacoes = porCard.get(cardId)!
+   // O link do feed é o que vale: story sai do ar em 24h. Só quando a peça
+   // foi SÓ para o story é que o aviso usa o link de lá e diz isso.
+   const feed = publicacoes.find(e => String(e.details?.format || '') !== 'story')
+   const escolhida = feed || publicacoes[publicacoes.length - 1]
+   const link = String(escolhida.details?.permalink || card.posted_url || '')
    if (!link) { motivos.sem_link = (motivos.sem_link || 0) + 1; continue }
    const selecionados = card.assets.filter(a => card.selected_assets.includes(a.id))
    const texto = mensagemNoAr({ client: card.client, title: card.title, url: link,
     video: selecionados.some(a => a.type.startsWith('video/')), arquivos: selecionados.length,
-    agora, posicao: i + 1, total: doGrupo.length })
+    agora, posicao: i + 1, total: lote.length, soStory: !feed })
    const { error: erroFila } = await db.from('central_social_feedback_outbox').insert({
-    event_id: e.id, card_id: card.id, channel: 'whatsapp', destination: jid,
+    event_id: escolhida.id, card_id: card.id, channel: 'whatsapp', destination: jid,
     payload: { client: card.client, title: card.title, revision: card.revision, actor: 'Sofia',
      action: 'no_ar', comment: '', created_at: new Date(agora).toISOString(), files: [],
      task_id: null, group_label: nome, texto_pronto: texto },

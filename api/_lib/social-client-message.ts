@@ -82,17 +82,23 @@ export function mensagemDeAprovacao(p: {
 export function mensagemNoAr(p: {
  client: string; title: string; url: string
  video?: boolean; arquivos?: number; agora?: number; posicao?: number; total?: number
+ /** A peça foi só para o story, que sai do ar em 24h. */
+ soStory?: boolean
 }) {
  const titulo = clientFacingTitle(p.client, p.title, !!p.video, p.arquivos || 1)
  const total = Math.max(1, p.total || 1)
  const posicao = Math.min(Math.max(1, p.posicao || 1), total)
+ // Story sai do ar em 24h, então o aviso diz onde a peça está para o cliente
+ // não procurar no feed e não achar.
+ const onde = p.soStory ? 'está no ar nos stories' : 'está no ar'
  const linhas: string[] = []
  if (posicao === 1) {
   linhas.push(`${saudacao(p.agora)}, pessoal!`, '')
-  linhas.push(total === 1 ? `*${titulo}* está no ar 🎉` : `Subiu tudo. A primeira é *${titulo}*`)
+  linhas.push(total === 1 ? `*${titulo}* ${onde} 🎉` : `Subiu tudo. A primeira é *${titulo}*`)
  } else {
   linhas.push(posicao === total && total > 2 ? `E a última é *${titulo}*` : `Essa é *${titulo}*`)
  }
+ if (posicao > 1 && p.soStory) linhas[linhas.length - 1] += ' (nos stories)'
  linhas.push('', p.url)
  return linhas.join('\n').trim()
 }

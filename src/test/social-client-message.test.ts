@@ -136,3 +136,20 @@ describe('aviso de que foi ao ar', () => {
   expect(ultima.startsWith('E a última é')).toBe(true)
  })
 })
+
+// João, 13/10/2026: a Sofia avisou "Dia da Saúde Mental" duas vezes seguidas,
+// porque feed e story da MESMA peça são duas publicações. E o story sai do ar
+// em 24h, então o cliente precisa saber onde procurar.
+describe('peça que foi só para o story', () => {
+ const base = { client: 'DR. BRENNO CANGUSSU', title: 'Dia da Artrite',
+  url: 'https://www.instagram.com/stories/dr.brennocangussu/4006287', agora: Date.parse('2026-10-13T16:00:00-03:00') }
+ it('diz que está nos stories, não no feed', () => {
+  expect(mensagemNoAr({ ...base, soStory: true })).toContain('está no ar nos stories')
+  expect(mensagemNoAr(base)).toContain('está no ar 🎉')
+  // "stories" só pode aparecer na URL, nunca na frase, quando a peça foi ao feed.
+  expect(mensagemNoAr(base).split('\n')[2]).not.toContain('stories')
+ })
+ it('dentro do lote também marca o story', () => {
+  expect(mensagemNoAr({ ...base, soStory: true, posicao: 2, total: 2 })).toContain('(nos stories)')
+ })
+})
