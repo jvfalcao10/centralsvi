@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { pecasParadas, dataDoArquivo, textoDoGrupo, textoDoJoao, cobrarAjustes, corta,
- pecasComOCliente, textoDoCliente, dataDoTitulo, pecasComDataChegando, textoDasDatas } from '../../api/_lib/social-cobranca'
+ pecasComOCliente, textoDoCliente, dataDoTitulo, pecasComDataChegando, textoDasDatas,
+ aprovadasSemData, textoDasAprovadas } from '../../api/_lib/social-cobranca'
 const DIA_MS = 86400000
 import type { SocialCard } from '../../api/_lib/social-domain'
 
@@ -242,5 +243,40 @@ describe('formatação do aviso de data', () => {
  it('não deixa linha em branco dobrada entre o cabeçalho e a primeira peça', () => {
   const t = textoDasDatas(pecasComDataChegando([card({ title: '[DRA ERIKA] Dia do Médico (18/10)', stage: 'ajustes' })], AGORA), AGORA)
   expect(t).not.toContain('\n\n\n')
+ })
+})
+
+// João, 13/10/2026: "Dra. Ênia aprovou o último, e aí? Tá no lugar certo?".
+// Está, mas "aprovado" virou depósito: 38 peças aprovadas sem data, duas delas
+// havia 32 dias.
+describe('peça aprovada que ninguém programou', () => {
+ const aprovada = (dias: number, extra: Partial<SocialCard> = {}) => card({
+  stage: 'aprovado', scheduled_at: null,
+  approved_at: new Date(AGORA - dias * DIA_MS).toISOString(), ...extra })
+
+ it('entra só o que está aprovado e sem data', () => {
+  expect(aprovadasSemData([aprovada(3)], AGORA)).toHaveLength(1)
+  expect(aprovadasSemData([aprovada(3, { scheduled_at: '2026-10-18T21:00:00Z' })], AGORA)).toHaveLength(0)
+  expect(aprovadasSemData([card({ stage: 'aguardando' })], AGORA)).toHaveLength(0)
+ })
+
+ it('a mais recente primeiro, porque a antiga já virou decisão', () => {
+  const l = aprovadasSemData([aprovada(30, { id: 'velha' }), aprovada(1, { id: 'nova' })], AGORA)
+  expect(l.map(p => p.card_id)).toEqual(['nova', 'velha'])
+ })
+
+ it('lista longa não vira parede de texto', () => {
+  const muitas = Array.from({ length: 38 }, (_, i) => aprovada(i + 1, { id: `c${i}` }))
+  const t = textoDasAprovadas(aprovadasSemData(muitas, AGORA), AGORA)
+  expect(t).toContain('38 peças aprovadas')
+  expect(t).toContain('E mais 28 de antes, no quadro.')
+  expect(t.split('\n').filter(l => l.startsWith('*'))).toHaveLength(10)
+ })
+
+ it('diz a régua e leva para o quadro', () => {
+  const t = textoDasAprovadas(aprovadasSemData([aprovada(0)], AGORA), AGORA)
+  expect(t).toContain('aprovada hoje')
+  expect(t).toContain('Aprovada não é publicada')
+  expect(t).toContain('central.svicompany.com.br/content/social')
  })
 })

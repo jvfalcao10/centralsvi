@@ -148,6 +148,14 @@ export type PecaNoCliente = { card_id: string; client: string; title: string; en
 
 /** Um dia inteiro de espera antes de puxar. Cobrar no mesmo dia é afobação. */
 const ESPERA_CLIENTE = 24 * 3600000
+/**
+ * Acima disso a peça não é mais lembrete, é decisão.
+ *
+ * Mandar "lembrando daquela peça" sobre algo de duas semanas atrás soa mal e
+ * ainda levanta a pergunta de por que ninguém falou antes. Peça velha vai só
+ * para o João escolher o que fazer: cobrar na mão, refazer ou arquivar.
+ */
+const VELHA_DEMAIS = 10
 
 export function pecasComOCliente(cards: SocialCard[], agora = Date.now()): PecaNoCliente[] {
  return cards
@@ -279,8 +287,18 @@ export async function cobrarClientes(
  const { data, error } = await db.from('central_social_cards').select('*').eq('stage', 'aguardando').limit(500)
  if (error) throw new Error('cobranca_cliente_leitura_falhou')
  const cards = (data || []) as SocialCard[]
- const paradas = pecasComOCliente(cards, agora)
- if (!paradas.length) return { clientes: 0, pecas: 0 }
+ const todas = pecasComOCliente(cards, agora)
+ if (!todas.length) return { clientes: 0, pecas: 0, velhas: 0 }
+ const paradas = todas.filter(p => p.dias <= VELHA_DEMAIS)
+ const velhas = todas.filter(p => p.dias > VELHA_DEMAIS)
+ // Peça velha não vai para o cliente. Vai para o João decidir.
+ if (velhas.length) {
+  const texto = [`${saudacao(agora)}! Peça parada com o cliente há mais de ${VELHA_DEMAIS} dias, velha demais para eu cobrar sozinha:`,
+   ...velhas.map(p => `*${p.client}* · ${p.title} (${mandei(p.dias)})`),
+   'Decide se cobro na mão, se refazemos ou se arquiva.'].join('\n\n')
+  try { await enviar(JOAO, texto) } catch { /* segue */ }
+ }
+ if (!paradas.length) return { clientes: 0, pecas: 0, velhas: velhas.length }
  const porCliente = new Map<string, PecaNoCliente[]>()
  for (const p of paradas) porCliente.set(p.client, [...(porCliente.get(p.client) || []), p])
  let clientes = 0, pecas = 0
@@ -295,7 +313,7 @@ export async function cobrarClientes(
   }
   try { await enviar(grupo.jid, textoDoCliente(lista, agora)); clientes++; pecas += lista.length } catch { /* segue */ }
  }
- return { clientes, pecas }
+ return { clientes, pecas, velhas: velhas.length }
 }
 
 export async function lembrarDatas(
@@ -326,5 +344,57 @@ export async function rondaDiaria(
  const ajustes = await cobrarAjustes(db, enviar, agora).catch(e => ({ erro: String(e?.message || e) }))
  const clientes = await cobrarClientes(db, enviar, agora).catch(e => ({ erro: String(e?.message || e) }))
  const datas = await lembrarDatas(db, enviar, agora).catch(e => ({ erro: String(e?.message || e) }))
- return { ajustes, clientes, datas }
+ const programar = await cobrarProgramacao(db, enviar, agora).catch(e => ({ erro: String(e?.message || e) }))
+ return { ajustes, clientes, datas, programar }
+}
+
+// ---------------------------------------------------------------------------
+// Peça aprovada que ninguém programou
+// ---------------------------------------------------------------------------
+/**
+ * João, 13/10/2026: "Dra. Ênia aprovou o último, e aí? Tá no lugar certo?".
+ *
+ * Está: o card foi para `aprovado` no mesmo minuto do clique dela. O problema
+ * é que `aprovado` virou depósito. Medido no mesmo dia: 38 peças aprovadas
+ * sem data de publicação, duas delas aprovadas havia 32 dias. Aprovação não
+ * é entrega; entrega é o post no ar.
+ */
+export type PecaAprovada = { card_id: string; client: string; title: string; aprovada_ms: number; dias: number }
+
+/** Quantas cabem na mensagem antes de virar parede de texto. */
+const TETO_NA_MENSAGEM = 10
+
+export function aprovadasSemData(cards: SocialCard[], agora = Date.now()): PecaAprovada[] {
+ return cards
+  .filter(c => c.stage === 'aprovado' && !c.scheduled_at)
+  .map(c => ({ c, aprovada_ms: Date.parse(c.approved_at || c.updated_at) }))
+  .filter(({ aprovada_ms }) => Number.isFinite(aprovada_ms))
+  .map(({ c, aprovada_ms }) => ({ card_id: c.id, client: c.client,
+   title: clientFacingTitle(c.client, c.title), aprovada_ms,
+   dias: Math.floor((agora - aprovada_ms) / DIA) }))
+  .sort((a, b) => b.aprovada_ms - a.aprovada_ms)
+}
+
+export function textoDasAprovadas(pecas: PecaAprovada[], agora = Date.now()) {
+ const mostrar = pecas.slice(0, TETO_NA_MENSAGEM)
+ const resto = pecas.length - mostrar.length
+ const linhas = [`${saudacao(agora)}! ${pecas.length} peças aprovadas e sem data de publicação:`, '',
+  ...mostrar.map(p => `*${p.client}* · ${p.title} (aprovada ${p.dias <= 0 ? 'hoje' : p.dias === 1 ? 'ontem' : `há ${p.dias} dias`})`)]
+ // Lista longa demais vira parede de texto e ninguém lê. O resto fica no quadro.
+ if (resto > 0) linhas.push('', `E mais ${resto} de antes, no quadro.`)
+ linhas.push('', 'Aprovada não é publicada. Programa na Central: https://central.svicompany.com.br/content/social?etapa=aprovado')
+ return linhas.join('\n')
+}
+
+export async function cobrarProgramacao(
+ db: DB, enviar: (jid: string, texto: string) => Promise<void>, agora = Date.now(),
+) {
+ const { data, error } = await db.from('central_social_cards').select('*').eq('stage', 'aprovado').limit(500)
+ if (error) throw new Error('aprovadas_leitura_falhou')
+ const pecas = aprovadasSemData((data || []) as SocialCard[], agora)
+ if (!pecas.length) return { pecas: 0 }
+ // Só para o João: quem decide dia e hora de publicar é a casa, não o cliente
+ // nem o designer.
+ try { await enviar(JOAO, textoDasAprovadas(pecas, agora)) } catch { /* segue */ }
+ return { pecas: pecas.length }
 }
