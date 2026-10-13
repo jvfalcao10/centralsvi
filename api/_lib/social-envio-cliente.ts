@@ -77,6 +77,8 @@ export async function filaDoEnvioAoCliente(db: DB, atual: SocialCard, approvalUr
 // ---------------------------------------------------------------------------
 /** Chave de desligamento. Uma linha para voltar ao envio só pela mão. */
 export const AUTO_ENVIO = true
+/** Prefixo das peças que vêm do ClickUp, as únicas fora do automático. */
+export const PREFIXO_MANUAL = 'cu:'
 /** Minutos de carência depois da última mexida na peça, para a equipe ainda pegar. */
 const CARENCIA_MS = 10 * 60000
 const ABRE = 8, FECHA = 18
@@ -100,7 +102,7 @@ export function podeAutoEnviar(card: SocialCard, agora = Date.now()): string {
  // que é texto interno da equipe. Entrega do grupo de edição e peça criada na
  // mão entram, porque nas duas o cliente casa com o catálogo ou foi digitado
  // por uma pessoa no formulário.
- if (card.id.startsWith('cu:')) return 'peca do clickup passa por gente'
+ if (card.id.startsWith(PREFIXO_MANUAL)) return 'peca do clickup passa por gente'
  if (!card.client || card.client === 'Identificar cliente') return 'cliente nao identificado'
  if (!grupoDoCliente(card.client)) return 'cliente sem grupo unico no whatsapp'
  const selecionados = card.assets.filter(a => card.selected_assets.includes(a.id))
@@ -118,8 +120,12 @@ export function podeAutoEnviar(card: SocialCard, agora = Date.now()): string {
 
 export async function autoEnviarPecas(db: DB, limite = 2, agora = Date.now()) {
  if (!AUTO_ENVIO) return { enviadas: 0, motivos: { desligado: 1 } }
+ // O filtro aqui tem que ser o MESMO de podeAutoEnviar. Numa primeira versão a
+ // trava passou a aceitar peça criada na mão e a consulta continuou em 'wa-%':
+ // a volta devolvia "enviadas: 0" com motivos vazio, ou seja nenhum candidato,
+ // e parecia que a trava tinha barrado quando a peça nem chegava a ser olhada.
  const { data, error } = await db.from('central_social_cards').select('*')
-  .eq('stage', 'conferir').like('id', 'wa-%').neq('client', 'Identificar cliente')
+  .eq('stage', 'conferir').not('id', 'like', `${PREFIXO_MANUAL}%`).neq('client', 'Identificar cliente')
   .order('updated_at', { ascending: true }).limit(20)
  if (error) return { enviadas: 0, motivos: { erro_de_leitura: 1 } }
  const motivos: Record<string, number> = {}

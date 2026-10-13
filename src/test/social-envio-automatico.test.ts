@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { podeAutoEnviar, horaDeBrasilia, videoAindaComprimindo } from '../../api/_lib/social-envio-cliente'
+import { podeAutoEnviar, horaDeBrasilia, videoAindaComprimindo, PREFIXO_MANUAL } from '../../api/_lib/social-envio-cliente'
 import type { SocialCard } from '../../api/_lib/social-domain'
 
 // João, 13/10/2026: "ela não enviou automaticamente". A peça do editor caía em
@@ -82,5 +82,18 @@ describe('trava do envio automático', () => {
   const agora = bsb('11:00')
   expect(podeAutoEnviar(card({ updated_at: new Date(agora - 60000).toISOString() }), agora)).toBe('dentro da carencia de 10 min')
   expect(podeAutoEnviar(card({ updated_at: new Date(agora - 11 * 60000).toISOString() }), agora)).toBe('ok')
+ })
+})
+
+// Bug da primeira versão: a trava passou a aceitar peça criada na mão e a
+// consulta ao banco continuou filtrando 'wa-%'. A volta devolvia
+// "enviadas: 0" com motivos VAZIO, que é o sintoma de "nenhum candidato
+// chegou a ser olhado", não de "a trava barrou".
+describe('a consulta e a trava olham o mesmo conjunto', () => {
+ it('a peça do ClickUp é a única excluída, e pelo mesmo prefixo', () => {
+  expect(PREFIXO_MANUAL).toBe('cu:')
+  expect(podeAutoEnviar(card({ id: `${PREFIXO_MANUAL}86cbbqbcn` }), bsb('11:00'))).toBe('peca do clickup passa por gente')
+  for (const id of ['wa-abc123', 'manual-20261013-arte-ab12'])
+   expect(podeAutoEnviar(card({ id }), bsb('11:00')), id).toBe('ok')
  })
 })
