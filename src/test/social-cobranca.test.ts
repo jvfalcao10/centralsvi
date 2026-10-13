@@ -1,0 +1,154 @@
+import { describe, it, expect, vi } from 'vitest'
+import { pecasParadas, dataDoArquivo, textoDoGrupo, textoDoJoao, cobrarAjustes, corta } from '../../api/_lib/social-cobranca'
+import type { SocialCard } from '../../api/_lib/social-domain'
+
+// João, 13/10/2026: "o José já fez ajustes de várias artes e não atualizou lá
+// nem subiu lá". Medido no quadro: as 6 peças em ajuste tinham o arquivo mais
+// novo ANTERIOR ao pedido de alteração, uma parada há 16 dias.
+const AGORA = Date.parse('2026-10-13T11:30:00-03:00')
+const card = (extra: Partial<SocialCard> = {}): SocialCard => ({
+ id: 'cu:1', client: 'DRA ERIKA FIGUEIREDO', title: '[DRA ERIKA] Out · Estático · Dia do Médico (18/10)',
+ author: 'José', source_url: '', source_status: '', source_description: '', source_updated: null,
+ assets: [{ id: 'a1', name: 'arte.png', path: 'p1', type: 'image/png', date: '2026-10-09T13:19:00.000Z' }],
+ selected_assets: ['a1'], caption: '', note: 'Trocar a homenagem no texto.', stage: 'ajustes',
+ revision: 2, version: 3, approved_revision: null, approved_by: null, approved_at: null,
+ approval_evidence: null, scheduled_at: null, posted_at: null, posted_url: null, channel: null,
+ token_hash: null, token_expires_at: null, updated_at: '2026-10-09T21:14:00.000Z', ...extra,
+} as SocialCard)
+
+describe('data do arquivo', () => {
+ it('entende ISO', () => expect(dataDoArquivo({ date: '2026-10-09T13:19:00.000Z' } as never)).toBe(Date.parse('2026-10-09T13:19:00.000Z')))
+ // Cards antigos do ClickUp guardam dd/mm/aaaa hh:mm, em hora de Brasília.
+ it('entende dd/mm/aaaa hh:mm como hora de Brasília', () =>
+  expect(dataDoArquivo({ date: '25/09/2026 12:54' } as never)).toBe(Date.parse('2026-09-25T12:54:00-03:00')))
+ it('formato que não entende vira null, que é o lado seguro', () => {
+  expect(dataDoArquivo({ date: 'ontem' } as never)).toBeNull()
+  expect(dataDoArquivo({} as never)).toBeNull()
+ })
+})
+
+describe('quem está parado', () => {
+ it('arquivo anterior ao pedido conta como parado', () => {
+  const [p] = pecasParadas([card()], AGORA)
+  expect(p.author).toBe('José')
+  expect(p.dias).toBe(3)
+  expect(p.title).not.toContain('[DRA ERIKA]')
+ })
+
+ it('arquivo DEPOIS do pedido sai da lista, porque a correção chegou', () => {
+  const corrigida = card({ assets: [{ id: 'a1', name: 'arte.png', path: 'p1', type: 'image/png', date: '2026-10-10T12:00:00.000Z' }] })
+  expect(pecasParadas([corrigida], AGORA)).toHaveLength(0)
+ })
+
+ // O arquivo do mesmo minuto do pedido é o que o cliente viu e reprovou.
+ it('arquivo do mesmo minuto do pedido continua parado', () => {
+  const brenno = card({ updated_at: '2026-10-12T11:32:00.000Z',
+   assets: [{ id: 'a1', name: 'c.png', path: 'p', type: 'image/png', date: '2026-10-12T11:31:00.000Z' }] })
+  expect(pecasParadas([brenno], AGORA)).toHaveLength(1)
+ })
+
+ it('peça sem arquivo nenhum conta como parada', () => {
+  expect(pecasParadas([card({ assets: [] })], AGORA)).toHaveLength(1)
+ })
+
+ it('só mexe em peça na etapa de ajustes', () => {
+  for (const stage of ['conferir', 'aguardando', 'aprovado', 'postado', 'arquivado'])
+   expect(pecasParadas([card({ stage })], AGORA)).toHaveLength(0)
+ })
+
+ it('mais antiga primeiro, porque é a que está queimando', () => {
+  const lista = pecasParadas([
+   card({ id: 'novo', updated_at: '2026-10-12T11:32:00.000Z' }),
+   // Arquivo de 25/09 e pedido de 27/09: o caso real da Laís, no formato antigo.
+   card({ id: 'velho', updated_at: '2026-09-27T23:53:00.000Z', author: 'Laís',
+    assets: [{ id: 'a1', name: 'c.png', path: 'p', type: 'image/png', date: '25/09/2026 12:54' }] }),
+  ], AGORA)
+  expect(lista.map(p => p.card_id)).toEqual(['velho', 'novo'])
+  expect(lista[0].dias).toBe(15)
+ })
+})
+
+describe('texto da cobrança', () => {
+ it('abre com saudação, diz o que foi pedido e qual é o critério', () => {
+  const t = textoDoGrupo(pecasParadas([card()], AGORA), AGORA)
+  expect(t.startsWith('Bom dia!')).toBe(true)
+  expect(t).toContain('DRA ERIKA FIGUEIREDO')
+  expect(t).toContain('pedida há 3 dias')
+  expect(t).toContain('Trocar a homenagem no texto.')
+  expect(t).toContain('Mudar o status não basta')
+  expect(t).not.toContain('a gente')
+  expect(t).not.toContain('—')
+ })
+
+ it('o aviso do João agrupa por autor e separa quem não tem grupo', () => {
+  const paradas = pecasParadas([card(), card({ id: 'cu:2', author: 'Laís', client: 'NÚMEROS',
+   updated_at: '2026-09-27T23:53:00.000Z', title: '[NÚMEROS] Out · Carrossel 3 slides',
+   assets: [{ id: 'a1', name: 'c.png', path: 'p', type: 'image/png', date: '25/09/2026 12:54' }] })], AGORA)
+  const orfas = paradas.filter(p => p.author === 'Laís')
+  const t = textoDoJoao(paradas, orfas, AGORA)
+  expect(t).toContain('*José* · 1')
+  expect(t).toContain('ninguém foi cobrado')
+  expect(t).toContain('NÚMEROS')
+  expect(t).toContain('arquivo novo, não status')
+ })
+})
+
+describe('cobrança diária', () => {
+ const banco = (cards: SocialCard[], grupos: { author: string; jid: string }[]) => ({
+  from: (tabela: string) => ({
+   select: () => tabela === 'central_social_cards'
+    ? { eq: () => ({ limit: async () => ({ data: cards, error: null }) }) }
+    : { eq: async () => ({ data: grupos, error: null }) },
+  }),
+ })
+
+ it('manda uma mensagem por grupo com peça parada, mais a do João', async () => {
+  const enviadas: { jid: string; texto: string }[] = []
+  const r = await cobrarAjustes(
+   banco([card(), card({ id: 'cu:3', author: 'Math', client: 'DRA. ÉSIA' })],
+    [{ author: 'José', jid: 'g-jose' }, { author: 'Math', jid: 'g-math' }, { author: 'Sarah', jid: 'g-sarah' }]) as never,
+   async (jid, texto) => { enviadas.push({ jid, texto }) }, AGORA)
+  expect(r).toMatchObject({ paradas: 2, grupos: 2, orfas: 0 })
+  expect(enviadas.map(e => e.jid)).toEqual(['g-jose', 'g-math', '559492404033'])
+  expect(enviadas.find(e => e.jid === 'g-sarah'), 'grupo sem peça parada não recebe nada').toBeUndefined()
+ })
+
+ it('quadro limpo não manda nada', async () => {
+  const enviadas: string[] = []
+  const r = await cobrarAjustes(banco([], [{ author: 'José', jid: 'g-jose' }]) as never,
+   async jid => { enviadas.push(jid) }, AGORA)
+  expect(r).toMatchObject({ paradas: 0 })
+  expect(enviadas).toEqual([])
+ })
+
+ it('grupo que falha não cala os outros nem o aviso do João', async () => {
+  const ok: string[] = []
+  const r = await cobrarAjustes(
+   banco([card(), card({ id: 'cu:4', author: 'Math' })], [{ author: 'José', jid: 'g-jose' }, { author: 'Math', jid: 'g-math' }]) as never,
+   async jid => { if (jid === 'g-jose') throw new Error('offline'); ok.push(jid) }, AGORA)
+  expect(ok).toEqual(['g-math', '559492404033'])
+  expect(r.grupos).toBe(1)
+ })
+
+ it('autor sem grupo ativo não é cobrado, mas aparece para o João', async () => {
+  const enviadas: { jid: string; texto: string }[] = []
+  await cobrarAjustes(banco([card({ author: 'Laís' })], [{ author: 'José', jid: 'g-jose' }]) as never,
+   async (jid, texto) => { enviadas.push({ jid, texto }) }, AGORA)
+  expect(enviadas).toHaveLength(1)
+  expect(enviadas[0].jid).toBe('559492404033')
+  expect(enviadas[0].texto).toContain('Laís')
+ })
+})
+
+// O texto cortava no meio da palavra: "...Dra Érika Figueire".
+describe('corte do que foi pedido', () => {
+ it('corta no espaço e marca que continua', () => {
+  const t = corta('No lugar de Feliz dia do médico, Dra Érika Figueiredo, coloca Feliz dia do médico e receba essa homenagem especial hoje, Dra Érika Figueiredo', 140)
+  expect(t.length).toBeLessThanOrEqual(141)
+  expect(t.endsWith('…')).toBe(true)
+  expect(t).not.toMatch(/Figueire…$/)
+ })
+ it('texto curto passa inteiro e sem reticência', () => {
+  expect(corta('Mudar imagem do ultrasom mano.', 140)).toBe('Mudar imagem do ultrasom mano.')
+ })
+})
