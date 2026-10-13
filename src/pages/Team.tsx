@@ -297,7 +297,11 @@ export default function Team() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const STAFF_ROLES: UserRole[] = ['admin', 'manager', 'seller', 'executor', 'user']
+  // Papéis laterais (traffic, social) entram aqui também. Eles nasceram depois
+  // desta lista e, sem estarem nela, a pessoa some da Equipe mesmo tendo conta,
+  // perfil e papel: foi o que aconteceu com a Rayana no primeiro dia e com a
+  // Sarah desde que o papel social existe.
+  const STAFF_ROLES: UserRole[] = ['admin', 'manager', 'seller', 'executor', 'traffic', 'social', 'user']
   const staffMembersAll = members.filter(m => STAFF_ROLES.includes(m.role))
   const clientMembersAll = members.filter(m => m.role === 'client')
 
@@ -402,6 +406,8 @@ export default function Team() {
                 <SelectItem value="manager">Gestor</SelectItem>
                 <SelectItem value="seller">Vendedor</SelectItem>
                 <SelectItem value="executor">Executor</SelectItem>
+                <SelectItem value="traffic">Gestor de Tráfego</SelectItem>
+                <SelectItem value="social">Social Media</SelectItem>
                 <SelectItem value="user">Usuário</SelectItem>
               </SelectContent>
             </Select>
