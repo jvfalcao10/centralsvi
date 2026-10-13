@@ -1,7 +1,7 @@
 import type { createAdminClient } from './supabase.js'
 import { socialPatch, type SocialCard } from './social-domain.js'
 import { grupoDoCliente } from './social-client-approval.js'
-import { mensagemDeAprovacao } from './social-client-message.js'
+import { mensagemDeAprovacao, mensagemNoAr } from './social-client-message.js'
 import { newApprovalLink } from './social-approval-link.js'
 import { linkDeDownload } from './social-drive.js'
 type DB = ReturnType<typeof createAdminClient>
@@ -173,4 +173,65 @@ export async function autoEnviarPecas(db: DB, limite = LOTE_MAXIMO, agora = Date
   } catch { motivos.falha_inesperada = (motivos.falha_inesperada || 0) + 1 }
  }
  return { enviadas, cliente: lote[0].client, motivos }
+}
+
+// ---------------------------------------------------------------------------
+// Avisar o cliente de que a peça foi ao ar
+// ---------------------------------------------------------------------------
+/**
+ * João, 13/10/2026: "avisar no grupo quando a peça for ao ar, com o link do
+ * post". O cliente aprovava e nunca mais ouvia falar.
+ *
+ * A trava contra aviso repetido é o próprio banco: a fila é única por
+ * (event_id, channel), e o evento aqui é o `publicacao_concluida` daquela
+ * publicação. Segundo aviso para a mesma publicação simplesmente não entra.
+ */
+export async function avisarNoAr(db: DB, limite = 4, agora = Date.now()) {
+ const desde = new Date(agora - 3 * 86400000).toISOString()
+ const { data: eventos, error } = await db.from('central_social_events')
+  .select('id,card_id,details').eq('action', 'publicacao_concluida')
+  .gte('created_at', desde).order('id', { ascending: false }).limit(40)
+ if (error) return { avisadas: 0, motivos: { erro_de_leitura: 1 } }
+ const lista = (eventos || []) as { id: number; card_id: string; details: Record<string, unknown> }[]
+ if (!lista.length) return { avisadas: 0, motivos: {} }
+ const { data: jaNaFila } = await db.from('central_social_feedback_outbox')
+  .select('event_id').in('event_id', lista.map(e => e.id)).eq('channel', 'whatsapp')
+ const avisados = new Set(((jaNaFila || []) as { event_id: number }[]).map(r => r.event_id))
+ const pendentes = lista.filter(e => !avisados.has(e.id)).reverse().slice(0, limite)
+ if (!pendentes.length) return { avisadas: 0, motivos: {} }
+ const motivos: Record<string, number> = {}
+ let avisadas = 0
+ const { data: cards } = await db.from('central_social_cards').select('*').in('id', [...new Set(pendentes.map(e => e.card_id))])
+ const porId = new Map(((cards || []) as SocialCard[]).map(c => [c.id, c]))
+ // Mesma regra do envio: várias peças do mesmo grupo numa tacada só saúdam
+ // uma vez. Postagem em lote às 18h é comum.
+ const porGrupo = new Map<string, { nome: string; eventos: typeof pendentes }>()
+ for (const e of pendentes) {
+  const card = porId.get(e.card_id)
+  const grupo = card ? grupoDoCliente(card.client) : null
+  if (!card || !grupo) { motivos.sem_grupo = (motivos.sem_grupo || 0) + 1; continue }
+  const atual = porGrupo.get(grupo.jid) || { nome: grupo.nome, eventos: [] }
+  porGrupo.set(grupo.jid, { nome: grupo.nome, eventos: [...atual.eventos, e] })
+ }
+ for (const [jid, { nome, eventos: doGrupo }] of porGrupo) {
+  for (const [i, e] of doGrupo.entries()) {
+   const card = porId.get(e.card_id)!
+   const link = String(e.details?.permalink || card.posted_url || '')
+   if (!link) { motivos.sem_link = (motivos.sem_link || 0) + 1; continue }
+   const selecionados = card.assets.filter(a => card.selected_assets.includes(a.id))
+   const texto = mensagemNoAr({ client: card.client, title: card.title, url: link,
+    video: selecionados.some(a => a.type.startsWith('video/')), arquivos: selecionados.length,
+    agora, posicao: i + 1, total: doGrupo.length })
+   const { error: erroFila } = await db.from('central_social_feedback_outbox').insert({
+    event_id: e.id, card_id: card.id, channel: 'whatsapp', destination: jid,
+    payload: { client: card.client, title: card.title, revision: card.revision, actor: 'Sofia',
+     action: 'no_ar', comment: '', created_at: new Date(agora).toISOString(), files: [],
+     task_id: null, group_label: nome, texto_pronto: texto },
+    status: 'pending',
+   })
+   if (erroFila) motivos.fila_recusou = (motivos.fila_recusou || 0) + 1
+   else avisadas++
+  }
+ }
+ return { avisadas, motivos }
 }

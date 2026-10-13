@@ -3,7 +3,7 @@ import { refreshVideoPreviews } from './social-preview.js'
 import { processCaptions } from './social-caption-worker.js'
 import { processFeedback } from './social-feedback.js'
 import { socialIntake } from './social-intake.js'
-import { autoEnviarPecas } from './social-envio-cliente.js'
+import { autoEnviarPecas, avisarNoAr } from './social-envio-cliente.js'
 import { identifyGroupDelivery } from './social-delivery.js'
 import { driveVideo } from './social-drive.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
@@ -209,8 +209,11 @@ export async function handleSocialSync(req:VercelRequest,res:VercelResponse) {
    const captions=Date.now()-start<45000?await processCaptions(db,2,start+260000).catch(()=>({captions:0,results:[]})):undefined
    // A peça entregue pelo editor vai ao cliente sozinha. Nunca pode derrubar a
    // volta: importar arquivo e entregar aviso valem mais que adiantar o envio.
-   const envio=await autoEnviarPecas(db,2).catch(()=>({enviadas:0,motivos:{falha:1}}))
-   return res.json({processed:results.length,results,previews,feedback,captions,envio})
+   const envio=await autoEnviarPecas(db).catch(()=>({enviadas:0,motivos:{falha:1}}))
+   // A peça que foi ao ar avisa o grupo do cliente. Entra aqui porque é por
+   // evento, não por hora: a publicação pode sair a qualquer momento.
+   const noAr=await avisarNoAr(db).catch(()=>({avisadas:0,motivos:{falha:1}}))
+   return res.json({processed:results.length,results,previews,feedback,captions,envio,noAr})
   }
   return res.status(400).json({error:'Invalid mode'})
  }catch{return res.status(500).json({error:'sync_failed'})}

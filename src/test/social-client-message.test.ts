@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { saudacao, mensagemDeAprovacao, comoChamar } from '../../api/_lib/social-client-message'
+import { saudacao, mensagemDeAprovacao, comoChamar, mensagemNoAr } from '../../api/_lib/social-client-message'
 
 // João, 13/10/2026: "sempre que mandar ter um bom dia ou tarde, não enviar no seco".
 const bsb = (dia: string, hora: string) => Date.parse(`${dia}T${hora}:00-03:00`)
@@ -111,5 +111,28 @@ describe('lote de peças para o mesmo grupo', () => {
    expect(t).not.toContain('—')
    expect(t.toLowerCase()).not.toContain('a gente')
   }
+ })
+})
+
+// João, 13/10/2026: "avisar no grupo quando a peça for ao ar, com o link do
+// post, fecha o ciclo e dá sensação de entrega".
+describe('aviso de que foi ao ar', () => {
+ const base = { client: 'DRA. ÉSIA LOPES', title: '[DRA ESIA] Out · Reel Outubro Rosa',
+  url: 'https://www.instagram.com/reel/DeNSJYWlP3x/', video: true, agora: Date.parse('2026-10-13T18:07:00-03:00') }
+
+ it('diz que está no ar e leva o link do post', () => {
+  const t = mensagemNoAr(base)
+  expect(t.startsWith('Boa noite, pessoal!')).toBe(true)
+  expect(t).toContain('está no ar')
+  expect(t).toContain('https://www.instagram.com/reel/DeNSJYWlP3x/')
+  expect(t).not.toContain('[DRA ESIA]')
+ })
+
+ it('lote de postagens saúda uma vez só', () => {
+  expect(mensagemNoAr({ ...base, posicao: 1, total: 3 })).toContain('Subiu tudo')
+  const segunda = mensagemNoAr({ ...base, posicao: 2, total: 3 })
+  expect(segunda).not.toContain('Boa noite')
+  const ultima = mensagemNoAr({ ...base, posicao: 3, total: 3 })
+  expect(ultima.startsWith('E a última é')).toBe(true)
  })
 })

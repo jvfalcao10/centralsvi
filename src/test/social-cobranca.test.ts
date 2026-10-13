@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
-import { pecasParadas, dataDoArquivo, textoDoGrupo, textoDoJoao, cobrarAjustes, corta } from '../../api/_lib/social-cobranca'
+import { pecasParadas, dataDoArquivo, textoDoGrupo, textoDoJoao, cobrarAjustes, corta,
+ pecasComOCliente, textoDoCliente, dataDoTitulo, pecasComDataChegando, textoDasDatas } from '../../api/_lib/social-cobranca'
+const DIA_MS = 86400000
 import type { SocialCard } from '../../api/_lib/social-domain'
 
 // João, 13/10/2026: "o José já fez ajustes de várias artes e não atualizou lá
@@ -150,5 +152,95 @@ describe('corte do que foi pedido', () => {
  })
  it('texto curto passa inteiro e sem reticência', () => {
   expect(corta('Mudar imagem do ultrasom mano.', 140)).toBe('Mudar imagem do ultrasom mano.')
+ })
+})
+
+// João, 13/10/2026: "ela deve ser inteligente a isso mesmo". Três rondas:
+// cobrar o cliente que não responde, avisar quando foi ao ar, lembrar da data.
+describe('cobrar o cliente que não respondeu', () => {
+ const enviada = (horas: number) => card({ stage: 'aguardando',
+  updated_at: new Date(AGORA - horas * 3600000).toISOString() })
+
+ it('só puxa depois de um dia inteiro de espera', () => {
+  expect(pecasComOCliente([enviada(23)], AGORA)).toHaveLength(0)
+  expect(pecasComOCliente([enviada(25)], AGORA)).toHaveLength(1)
+ })
+
+ it('não puxa peça que não está com o cliente', () => {
+  for (const stage of ['conferir', 'ajustes', 'aprovado', 'postado'])
+   expect(pecasComOCliente([card({ stage, updated_at: new Date(AGORA - 5 * DIA_MS).toISOString() })], AGORA)).toHaveLength(0)
+ })
+
+ it('o texto lembra sem cobrar seco e diz o que trava', () => {
+  const lista = pecasComOCliente([enviada(30)], AGORA)
+  lista[0].url = 'https://aprovar.svicompany.com.br/p/abc'
+  const t = textoDoCliente(lista, AGORA)
+  expect(t.startsWith('Bom dia, pessoal!')).toBe(true)
+  expect(t).toContain('mandei ontem')
+  expect(t).toContain('https://aprovar.svicompany.com.br/p/abc')
+  expect(t).toContain('não vai pro ar')
+  expect(t.toLowerCase()).not.toContain('a gente')
+ })
+
+ it('duas peças viram uma mensagem numerada, não duas', () => {
+  const t = textoDoCliente(pecasComOCliente([enviada(30), enviada(50)], AGORA), AGORA)
+  expect(t).toContain('ficaram 2 peças esperando')
+  expect(t).toContain('1. *')
+  expect(t).toContain('2. *')
+  expect(t.match(/Bom dia/g)).toHaveLength(1)
+ })
+})
+
+describe('data chegando', () => {
+ it('lê a data do título quando o contexto é de data', () => {
+  expect(dataDoTitulo('[DRA ERIKA] Out · Estático · Dia do Médico (18/10)', AGORA)).toBe(Date.parse('2026-10-18T23:59:00-03:00'))
+  expect(dataDoTitulo('[DR. BRENNO] 12/10 · Dia da Artrite', AGORA)).toBe(Date.parse('2026-10-12T23:59:00-03:00'))
+  expect(dataDoTitulo('QUA 14/10 18h · [GM GÁS] Out · Estático', AGORA)).toBe(Date.parse('2026-10-14T23:59:00-03:00'))
+ })
+
+ // O caso que estragaria tudo: "Carrossel ANUNCIO Meta 1/2" virando 1 de fevereiro.
+ it('não confunde numeração de peça com data', () => {
+  expect(dataDoTitulo('HOJE · [BRENNO] Carrossel ANUNCIO Meta 1/2: caso clinico artrose', AGORA)).toBeNull()
+  expect(dataDoTitulo('SPA NATURE · 5/5 · R03 Quem chega antes', AGORA)).toBeNull()
+  expect(dataDoTitulo('[DRA ENIA] Editar VIDEO 03 · 2/4', AGORA)).toBeNull()
+  expect(dataDoTitulo('Carrossel 3 slides sobre reforma', AGORA)).toBeNull()
+ })
+
+ it('data que já passou vira a do ano que vem, não a de trás', () => {
+  const t = dataDoTitulo('Natal (25/12)', AGORA)!
+  expect(new Date(t - 3 * 3600000).getUTCFullYear()).toBe(2026)
+  const passada = dataDoTitulo('Ano novo (01/01)', AGORA)!
+  expect(new Date(passada - 3 * 3600000).getUTCFullYear()).toBe(2027)
+  // Data de poucos dias atrás continua valendo como deste ano, para a peça
+  // atrasada ainda aparecer como "é hoje" em vez de sumir por um ano.
+  expect(new Date(dataDoTitulo('[GM GÁS] 12/10 · Estático', AGORA)! - 3 * 3600000).getUTCFullYear()).toBe(2026)
+ })
+
+ it('avisa com cinco dias e só de peça que não está pronta', () => {
+  const erika = card({ title: '[DRA ERIKA] Out · Estático · Dia do Médico (18/10)', stage: 'ajustes' })
+  const [p] = pecasComDataChegando([erika], AGORA)
+  expect(p.faltam).toBe(5)
+  expect(p.stage).toBe('ajustes')
+  for (const stage of ['agendado', 'postado', 'arquivado'])
+   expect(pecasComDataChegando([card({ ...erika, stage })], AGORA)).toHaveLength(0)
+ })
+
+ it('data longe não entra', () => {
+  expect(pecasComDataChegando([card({ title: 'Natal (25/12)', stage: 'ajustes' })], AGORA)).toHaveLength(0)
+ })
+
+ it('o aviso diz o dia, quanto falta e onde a peça está', () => {
+  const t = textoDasDatas(pecasComDataChegando([card({ title: '[DRA ERIKA] Out · Estático · Dia do Médico (18/10)', stage: 'ajustes' })], AGORA), AGORA)
+  expect(t).toContain('*18/10*')
+  expect(t).toContain('faltam 5 dias')
+  expect(t).toContain('ainda em ajuste')
+  expect(t).toContain('José')
+ })
+})
+
+describe('formatação do aviso de data', () => {
+ it('não deixa linha em branco dobrada entre o cabeçalho e a primeira peça', () => {
+  const t = textoDasDatas(pecasComDataChegando([card({ title: '[DRA ERIKA] Dia do Médico (18/10)', stage: 'ajustes' })], AGORA), AGORA)
+  expect(t).not.toContain('\n\n\n')
  })
 })

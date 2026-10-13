@@ -1,12 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createAdminClient } from './_lib/supabase.js'
-import { cobrarAjustes } from './_lib/social-cobranca.js'
+import { rondaDiaria } from './_lib/social-cobranca.js'
 
 /**
- * Chamada diária das peças em ajuste que não voltaram com arquivo novo.
+ * A ronda diária da Sofia, às 8h30 de Brasília, de segunda a sexta.
  *
- * Roda às 8h30 de Brasília, de segunda a sexta, pelo cron da Vercel. Uma
- * mensagem por grupo de designer e uma consolidada para o João.
+ * 1. Peça em ajuste que não voltou com arquivo novo: cobra o grupo do autor.
+ * 2. Peça parada com o cliente há mais de um dia: puxa no grupo do cliente,
+ *    com o MESMO link que já está com ele.
+ * 3. Data chegando e peça não pronta: avisa quem está com ela, e o João.
  */
 async function whats(jid: string, texto: string) {
  const token = process.env.SOCIAL_UAZ_TOKEN || ''
@@ -25,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
  if (!segredo) return res.status(503).json({ ok: false, error: 'cron_secret_ausente' })
  if ((req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim() !== segredo) return res.status(401).json({ ok: false, error: 'nao_autorizado' })
  try {
-  return res.json({ ok: true, ...await cobrarAjustes(createAdminClient(), whats) })
+  return res.json({ ok: true, ...await rondaDiaria(createAdminClient(), whats) })
  } catch (e) {
   const motivo = e instanceof Error ? e.message : 'erro'
   console.error('Cobrança de ajustes falhou', motivo)

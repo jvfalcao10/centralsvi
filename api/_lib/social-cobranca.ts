@@ -2,6 +2,8 @@ import type { createAdminClient } from './supabase.js'
 import type { SocialAsset, SocialCard } from './social-domain.js'
 import { clientFacingTitle } from './social-client-title.js'
 import { saudacao } from './social-client-message.js'
+import { grupoDoCliente } from './social-client-approval.js'
+import { approvalLink } from './social-approval-link.js'
 type DB = ReturnType<typeof createAdminClient>
 
 /**
@@ -128,7 +130,201 @@ export async function cobrarAjustes(
   // Uma falha de grupo não pode calar os outros nem o aviso do João.
   try { await enviar(jid, textoDoGrupo(lista, agora)); enviados++ } catch { /* segue */ }
  }
- const JOAO = '559492404033'
  try { await enviar(JOAO, textoDoJoao(paradas, orfas, agora)) } catch { /* segue */ }
  return { paradas: paradas.length, grupos: enviados, orfas: orfas.length }
+}
+
+// ---------------------------------------------------------------------------
+// Cobrar o CLIENTE que não respondeu
+// ---------------------------------------------------------------------------
+/**
+ * João, 13/10/2026: "cobrar o cliente que não responde, hoje a peça fica em
+ * aguardando cliente sem prazo e sem ninguém puxar".
+ *
+ * O link que vai na cobrança é o MESMO que já está com ele. Emitir link novo
+ * mataria o que ele talvez tenha aberto e deixaria dois endereços rodando.
+ */
+export type PecaNoCliente = { card_id: string; client: string; title: string; enviado_ms: number; dias: number; url: string | null }
+
+/** Um dia inteiro de espera antes de puxar. Cobrar no mesmo dia é afobação. */
+const ESPERA_CLIENTE = 24 * 3600000
+
+export function pecasComOCliente(cards: SocialCard[], agora = Date.now()): PecaNoCliente[] {
+ return cards
+  .filter(c => c.stage === 'aguardando')
+  .map(c => ({ c, enviado_ms: Date.parse(c.updated_at) }))
+  .filter(({ enviado_ms }) => Number.isFinite(enviado_ms) && agora - enviado_ms >= ESPERA_CLIENTE)
+  .map(({ c, enviado_ms }) => ({
+   card_id: c.id, client: c.client,
+   title: clientFacingTitle(c.client, c.title,
+    c.assets.some(a => c.selected_assets.includes(a.id) && a.type.startsWith('video/')),
+    c.selected_assets.length),
+   enviado_ms, dias: Math.floor((agora - enviado_ms) / DIA), url: null,
+  }))
+  .sort((a, b) => a.enviado_ms - b.enviado_ms)
+}
+
+const mandei = (dias: number) => dias <= 1 ? 'mandei ontem' : `mandei há ${dias} dias`
+
+export function textoDoCliente(pecas: PecaNoCliente[], agora = Date.now()) {
+ const uma = pecas.length === 1
+ const corpo = pecas.map((p, i) => {
+  const cabeca = uma ? `*${p.title}*` : `${i + 1}. *${p.title}*`
+  return p.url ? `${cabeca} (${mandei(p.dias)})\n${p.url}` : `${cabeca} (${mandei(p.dias)})`
+ })
+ return [`${saudacao(agora)}, pessoal!`, '',
+  uma ? 'Passando pra lembrar que ficou uma peça esperando vocês:' : `Passando pra lembrar que ficaram ${pecas.length} peças esperando vocês:`,
+  '', corpo.join('\n\n'), '',
+  // Sem cobrança seca: o cliente precisa saber o que acontece se não responder.
+  uma ? 'É só abrir e aprovar, ou me escrever o que quer mudar. Enquanto não tiver o seu ok, ela não vai pro ar.'
+      : 'É só abrir e aprovar, ou me escrever o que quer mudar. Enquanto não tiver o seu ok, elas não vão pro ar.',
+ ].join('\n')
+}
+
+// ---------------------------------------------------------------------------
+// Lembrar a data que está chegando
+// ---------------------------------------------------------------------------
+/**
+ * João, 13/10/2026: "lembrar da data quando a peça aprovada tem data marcada e
+ * está chegando perto, como o Dia do Médico em 18/10".
+ *
+ * A data vem do `scheduled_at` quando existe, e senão do próprio título, que
+ * na casa carrega o dia: "Dia do Médico (18/10)", "[DR. BRENNO] 12/10 · Dia da
+ * Artrite", "QUA 07/10 18h · ...".
+ */
+export type PecaComData = { card_id: string; author: string; client: string; title: string; data_ms: number; faltam: number; stage: string }
+
+/** Avisa com cinco dias: é o que dá pra refazer uma arte sem correria. */
+const JANELA_DATA = 5
+
+/**
+ * O dia que o título anuncia.
+ *
+ * O `dd/mm` só vale como data quando o contexto é de data. Sem isso, o
+ * "Carrossel ANUNCIO Meta 1/2" do Dr. Brenno viraria 1 de fevereiro.
+ */
+export function dataDoTitulo(titulo: string, agora: number): number | null {
+ const re = /(?:^|([\s(\[·|]))(\d{1,2})\/(\d{1,2})(?=\)|\s*·|\s*\||\s+\d{1,2}h|\s*$)/g
+ for (const m of String(titulo || '').matchAll(re)) {
+  const antes = m[1] || '', diaTexto = m[2]
+  // "Carrossel ANUNCIO Meta 1/2" e "SPA NATURE · 5/5 · R03" são numeração de
+  // peça, não data. Data de verdade nos títulos da casa vem com o dia em dois
+  // dígitos ("12/10", "QUA 07/10") ou entre parênteses ("(18/10)").
+  if (diaTexto.length < 2 && antes !== '(') continue
+  const dia = Number(diaTexto), mes = Number(m[3])
+  if (dia < 1 || dia > 31 || mes < 1 || mes > 12) continue
+  const hoje = new Date(agora - 3 * 3600000)
+  for (const ano of [hoje.getUTCFullYear(), hoje.getUTCFullYear() + 1]) {
+   const t = Date.parse(`${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}T23:59:00-03:00`)
+   if (Number.isFinite(t) && t > agora - 2 * DIA) return t
+  }
+ }
+ return null
+}
+
+export function dataDaPeca(card: SocialCard, agora: number): number | null {
+ const agendada = Date.parse(card.scheduled_at || '')
+ if (Number.isFinite(agendada)) return agendada
+ return dataDoTitulo(card.title, agora)
+}
+
+/**
+ * Dias de calendário em Brasília, não horas corridas.
+ *
+ * Por hora corrida, 18/10 visto do dia 13 dava 5,5 e virava 6, e a peça saía
+ * da janela de 5 dias. Quem lê conta no calendário: de 13 para 18 são 5.
+ */
+const diaDeBrasilia = (ms: number) => {
+ const d = new Date(ms - 3 * 3600000)
+ return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+}
+
+export function pecasComDataChegando(cards: SocialCard[], agora = Date.now()): PecaComData[] {
+ const prontas = ['agendado', 'postado', 'arquivado']
+ const lista: PecaComData[] = []
+ for (const card of cards) {
+  if (prontas.includes(card.stage)) continue
+  const data_ms = dataDaPeca(card, agora)
+  if (data_ms === null) continue
+  const faltam = Math.round((diaDeBrasilia(data_ms) - diaDeBrasilia(agora)) / DIA)
+  if (faltam < 0 || faltam > JANELA_DATA) continue
+  lista.push({ card_id: card.id, author: String(card.author || '').trim() || 'sem autor',
+   client: card.client, title: clientFacingTitle(card.client, card.title), data_ms, faltam, stage: card.stage })
+ }
+ return lista.sort((a, b) => a.data_ms - b.data_ms)
+}
+
+const emQuantos = (faltam: number) => faltam <= 0 ? 'é HOJE' : faltam === 1 ? 'é AMANHÃ' : `faltam ${faltam} dias`
+const diaCurto = (ms: number) => {
+ const d = new Date(ms - 3 * 3600000)
+ return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`
+}
+const ETAPA: Record<string, string> = { conferir: 'ainda em conferência', ajustes: 'ainda em ajuste',
+ aguardando: 'esperando o cliente aprovar', aprovado: 'aprovada, falta programar' }
+
+export function textoDasDatas(pecas: PecaComData[], agora = Date.now()) {
+ return [`${saudacao(agora)}! Data chegando e a peça não está pronta:`,
+  ...pecas.map(p => `*${diaCurto(p.data_ms)}* · ${p.client} · ${p.title}\n   ${emQuantos(p.faltam)}, ${ETAPA[p.stage] || p.stage} (${p.author})`),
+ ].join('\n\n')
+}
+
+// ---------------------------------------------------------------------------
+// As três rondas
+// ---------------------------------------------------------------------------
+const JOAO = '559492404033'
+
+export async function cobrarClientes(
+ db: DB, enviar: (jid: string, texto: string) => Promise<void>, agora = Date.now(),
+) {
+ const { data, error } = await db.from('central_social_cards').select('*').eq('stage', 'aguardando').limit(500)
+ if (error) throw new Error('cobranca_cliente_leitura_falhou')
+ const cards = (data || []) as SocialCard[]
+ const paradas = pecasComOCliente(cards, agora)
+ if (!paradas.length) return { clientes: 0, pecas: 0 }
+ const porCliente = new Map<string, PecaNoCliente[]>()
+ for (const p of paradas) porCliente.set(p.client, [...(porCliente.get(p.client) || []), p])
+ let clientes = 0, pecas = 0
+ for (const [cliente, lista] of porCliente) {
+  const grupo = grupoDoCliente(cliente)
+  // Cliente sem grupo único não é cobrado: mandar peça no grupo errado é pior
+  // que não cobrar.
+  if (!grupo) continue
+  for (const p of lista) {
+   const card = cards.find(c => c.id === p.card_id)
+   if (card) p.url = await approvalLink(db, card).catch(() => null)
+  }
+  try { await enviar(grupo.jid, textoDoCliente(lista, agora)); clientes++; pecas += lista.length } catch { /* segue */ }
+ }
+ return { clientes, pecas }
+}
+
+export async function lembrarDatas(
+ db: DB, enviar: (jid: string, texto: string) => Promise<void>, agora = Date.now(),
+) {
+ const { data, error } = await db.from('central_social_cards').select('*')
+  .not('stage', 'in', '(postado,arquivado,agendado)').limit(800)
+ if (error) throw new Error('lembrete_data_leitura_falhou')
+ const chegando = pecasComDataChegando((data || []) as SocialCard[], agora)
+ if (!chegando.length) return { pecas: 0, grupos: 0 }
+ const { data: grupos } = await db.from('central_social_feedback_groups').select('author,jid').eq('enabled', true)
+ let avisados = 0
+ for (const g of (grupos || []) as { author: string; jid: string }[]) {
+  // Para o grupo do autor só o que depende dele. Peça esperando o cliente é
+  // assunto da outra ronda.
+  const dele = chegando.filter(p => p.author === g.author && ['conferir', 'ajustes'].includes(p.stage))
+  if (!dele.length) continue
+  try { await enviar(g.jid, textoDasDatas(dele, agora)); avisados++ } catch { /* segue */ }
+ }
+ try { await enviar(JOAO, textoDasDatas(chegando, agora)) } catch { /* segue */ }
+ return { pecas: chegando.length, grupos: avisados }
+}
+
+export async function rondaDiaria(
+ db: DB, enviar: (jid: string, texto: string) => Promise<void>, agora = Date.now(),
+) {
+ // Uma ronda que falha não pode levar as outras junto.
+ const ajustes = await cobrarAjustes(db, enviar, agora).catch(e => ({ erro: String(e?.message || e) }))
+ const clientes = await cobrarClientes(db, enviar, agora).catch(e => ({ erro: String(e?.message || e) }))
+ const datas = await lembrarDatas(db, enviar, agora).catch(e => ({ erro: String(e?.message || e) }))
+ return { ajustes, clientes, datas }
 }

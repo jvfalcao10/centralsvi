@@ -71,3 +71,28 @@ export function mensagemDeAprovacao(p: {
  if (p.altaUrl) linhas.push('', posicao === 1 ? 'Se quiser o arquivo em alta qualidade:' : 'Arquivo em alta:', p.altaUrl)
  return linhas.join('\n').trim()
 }
+
+/**
+ * O aviso de que a peça foi ao ar, com o link do post.
+ *
+ * João, 13/10/2026: "avisar no grupo quando a peça for ao ar, com o link do
+ * post, fecha o ciclo e dá sensação de entrega". Hoje o cliente aprova e
+ * nunca mais ouve falar: a entrega acontece e ninguém conta.
+ */
+export function mensagemNoAr(p: {
+ client: string; title: string; url: string
+ video?: boolean; arquivos?: number; agora?: number; posicao?: number; total?: number
+}) {
+ const titulo = clientFacingTitle(p.client, p.title, !!p.video, p.arquivos || 1)
+ const total = Math.max(1, p.total || 1)
+ const posicao = Math.min(Math.max(1, p.posicao || 1), total)
+ const linhas: string[] = []
+ if (posicao === 1) {
+  linhas.push(`${saudacao(p.agora)}, pessoal!`, '')
+  linhas.push(total === 1 ? `*${titulo}* está no ar 🎉` : `Subiu tudo. A primeira é *${titulo}*`)
+ } else {
+  linhas.push(posicao === total && total > 2 ? `E a última é *${titulo}*` : `Essa é *${titulo}*`)
+ }
+ linhas.push('', p.url)
+ return linhas.join('\n').trim()
+}
