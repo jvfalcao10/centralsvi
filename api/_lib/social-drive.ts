@@ -105,6 +105,25 @@ export async function driveVideo(db:DB,job:Job,url:string) {
  return asset(finished)
 }
 
+/**
+ * Deixa UM arquivo do Drive legível por quem tem o link, e devolve o endereço.
+ *
+ * O cliente pede o vídeo em alta e o original mora na pasta da SVI, que
+ * ninguém de fora enxerga: sem isto o link só devolve "pedir acesso".
+ * Compartilha o ARQUIVO, nunca a pasta, então o ano, o mês e os outros
+ * clientes continuam fechados. Repetir é inofensivo, o Drive aceita a mesma
+ * permissão de novo, por isso não guarda estado.
+ */
+export async function linkDeDownload(driveId:string):Promise<string|null> {
+ if(!/^[A-Za-z0-9_-]{10,}$/.test(driveId))return null
+ try {
+  const r=await google(`/files/${driveId}/permissions?supportsAllDrives=true`,
+   {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'reader',type:'anyone'})})
+  if(!r.ok&&r.status!==409)return null
+ } catch { return null }
+ return `https://drive.google.com/file/d/${driveId}/view`
+}
+
 export function validDriveThumbnailURL(raw:string) {
  try {const u=new URL(raw);return u.protocol==='https:'&&/^lh\d+\.googleusercontent\.com$/.test(u.hostname)&&!u.username&&!u.password&&!u.port}catch{return false}
 }

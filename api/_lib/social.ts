@@ -7,6 +7,7 @@ import {moveManyCards} from './social-bulk.js'
 import { approvalLink, newApprovalLink } from './social-approval-link.js'
 import {clientReview,clientReviewCard,getClientLink,pendingClientCards} from './social-client.js'
 import {grupoDoCliente} from './social-client-approval.js'
+import {filaDoEnvioAoCliente} from './social-envio-cliente.js'
 import {formatoValido} from './social-token.js'
 import {socialMedia} from './social-media.js'
 import { previewPath } from './social-preview.js'
@@ -22,14 +23,6 @@ import { publicCard, socialPatch, socialMovePatch, staffMoveState, SocialError, 
 const fail = (status: number, message: string): never => { throw new SocialError(status, message) }
 const hash = (value: string) => createHash('sha256').update(value).digest('hex')
 /** A cópia leve do vídeo selecionado, quando já existe. */
-function videoDaPeca(card:SocialCard) {
- const a=card.assets.find(x=>card.selected_assets.includes(x.id)&&x.type.startsWith('video/')&&x.approval_path)
- return a?.approval_path||null
-}
-/** Tem vídeo do Drive esperando a cópia leve que o cron ainda vai fazer. */
-function videoAindaComprimindo(card:SocialCard) {
- return card.assets.some(x=>card.selected_assets.includes(x.id)&&x.type.startsWith('video/')&&x.storage==='drive'&&!x.approval_path)
-}
 export async function handleSocial(req: VercelRequest, res: VercelResponse) {
  if(req.query.robot==='1')return handleSocialRobot(req,res)
  if(req.query.publication_stream)return publicationPlayback(req,res)
@@ -164,41 +157,8 @@ export async function handleSocial(req: VercelRequest, res: VercelResponse) {
   // outros avisos, com nova tentativa e registro, em vez de disparar na hora:
   // uma falha de rede não pode sumir com o pedido de aprovação.
   if(action==='enviar_cliente'){
-   const grupo=grupoDoCliente(card.client)
-   if(!grupo)return res.json({ok:true,approval_url:approvalUrl,enviado:false,
-    motivo:'Não encontrei o grupo deste cliente no WhatsApp. Copie o link e mande você mesmo.'})
-   const atual=data as SocialCard
-   // Sem a legenda de propósito: ela já aparece na prévia do link e na própria
-   // página de aprovação. Repetir tudo no corpo deixa a mensagem longa e o
-   // cliente rola bastante antes de achar o que precisa fazer.
-   const aviso=[`${atual.client} · ${atual.title}`,'',
-    'Para aprovar ou pedir alteração, é só abrir:',approvalUrl||''].filter(Boolean).join('\n')
-   // A fila exige o evento que originou o envio, e é ele que dá rastro no
-   // histórico da peça. O apply acabou de registrar um; é esse que se usa.
-   const {data:evento}=await db.from('central_social_events').select('id')
-    .eq('card_id',atual.id).order('id',{ascending:false}).limit(1).maybeSingle()
-   const esperandoVideo=videoAindaComprimindo(atual)
-   // A fila recusa duas linhas do mesmo canal para o mesmo evento. O gatilho
-   // deixou de tratar esta ação justamente por isso: o destino aqui é o grupo
-   // do CLIENTE, e quem sabe qual é só o código.
-   const {error:erroFila}=evento?.id?await db.from('central_social_feedback_outbox').insert({
-    event_id:evento.id,card_id:atual.id,channel:'whatsapp',destination:grupo.jid,
-    payload:{client:atual.client,title:atual.title,revision:atual.revision,actor,action:'enviar_cliente',
-     comment:'',created_at:new Date().toISOString(),files:[],task_id:null,group_label:grupo.nome,texto_pronto:aviso,
-     // O cliente assiste no WhatsApp mesmo, que é onde ele já está. Vai o
-     // caminho, não a URL: quem envia assina na hora, então tentativa atrasada
-     // nunca cai em endereço vencido. Só a cópia leve viaja, porque o arquivo
-     // do editor tem bitrate de câmera e não passa no WhatsApp.
-     midia_path:videoDaPeca(atual)},
-    // Peça mandada minutos depois da entrega ainda não tem cópia leve. Segurar
-    // três minutos faz o cliente receber o vídeo junto do link, em vez de só o
-    // link. O cron pega por updated_at desc, e mandar para o cliente acabou de
-    // mexer na peça, então ela entra na frente.
-    ...(esperandoVideo?{next_attempt_at:new Date(Date.now()+180000).toISOString()}:{}),
-    status:'pending'}):{error:{message:'evento_nao_encontrado'}}
-   if(erroFila)return res.json({ok:true,approval_url:approvalUrl,enviado:false,
-    motivo:'A peça foi para Aguardando cliente, mas o envio não entrou na fila. Copie o link e mande você mesmo.'})
-   return res.json({ok:true,approval_url:approvalUrl,enviado:true,grupo:grupo.nome,aguardando_video:esperandoVideo})
+   const r=await filaDoEnvioAoCliente(db,data as SocialCard,approvalUrl||'',actor)
+   return res.json({ok:true,approval_url:approvalUrl,...r})
   }
   return res.json({ ok:true, approval_url: approvalUrl })
  } catch (error) {

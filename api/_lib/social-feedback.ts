@@ -2,6 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { SocialCard } from './social-domain.js'
 import { SocialError } from './social-domain.js'
 type DB=SupabaseClient
+// Envio de vídeo pelo uazapi é síncrono: ele responde depois de entregar.
+const PRAZO_MIDIA=75000
 export type FeedbackGroup={id:string;author:string;label:string;jid:string;enabled:boolean}
 export type FeedbackJob={id:number;event_id:number;card_id:string;channel:'clickup'|'whatsapp';destination:string;attempts:number;dispatched_at:string|null;created_at:string;payload:{client:string;title:string;revision:number;actor:string;action:string;comment:string;created_at:string;files:string[];task_id:string|null;group_label:string|null}}
 export function taskId(input:unknown) {
@@ -22,11 +24,11 @@ export async function feedbackContext(db:DB,card:SocialCard) {
 class DeliveryError extends Error {constructor(public code:string,public status:number,public ambiguous=false){super(code)}}
 // Atualizar tarefa no ClickUp é PUT; comentar é POST. Sem o método explícito,
 // o pedido de prazo virava um POST em /task/{id} e o ClickUp recusava.
-async function request(channel:'clickup'|'whatsapp',path:string,body?:Record<string,unknown>,metodo?:'POST'|'PUT') {
+async function request(channel:'clickup'|'whatsapp',path:string,body?:Record<string,unknown>,metodo?:'POST'|'PUT',prazo=12000) {
  const token=channel==='clickup'?process.env.SOCIAL_CLICKUP_TOKEN:process.env.SOCIAL_UAZ_TOKEN
  if(!token)throw new DeliveryError('configuration_missing',0)
  let r:Response
- try{r=await fetch((channel==='clickup'?'https://api.clickup.com/api/v2':'https://svicompany.uazapi.com')+path,{method:metodo||(body?'POST':'GET'),headers:channel==='clickup'?{Authorization:token,'Content-Type':'application/json'}:{token,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(12000)})}catch{throw new DeliveryError('provider_timeout',0,!!body)}
+ try{r=await fetch((channel==='clickup'?'https://api.clickup.com/api/v2':'https://svicompany.uazapi.com')+path,{method:metodo||(body?'POST':'GET'),headers:channel==='clickup'?{Authorization:token,'Content-Type':'application/json'}:{token,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(prazo)})}catch{throw new DeliveryError('provider_timeout',0,!!body)}
  if(!r.ok)throw new DeliveryError(`provider_${r.status}`,r.status,!!body&&r.status>=500)
  try{return await r.json()}catch{throw new DeliveryError('provider_response_invalid',0,!!body)}
 }
@@ -80,8 +82,21 @@ async function entregarNoWhats(job:FeedbackJob,text:string) {
   track_source:'central-social',track_id:`feedback-${job.event_id}`,async:false}
  const video=(job.payload as {midia_url?:string}).midia_url
  if(video){
-  try{return await request('whatsapp','/send/media',{...base,type:'video',file:video,text})}
-  catch{/* cai para o texto puro */}
+  // Prazo próprio e largo. O uazapi baixa o arquivo e sobe para o WhatsApp
+  // antes de responder, e com 12s a resposta chegava tarde em peça maior.
+  try{return await request('whatsapp','/send/media',{...base,type:'video',file:video,text},undefined,PRAZO_MIDIA)}
+  catch(e){
+   // Só recusa definitiva do provedor libera o texto puro. Tempo esgotado,
+   // 429, 5xx e corpo ilegível NÃO liberam: a mídia pode já ter sido aceita,
+   // e aí o texto virava uma SEGUNDA mensagem na tela do cliente, com a
+   // prévia do link mostrando o mesmo quadro de capa do vídeo. Medido em
+   // 13/10/2026: envio de 19s na Dra. Enia e de 17s na TE Mulher saiu
+   // duplicado; o de 9s no Spa Nature, não. Nesse caso a entrega fica
+   // incerta e a próxima passada acha a mensagem pelo track_id, sem
+   // reenviar nada.
+   const recusa=e instanceof DeliveryError&&e.status>=400&&e.status<500&&e.status!==429
+   if(!recusa)throw e
+  }
  }
  return request('whatsapp','/send/text',{...base,text,
   linkPreview:!!(job.payload as {texto_pronto?:string}).texto_pronto})

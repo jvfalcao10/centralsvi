@@ -32,3 +32,4 @@ supabase/.temp/
 supabase/.branches/
 .vercel
 scripts/backup_relatorios_*.json
+*.tsbuildinfo

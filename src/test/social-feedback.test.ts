@@ -132,3 +132,55 @@ describe('entrega no grupo do cliente',()=>{
  })
 })
 
+
+// João, 13/10/2026: "sofia ainda tá enviando às vezes vídeo e depois o link com
+// preview do vídeo". Medido: envio de 19s na Dra. Enia e 17s na TE Mulher saiu
+// duplicado, o de 9s no Spa Nature não. O fetch desistia em 12s, caía no texto
+// puro e mandava a segunda mensagem enquanto o uazapi terminava de entregar.
+describe('uma mensagem só para o cliente', () => {
+ const comVideo = {id:1,event_id:77,card_id:'c1',channel:'whatsapp',destination:'120363@g.us',attempts:0,
+  dispatched_at:null,created_at:new Date().toISOString(),
+  payload:{client:'Dra Enia',title:'Peça',revision:1,actor:'João',action:'enviar_cliente',comment:'',
+   created_at:new Date().toISOString(),files:[],task_id:null,group_label:'Grupo',
+   texto_pronto:'Bom dia!\n\n*Primeira consulta*\n\nPara aprovar, é só abrir:\nhttps://aprovar.svicompany.com.br/p/abc',
+   midia_url:'https://svicompany.uazapi.com/x.mp4'}} as never
+
+ const espiar = (resposta:(path:string)=>Promise<unknown>) => {
+  const paths:string[]=[]
+  if(!AbortSignal.timeout)vi.stubGlobal('AbortSignal',{...AbortSignal,timeout:()=>new AbortController().signal})
+  vi.stubGlobal('fetch',vi.fn(async(url:string)=>{paths.push(new URL(String(url)).pathname);return resposta(new URL(String(url)).pathname)}))
+  vi.stubEnv('SOCIAL_UAZ_TOKEN','t')
+  return paths
+ }
+
+ it('vídeo aceito manda uma vez e não manda o texto depois',async()=>{
+  const paths=espiar(async()=>({ok:true,json:async()=>({id:'m1'})}))
+  expect(await feedbackProvider.send(comVideo)).toBe('m1')
+  expect(paths).toEqual(['/send/media'])
+ })
+
+ it('tempo esgotado NÃO libera o texto: a mídia pode ter sido aceita',async()=>{
+  const paths=espiar(async(p)=>{if(p==='/send/media')throw new Error('aborted');return {ok:true,json:async()=>({id:'m2'})}})
+  await expect(feedbackProvider.send(comVideo)).rejects.toThrow()
+  expect(paths,'nada de segunda mensagem').toEqual(['/send/media'])
+ })
+
+ it('5xx também não libera o texto',async()=>{
+  const paths=espiar(async(p)=>({ok:p!=='/send/media',status:p==='/send/media'?502:200,json:async()=>({id:'m3'})}))
+  await expect(feedbackProvider.send(comVideo)).rejects.toThrow()
+  expect(paths).toEqual(['/send/media'])
+ })
+
+ it('recusa definitiva do provedor libera o texto, porque aí o link é o que importa',async()=>{
+  const paths=espiar(async(p)=>({ok:p!=='/send/media',status:p==='/send/media'?400:200,json:async()=>({id:'m4'})}))
+  expect(await feedbackProvider.send(comVideo)).toBe('m4')
+  expect(paths).toEqual(['/send/media','/send/text'])
+ })
+
+ it('peça sem vídeo segue indo como texto, uma vez',async()=>{
+  const semVideo={...(comVideo as object),payload:{...(comVideo as {payload:object}).payload,midia_url:undefined}} as never
+  const paths=espiar(async()=>({ok:true,json:async()=>({id:'m5'})}))
+  expect(await feedbackProvider.send(semVideo)).toBe('m5')
+  expect(paths).toEqual(['/send/text'])
+ })
+})
