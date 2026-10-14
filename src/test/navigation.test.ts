@@ -84,9 +84,9 @@ describe('Áreas de navegação', () => {
 describe('papel social media', () => {
   const nav = getVisibleNavigation({ can: () => false, isSocial: true })
 
-  it('vê Postagens, Moldes, Datas e Mapas', () => {
+  it('vê Postagens, Moldes, Datas, Mapas, Senhas e Acessos', () => {
     const urls = nav.main.flatMap(a => a.items.map(i => i.url))
-    expect(urls).toEqual(['/content/social', '/content/moldes', '/content/datas', '/mapas'])
+    expect(urls).toEqual(['/content/social', '/content/moldes', '/content/datas', '/mapas', '/senhas', '/acessos'])
   })
 
   it('não vê financeiro, resultados, comercial nem administração', () => {
@@ -94,5 +94,22 @@ describe('papel social media', () => {
     for (const fora of ['/financial', '/pipeline', '/dashboard', '/clients', '/tarefas'])
       expect(tudo).not.toContain(fora)
     expect(nav.footer).toHaveLength(0)
+  })
+})
+
+// João, 14/10/2026: "senhas das contas, Ray precisa ter acesso também".
+// Quem posta precisa entrar nas contas do cliente.
+describe('social media enxerga as senhas', () => {
+  const navSocial = () => getVisibleNavigation({ can: () => false, isSocial: true })
+
+  it('tem Senhas e Acessos no menu dela', () => {
+    const urls = navSocial().main.flatMap(a => a.items.map(i => i.url))
+    expect(urls).toContain('/senhas')
+    expect(urls).toContain('/acessos')
+  })
+
+  it('o menu do gestor de tráfego não mudou junto', () => {
+    const urls = getVisibleNavigation({ can: () => false, isTraffic: true }).main.flatMap(a => a.items.map(i => i.url))
+    expect(urls).not.toContain('/senhas')
   })
 })

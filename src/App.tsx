@@ -176,10 +176,11 @@ const App = () => (
                 <ProtectedRoute requiredRole="admin"><AppLayout><FinancialReview /></AppLayout></ProtectedRoute>
               } />
               <Route path="/acessos" element={
-                <ProtectedRoute requiredRole="executor"><AppLayout><Acessos /></AppLayout></ProtectedRoute>
+                <ProtectedRoute requiredRole="executor" allowSocial><AppLayout><Acessos /></AppLayout></ProtectedRoute>
               } />
+              {/* Quem posta precisa entrar nas contas do cliente. */}
               <Route path="/senhas" element={
-                <ProtectedRoute requiredRole="executor"><AppLayout><Senhas /></AppLayout></ProtectedRoute>
+                <ProtectedRoute requiredRole="executor" allowSocial><AppLayout><Senhas /></AppLayout></ProtectedRoute>
               } />
               <Route path="/processos" element={
                 <ProtectedRoute requiredRole="executor"><AppLayout><Processos /></AppLayout></ProtectedRoute>

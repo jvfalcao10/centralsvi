@@ -105,6 +105,14 @@ export const SOCIAL_AREAS: NavigationArea[] = [
   { id: 'mapas', title: 'Mapas', icon: 'map', direct: true, items: [
     { title: 'Mapas', url: '/mapas', minRole: 'social' },
   ] },
+  // Quem posta precisa entrar nas contas. João, 14/10/2026: "senhas das contas,
+  // Ray precisa ter acesso também".
+  { id: 'senhas', title: 'Senhas', icon: 'resources', direct: true, items: [
+    { title: 'Senhas dos clientes', url: '/senhas', minRole: 'social' },
+  ] },
+  { id: 'acessos', title: 'Acessos', icon: 'resources', direct: true, items: [
+    { title: 'Acessos e ferramentas', url: '/acessos', minRole: 'social' },
+  ] },
 ]
 
 export function getVisibleNavigation({ can, isTraffic = false, isSocial = false, isClient = false }: {
