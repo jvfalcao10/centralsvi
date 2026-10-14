@@ -40,6 +40,20 @@ async function discover(db:DB,source:string) {
   // que o João e a Sarah mandam, e nunca cria card.
   if(source==='whatsapp:clientes') {
    if(!process.env.SOCIAL_UAZ_TOKEN)throw new SyncError('configuration_missing')
+   // O nome da pasta no Drive tem que ser o MESMO que o quadro usa, senão o
+   // cliente abre duas pastas no mesmo mês: o grupo diz "Dra. Erika Figueiredo"
+   // e o card diz "DRA ERIKA FIGUEIREDO". Achado na primeira volta, 14/10.
+   const {data:catalogRows}=checked(await db.from('central_social_cards').select('client').limit(1000))
+   const catalogo=[...new Set((catalogRows||[]).map(c=>String(c.client||'')))].filter(c=>c&&c!=='Identificar cliente')
+   const nomeDoQuadro=(nome:string)=>{
+    const alvo=normalized(nome)
+    const exato=catalogo.find(c=>normalized(c)===alvo)
+    if(exato)return exato
+    // "Dra. Ésia" no grupo e "DRA. ÉSIA LOPES" no quadro são o mesmo cliente.
+    // Só vale quando UM nome do quadro contém o do grupo: dois seria chute.
+    const parciais=catalogo.filter(c=>normalized(c).includes(alvo)||alvo.includes(normalized(c)))
+    return parciais.length===1?parciais[0]:nome
+   }
    for(const [jid,grupo] of Object.entries(CLIENT_GROUPS)) {
     for(let offset=0;offset<400;offset+=100){
      const data=await uaz('/message/find',{chatid:jid,limit:100,offset})
@@ -49,7 +63,7 @@ async function discover(db:DB,source:string) {
      for(const message of data.messages){
       const raw=Number(message.messageTimestamp),timestamp=raw<1e12?raw*1000:raw
       if(timestamp<since){passou=true;continue}
-      const achado=videoParaArquivo(message,jid,grupo.client)
+      const achado=videoParaArquivo(message,jid,nomeDoQuadro(grupo.client))
       if(achado){rows.push(achado);count++}
      }
      await queue(db,rows)

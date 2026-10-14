@@ -77,3 +77,30 @@ describe('versão escrita no nome do arquivo', () => {
       .not.toBe(versaoDoNome('Dra Esia - outubro rosa v3.MP4').base)
   })
 })
+
+// Achado na primeira volta, 14/10: o grupo chama a cliente de "Dra. Erika
+// Figueiredo" e o quadro chama de "DRA ERIKA FIGUEIREDO". Sem alinhar, o mesmo
+// cliente abre duas pastas no Drive no mesmo mês.
+describe('nome da pasta do cliente', () => {
+  const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+  const resolver = (nome: string, catalogo: string[]) => {
+    const alvo = normalizar(nome)
+    const exato = catalogo.find(c => normalizar(c) === alvo)
+    if (exato) return exato
+    const parciais = catalogo.filter(c => normalizar(c).includes(alvo) || alvo.includes(normalizar(c)))
+    return parciais.length === 1 ? parciais[0] : nome
+  }
+  const CATALOGO = ['DRA ERIKA FIGUEIREDO', 'DRA. ÉSIA LOPES', 'Dra Enia', 'SPA NATURE', 'ALPHA FITNESS']
+
+  it('casa ignorando acento, caixa e pontuação', () =>
+    expect(resolver('Dra. Erika Figueiredo', CATALOGO)).toBe('DRA ERIKA FIGUEIREDO'))
+
+  it('casa quando o quadro usa o nome mais longo', () =>
+    expect(resolver('Dra. Ésia', CATALOGO)).toBe('DRA. ÉSIA LOPES'))
+
+  it('empate não vira chute, fica o nome do grupo', () =>
+    expect(resolver('Dra', ['Dra Enia', 'Dra Erika'])).toBe('Dra'))
+
+  it('cliente que o quadro não conhece fica com o nome do grupo', () =>
+    expect(resolver('Aerojet', CATALOGO)).toBe('Aerojet'))
+})
