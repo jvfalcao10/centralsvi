@@ -25,3 +25,23 @@ describe('radar de tendências por cliente', () => {
     expect(pedido).not.toContain('consultório')
   })
 })
+
+import { radarCategoryOf } from '@/types'
+
+describe('coluna do Radar a partir do segmento do cliente', () => {
+  it('põe cada segmento da coleta diária na coluna certa', () => {
+    expect(radarCategoryOf('Saude · Pediatria')).toBe('medico')
+    expect(radarCategoryOf('Saude · Enfermagem, saúde da mulher')).toBe('medico')
+    expect(radarCategoryOf('Advocacia · agrário, tributário, trabalhista e empresarial')).toBe('juridico')
+    expect(radarCategoryOf('Contabilidade · impostos, MEI, Simples Nacional e folha')).toBe('contabil')
+    expect(radarCategoryOf('Agro e investimentos · boi, soja, milho, câmbio e crédito')).toBe('agro')
+    expect(radarCategoryOf('energia_agro')).toBe('solar')
+  })
+
+  it('mantém as chaves lançadas à mão e ignora o que não reconhece', () => {
+    expect(radarCategoryOf('ia')).toBe('ia')
+    expect(radarCategoryOf('Medico')).toBe('medico')
+    expect(radarCategoryOf('varejo')).toBeNull()
+    expect(radarCategoryOf(null)).toBeNull()
+  })
+})

@@ -454,10 +454,10 @@ export const TREND_RELEVANCE_CONFIG: Record<TrendRelevance, { label: string; cla
 export type RadarScope = 'svi' | 'clientes'
 export type RadarCategory =
   | 'ia' | 'marketing' | 'vendas' | 'crm' | 'atendimento'
-  | 'medico' | 'agro' | 'solar'
+  | 'medico' | 'juridico' | 'contabil' | 'agro' | 'solar'
 
 export const SVI_CATEGORIES: RadarCategory[] = ['ia', 'marketing', 'vendas', 'crm', 'atendimento']
-export const CLIENT_CATEGORIES: RadarCategory[] = ['medico', 'agro', 'solar']
+export const CLIENT_CATEGORIES: RadarCategory[] = ['medico', 'juridico', 'contabil', 'agro', 'solar']
 
 export const RADAR_CATEGORY_CONFIG: Record<RadarCategory, {
   label: string
@@ -473,8 +473,29 @@ export const RADAR_CATEGORY_CONFIG: Record<RadarCategory, {
   crm:         { label: 'CRM',         scope: 'svi',      chipClass: 'border-sky-500/30 text-sky-300 hover:bg-sky-500/10',           activeChipClass: 'bg-sky-500/25 border-sky-500/60 text-sky-200',           dotClass: 'bg-sky-500',     columnClass: 'border-sky-500/30' },
   atendimento: { label: 'Atendimento', scope: 'svi',      chipClass: 'border-amber-500/30 text-amber-300 hover:bg-amber-500/10',     activeChipClass: 'bg-amber-500/25 border-amber-500/60 text-amber-200',     dotClass: 'bg-amber-500',   columnClass: 'border-amber-500/30' },
   medico:      { label: 'Médico',      scope: 'clientes', chipClass: 'border-teal-500/30 text-teal-300 hover:bg-teal-500/10',        activeChipClass: 'bg-teal-500/25 border-teal-500/60 text-teal-200',        dotClass: 'bg-teal-500',    columnClass: 'border-teal-500/30' },
+  juridico:    { label: 'Jurídico',    scope: 'clientes', chipClass: 'border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10',  activeChipClass: 'bg-indigo-500/25 border-indigo-500/60 text-indigo-200',  dotClass: 'bg-indigo-500',  columnClass: 'border-indigo-500/30' },
+  contabil:    { label: 'Contábil',    scope: 'clientes', chipClass: 'border-orange-500/30 text-orange-300 hover:bg-orange-500/10',  activeChipClass: 'bg-orange-500/25 border-orange-500/60 text-orange-200',  dotClass: 'bg-orange-500',  columnClass: 'border-orange-500/30' },
   agro:        { label: 'Agro',        scope: 'clientes', chipClass: 'border-lime-500/30 text-lime-300 hover:bg-lime-500/10',        activeChipClass: 'bg-lime-500/25 border-lime-500/60 text-lime-200',        dotClass: 'bg-lime-500',    columnClass: 'border-lime-500/30' },
   solar:       { label: 'Solar',       scope: 'clientes', chipClass: 'border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/10',  activeChipClass: 'bg-yellow-500/25 border-yellow-500/60 text-yellow-200',  dotClass: 'bg-yellow-500',  columnClass: 'border-yellow-500/30' },
+}
+
+/**
+ * Categoria do Radar a partir do que está gravado em `content_trends.category`.
+ * Tendência lançada à mão já vem com a chave ('medico', 'ia'...). A coleta
+ * diária grava o segmento do cliente ("Saude · Pediatria", "Advocacia · ..."),
+ * que antes não casava com coluna nenhuma e sumia da tela (14/10/2026).
+ */
+export function radarCategoryOf(raw: string | null | undefined): RadarCategory | null {
+  if (!raw) return null
+  const k = raw.toLowerCase().trim()
+  if (k in RADAR_CATEGORY_CONFIG) return k as RadarCategory
+  const s = k.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  if (/^(saude|enferm|clinica|medic|odonto)/.test(s)) return 'medico'
+  if (/advoca|juridic|direito/.test(s)) return 'juridico'
+  if (/contab|imposto|tribut|fiscal/.test(s)) return 'contabil'
+  if (/solar|energia/.test(s)) return 'solar'
+  if (/agro|soja|boi|rural|investiment/.test(s)) return 'agro'
+  return null
 }
 
 export const SVI_CATEGORY_KEYS = SVI_CATEGORIES as readonly RadarCategory[]

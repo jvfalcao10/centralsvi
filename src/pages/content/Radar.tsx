@@ -18,6 +18,7 @@ import {
   SVI_CATEGORIES,
   CLIENT_CATEGORIES,
   formatTimestamp,
+  radarCategoryOf,
 } from '@/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -89,10 +90,16 @@ function categoriesForScope(scope: RadarScope): RadarCategory[] {
   return scope === 'svi' ? SVI_CATEGORIES : CLIENT_CATEGORIES
 }
 
-function normalizeCategory(raw: string | null | undefined): RadarCategory | null {
-  if (!raw) return null
-  const k = raw.toLowerCase().trim() as RadarCategory
-  return k in RADAR_CATEGORY_CONFIG ? k : null
+const normalizeCategory = radarCategoryOf
+
+/** Equipe abre vendo o radar diário de todos os clientes, não só as globais. */
+const TODOS_CLIENTES = '__todos__'
+
+/** Nome de cartão: sem razão social e sem caixa alta ("RAFAEL MELO SOCIEDADE..." vira "Rafael Melo"). */
+function nomeCurto(nome: string): string {
+  let x = nome.replace(/\s+(SOCIEDADE|LTDA|EIRELI)\b.*$/i, '').trim()
+  if (x === x.toUpperCase()) x = x.toLowerCase().replace(/(^|\s)\S/g, m => m.toUpperCase())
+  return x
 }
 
 export default function Radar() {
@@ -104,9 +111,11 @@ export default function Radar() {
   const [clientId, setClientId] = useState<string | null>(null)
 
   const [staffClients, setStaffClients] = useState<StaffClient[]>([])
-  const [selectedStaffClientId, setSelectedStaffClientId] = useState<string>('')
+  // Clientes com radar ligado, por função própria: a social media não lê a view operacional.
+  const [radarClientes, setRadarClientes] = useState<{ id: string; name: string }[]>([])
+  const [selectedStaffClientId, setSelectedStaffClientId] = useState<string>(TODOS_CLIENTES)
 
-  const [scope, setScope] = useState<RadarScope>('svi')
+  const [scope, setScope] = useState<RadarScope>('clientes')
   const [selectedCats, setSelectedCats] = useState<Set<RadarCategory>>(new Set())
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban')
 
@@ -140,11 +149,28 @@ export default function Radar() {
           .select('id, name, company')
           .order('name')
         setStaffClients((data || []) as StaffClient[])
+        const { data: radar } = await supabase.rpc('radar_clientes')
+        setRadarClientes((radar || []) as { id: string; name: string }[])
       }
     })()
   }, [isClient, isStaff])
 
-  const activeClientId = isClient ? clientId : (selectedStaffClientId || null)
+  const todosClientes = isStaff && selectedStaffClientId === TODOS_CLIENTES
+  const activeClientId = isClient
+    ? clientId
+    : (selectedStaffClientId && selectedStaffClientId !== TODOS_CLIENTES ? selectedStaffClientId : null)
+  const nomeCliente = useCallback(
+    (id: string | null) => {
+      if (!id) return null
+      const nome = radarClientes.find(c => c.id === id)?.name ?? staffClients.find(c => c.id === id)?.name
+      return nome ? nomeCurto(nome) : null
+    },
+    [radarClientes, staffClients],
+  )
+  const idsRadar = useMemo(() => new Set(radarClientes.map(c => c.id)), [radarClientes])
+  const opcoesCliente: StaffClient[] = staffClients.length
+    ? staffClients
+    : radarClientes.map(c => ({ id: c.id, name: c.name, company: '' }))
 
   const fetchTrends = useCallback(async () => {
     setLoading(true)
@@ -154,7 +180,7 @@ export default function Radar() {
       q = q.or(`client_id.is.null,client_id.eq.${activeClientId}`)
     } else if (isStaff && activeClientId) {
       q = q.or(`client_id.is.null,client_id.eq.${activeClientId}`)
-    } else if (isStaff && !activeClientId) {
+    } else if (isStaff && !activeClientId && !todosClientes) {
       q = q.is('client_id', null)
     }
 
@@ -166,7 +192,7 @@ export default function Radar() {
       setTrends((data || []) as ContentTrend[])
     }
     setLoading(false)
-  }, [isClient, isStaff, activeClientId, toast])
+  }, [isClient, isStaff, activeClientId, todosClientes, toast])
 
   useEffect(() => {
     if (isClient && !clientId) return
@@ -182,6 +208,8 @@ export default function Radar() {
   const filtered = useMemo(() => {
     const now = Date.now()
     return trends.filter(t => {
+      // Em "Todos os clientes" só entra quem está com o radar ligado hoje.
+      if (todosClientes && t.client_id && !idsRadar.has(t.client_id)) return false
       const cat = normalizeCategory(t.category)
       if (!cat) return false
       if (!scopeCategories.includes(cat)) return false
@@ -195,7 +223,7 @@ export default function Radar() {
       }
       return true
     })
-  }, [trends, scopeCategories, selectedCats, relevanceFilter, sourceFilter, periodFilter])
+  }, [trends, scopeCategories, selectedCats, relevanceFilter, sourceFilter, periodFilter, todosClientes, idsRadar])
 
   const visibleColumns = useMemo(() => {
     return selectedCats.size > 0
@@ -364,9 +392,10 @@ export default function Radar() {
             >
               <SelectTrigger className="w-56"><SelectValue placeholder="Cliente (opcional)" /></SelectTrigger>
               <SelectContent>
+                <SelectItem value={TODOS_CLIENTES}>Todos os clientes</SelectItem>
                 <SelectItem value="__global__">Apenas globais</SelectItem>
-                {staffClients.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.name} — {c.company}</SelectItem>
+                {opcoesCliente.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{[c.name, c.company].filter(Boolean).join(' · ')}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -481,12 +510,14 @@ export default function Radar() {
       ) : viewMode === 'kanban' ? (
         <KanbanView
           columns={grouped}
+          nomeCliente={nomeCliente}
           onConvert={openConvert}
           onDelete={isStaff ? setDeleteTarget : undefined}
         />
       ) : (
         <ListView
           items={filtered}
+          nomeCliente={nomeCliente}
           onConvert={openConvert}
           onDelete={isStaff ? setDeleteTarget : undefined}
         />
@@ -590,8 +621,8 @@ export default function Radar() {
                     <SelectValue placeholder="Selecionar..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {staffClients.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.name} — {c.company}</SelectItem>
+                    {opcoesCliente.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{[c.name, c.company].filter(Boolean).join(' · ')}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -736,15 +767,16 @@ export default function Radar() {
 
 interface ViewProps {
   items: ContentTrend[]
+  nomeCliente: (id: string | null) => string | null
   onConvert: (t: ContentTrend) => void
   onDelete?: (t: ContentTrend) => void
 }
 
-function ListView({ items, onConvert, onDelete }: ViewProps) {
+function ListView({ items, nomeCliente, onConvert, onDelete }: ViewProps) {
   return (
     <div className="space-y-2">
       {items.map(t => (
-        <TrendCard key={t.id} trend={t} onConvert={onConvert} onDelete={onDelete} variant="full" />
+        <TrendCard key={t.id} trend={t} cliente={nomeCliente(t.client_id)} onConvert={onConvert} onDelete={onDelete} variant="full" />
       ))}
     </div>
   )
@@ -752,11 +784,12 @@ function ListView({ items, onConvert, onDelete }: ViewProps) {
 
 interface KanbanProps {
   columns: { cat: RadarCategory; items: ContentTrend[] }[]
+  nomeCliente: (id: string | null) => string | null
   onConvert: (t: ContentTrend) => void
   onDelete?: (t: ContentTrend) => void
 }
 
-function KanbanView({ columns, onConvert, onDelete }: KanbanProps) {
+function KanbanView({ columns, nomeCliente, onConvert, onDelete }: KanbanProps) {
   return (
     <div className="flex gap-3 overflow-x-auto pb-3 -mx-1 px-1 snap-x">
       {columns.map(col => {
@@ -786,6 +819,7 @@ function KanbanView({ columns, onConvert, onDelete }: KanbanProps) {
                   <TrendCard
                     key={t.id}
                     trend={t}
+                    cliente={nomeCliente(t.client_id)}
                     onConvert={onConvert}
                     onDelete={onDelete}
                     variant="compact"
@@ -806,12 +840,13 @@ function KanbanView({ columns, onConvert, onDelete }: KanbanProps) {
 
 interface TrendCardProps {
   trend: ContentTrend
+  cliente: string | null
   onConvert: (t: ContentTrend) => void
   onDelete?: (t: ContentTrend) => void
   variant: 'full' | 'compact'
 }
 
-function TrendCard({ trend: t, onConvert, onDelete, variant }: TrendCardProps) {
+function TrendCard({ trend: t, cliente, onConvert, onDelete, variant }: TrendCardProps) {
   const rel = TREND_RELEVANCE_CONFIG[t.relevance]
   const cat = normalizeCategory(t.category)
   const catCfg = cat ? RADAR_CATEGORY_CONFIG[cat] : null
@@ -830,6 +865,11 @@ function TrendCard({ trend: t, onConvert, onDelete, variant }: TrendCardProps) {
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 border-border">
                 <span className={cn('h-1 w-1 rounded-full mr-1', catCfg.dotClass)} />
                 {catCfg.label}
+              </Badge>
+            )}
+            {cliente && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 border-primary/40 text-primary max-w-[11rem] truncate">
+                {cliente}
               </Badge>
             )}
             {!compact && (
