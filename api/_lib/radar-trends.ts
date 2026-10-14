@@ -11,6 +11,11 @@ import { createAdminClient } from './supabase.js';
  * A busca é por segmento, não por cliente: dois clientes de varejo recebem a
  * mesma leitura de mercado e a consulta roda uma vez só.
  *
+ * Só entra quem tem `radar_ativo` ligado no cadastro (14/10/2026, João: "pra
+ * todos os clientes não compensa"). Notícia vira post em advocacia, agro,
+ * contabilidade e médico; no resto é ruído. Médico recebe só o que é do
+ * nicho dele, e `radar_nota` carrega foco e formato do cliente.
+ *
  * O que vem daqui é notícia com fonte e link, não conselho. O resumo diz por
  * que aquilo interessa a quem produz conteúdo no nicho, e nada mais.
  */
@@ -37,6 +42,32 @@ Regras:
   conteúdo nesse nicho, e o gancho sugere o ângulo de pauta, sem prometer nada.
 - Se não houver nada relevante e recente, devolva a lista vazia. Não invente.
 Responda apenas no formato JSON pedido, em português do Brasil.`;
+
+/** Trava de nicho pra médico: o radar trazia mutirão de outro estado, ala nova
+ *  de hospital e investimento de farmacêutica, que não viram post pro paciente. */
+const REGRA_SAUDE = `Este segmento é um consultório dessa especialidade no interior do Pará.
+Traga só o que o paciente dessa especialidade sente, pergunta ou precisa saber:
+doença, sintoma, tratamento aprovado, campanha nacional de saúde, dado nacional
+novo, regra da Anvisa, do Ministério da Saúde ou do CFM que muda algo pra ele.
+Fica de fora: inauguração ou ala nova de hospital, mutirão ou ação local de outro
+estado ou cidade, congresso, capacitação de profissional, investimento de
+empresa, gestão hospitalar, plano de saúde em geral, economia e política.
+O gancho fala com o paciente, nunca com outro médico.`;
+
+export function ehSaude(segmento: string): boolean {
+  return segmento
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .startsWith('saude');
+}
+
+export function pedidoDoSegmento(segmento: string, nota: string | null): string {
+  const partes = [`Segmento: ${segmento}. País: Brasil.`];
+  if (ehSaude(segmento)) partes.push(REGRA_SAUDE);
+  if (nota) partes.push(`Foco e formato deste cliente: ${nota}`);
+  return partes.join('\n\n');
+}
 
 type Item = {
   titulo: string;
@@ -90,7 +121,7 @@ function texto(valor: unknown, limite: number): string | null {
   return limpo ? limpo.slice(0, limite) : null;
 }
 
-async function buscarSegmento(segmento: string, chave: string): Promise<Item[]> {
+async function buscarSegmento(segmento: string, nota: string | null, chave: string): Promise<Item[]> {
   const controle = new AbortController();
   const relogio = setTimeout(() => controle.abort(), TIMEOUT_MS);
   try {
@@ -105,7 +136,7 @@ async function buscarSegmento(segmento: string, chave: string): Promise<Item[]> 
         search_recency_filter: 'week',
         messages: [
           { role: 'system', content: PROMPT },
-          { role: 'user', content: `Segmento: ${segmento}. País: Brasil.` },
+          { role: 'user', content: pedidoDoSegmento(segmento, nota) },
         ],
         response_format: { type: 'json_schema', json_schema: { schema: ESQUEMA } },
       }),
@@ -142,7 +173,8 @@ export async function handleRadarTrends(req: VercelRequest, res: VercelResponse)
 
   const { data: clientes, error: erroClientes } = await admin
     .from('clients')
-    .select('id, segment')
+    .select('id, segment, radar_nota')
+    .eq('radar_ativo', true)
     .not('segment', 'is', null);
 
   if (erroClientes) {
@@ -150,17 +182,21 @@ export async function handleRadarTrends(req: VercelRequest, res: VercelResponse)
   }
 
   // Um segmento, uma consulta, mesmo que vários clientes compartilhem.
-  const porSegmento = new Map<string, string[]>();
-  for (const cliente of clientes || []) {
-    const segmento = texto((cliente as any).segment, 120);
+  // A nota entra na chave: mesmo segmento com foco diferente é outra consulta.
+  const porSegmento = new Map<string, { segmento: string; nota: string | null; ids: string[] }>();
+  type LinhaCliente = { id: string; segment: string | null; radar_nota: string | null };
+  for (const cliente of (clientes || []) as LinhaCliente[]) {
+    const segmento = texto(cliente.segment, 120);
     if (!segmento) continue;
-    if (!porSegmento.has(segmento)) porSegmento.set(segmento, []);
-    porSegmento.get(segmento)!.push((cliente as any).id);
+    const nota = texto(cliente.radar_nota, 400);
+    const chaveGrupo = `${segmento}||${nota || ''}`;
+    if (!porSegmento.has(chaveGrupo)) porSegmento.set(chaveGrupo, { segmento, nota, ids: [] });
+    porSegmento.get(chaveGrupo)!.ids.push(cliente.id);
   }
 
   const segmentos = [...porSegmento.keys()];
   if (!segmentos.length) {
-    return res.status(200).json({ ok: true, message: 'nenhum segmento cadastrado', segmentos: 0 });
+    return res.status(200).json({ ok: true, message: 'nenhum cliente com radar ligado', segmentos: 0 });
   }
 
   // O que já entrou recentemente não entra de novo, nem que a busca repita a fonte.
@@ -180,18 +216,19 @@ export async function handleRadarTrends(req: VercelRequest, res: VercelResponse)
   for (let i = 0; i < segmentos.length; i += SEGMENTOS_POR_LOTE) {
     const lote = segmentos.slice(i, i + SEGMENTOS_POR_LOTE);
     const resultados = await Promise.all(
-      lote.map(async segmento => {
+      lote.map(async grupo => {
+        const { segmento, nota } = porSegmento.get(grupo)!;
         try {
-          return { segmento, itens: await buscarSegmento(segmento, chave) };
+          return { grupo, segmento, itens: await buscarSegmento(segmento, nota, chave) };
         } catch (e: any) {
           falhas.push(`${segmento}: ${String(e?.message || 'falha').slice(0, 120)}`);
-          return { segmento, itens: [] as Item[] };
+          return { grupo, segmento, itens: [] as Item[] };
         }
       }),
     );
 
-    for (const { segmento, itens } of resultados) {
-      const alvos = porSegmento.get(segmento) || [];
+    for (const { grupo, segmento, itens } of resultados) {
+      const alvos = porSegmento.get(grupo)?.ids || [];
       for (const item of itens) {
         const url = urlPublica(item?.url);
         const titulo = texto(item?.titulo, 300);

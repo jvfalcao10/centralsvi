@@ -3,7 +3,7 @@ import { clientPath } from '@/lib/client-management'
 import { fetchAllRows } from '@/lib/data-access'
 import DataLoadError from '@/components/DataLoadError'
 import { useEffect, useState, useCallback } from 'react'
-import { Search, Eye, Building2, User, Plus, Pencil, Trash2, MessageSquare, Send, ExternalLink, Instagram, Handshake } from 'lucide-react'
+import { Search, Eye, Building2, User, Plus, Pencil, Trash2, MessageSquare, Send, ExternalLink, Instagram, Handshake, Radar as RadarIcon } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
@@ -47,6 +47,8 @@ const EMPTY_FORM = {
   permuta: false,
   permuta_ate: '',
   cobranca_inicio: '',
+  radar_ativo: false,
+  radar_nota: '',
 }
 
 const INTERACTION_TYPES = [
@@ -130,6 +132,8 @@ export default function Clients() {
       permuta: client.permuta ?? false,
       permuta_ate: client.permuta_ate ? client.permuta_ate.slice(0, 10) : '',
       cobranca_inicio: client.cobranca_inicio ? client.cobranca_inicio.slice(0, 10) : '',
+      radar_ativo: client.radar_ativo ?? false,
+      radar_nota: client.radar_nota || '',
     })
     setFormErrors({})
     setShowForm(true)
@@ -175,6 +179,8 @@ export default function Clients() {
       // sem data = permuta sem prazo
       permuta_ate: form.permuta && form.permuta_ate ? form.permuta_ate : null,
       cobranca_inicio: form.cobranca_inicio || null,
+      radar_ativo: form.radar_ativo,
+      radar_nota: form.radar_nota.trim() || null,
     }
     const { error } = editingClient
       ? await supabase.from('clients').update(payload).eq('id', editingClient.id)
@@ -567,6 +573,40 @@ export default function Clients() {
             </div>
 
             {/* Permuta: cliente ativo que não paga em dinheiro */}
+            <div className="rounded-lg border border-border p-3 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="cf-radar" className="text-sm flex items-center gap-1.5">
+                    <RadarIcon className="h-3.5 w-3.5 text-primary" /> Radar de tendências
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Busca todo dia notícia do segmento deste cliente e entra no resumo das 7h30 da social media. Ligue só onde notícia vira post.
+                  </p>
+                </div>
+                <Switch
+                  id="cf-radar"
+                  checked={form.radar_ativo}
+                  onCheckedChange={v => setField('radar_ativo', v)}
+                />
+              </div>
+              {form.radar_ativo && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="cf-radar-nota" className="text-xs">Foco e formato (opcional)</Label>
+                  <Textarea
+                    id="cf-radar-nota"
+                    rows={2}
+                    maxLength={400}
+                    placeholder="Ex: pauta pra post estático ou carrossel, nunca vídeo."
+                    value={form.radar_nota}
+                    onChange={e => setField('radar_nota', e.target.value)}
+                  />
+                  {!form.segment.trim() && (
+                    <p className="text-xs text-warning">Sem segmento preenchido o radar não tem o que buscar.</p>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="rounded-lg border border-border p-3 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">

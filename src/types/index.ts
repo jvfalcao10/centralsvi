@@ -53,6 +53,10 @@ export interface Client {
   /** Data da PRIMEIRA cobrança, quando difere do início do contrato (carência,
    *  cortesia, contrato assinado antes de começar). Nulo = regra padrão. */
   cobranca_inicio: string | null
+  /** Radar de tendências: coleta diária ligada só onde notícia vira post. */
+  radar_ativo?: boolean
+  /** Foco e formato que o radar respeita pra este cliente. */
+  radar_nota?: string | null
   created_at: string
   updated_at: string
 }
