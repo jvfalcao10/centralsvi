@@ -310,7 +310,7 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="/content/radar" element={
-                <ProtectedRoute requiredRole="executor" allowClient>
+                <ProtectedRoute requiredRole="executor" allowClient allowSocial>
                   <AutoLayout><Radar /></AutoLayout>
                 </ProtectedRoute>
               } />

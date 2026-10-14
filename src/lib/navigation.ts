@@ -102,6 +102,11 @@ export const SOCIAL_AREAS: NavigationArea[] = [
   { id: 'datas', title: 'Datas', icon: 'resources', direct: true, items: [
     { title: 'Datas estratégicas', url: '/content/datas', minRole: 'social' },
   ] },
+  // Tendência e notícia do nicho de cada cliente, de onde a pauta nasce.
+  // João, 14/10/2026: tendência vai pra Central, não fica no Perplexity.
+  { id: 'radar', title: 'Radar', icon: 'operations', direct: true, items: [
+    { title: 'Radar de tendências', url: '/content/radar', minRole: 'social' },
+  ] },
   { id: 'mapas', title: 'Mapas', icon: 'map', direct: true, items: [
     { title: 'Mapas', url: '/mapas', minRole: 'social' },
   ] },

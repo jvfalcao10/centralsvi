@@ -86,7 +86,7 @@ describe('papel social media', () => {
 
   it('vê Postagens, Moldes, Datas, Mapas, Senhas e Acessos', () => {
     const urls = nav.main.flatMap(a => a.items.map(i => i.url))
-    expect(urls).toEqual(['/content/social', '/content/moldes', '/content/datas', '/mapas', '/senhas', '/acessos'])
+    expect(urls).toEqual(['/content/social', '/content/moldes', '/content/datas', '/content/radar', '/mapas', '/senhas', '/acessos'])
   })
 
   it('não vê financeiro, resultados, comercial nem administração', () => {
