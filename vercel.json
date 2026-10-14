@@ -185,10 +185,6 @@
  ],
  "crons": [
   {
-   "path": "/api/radar-trends?extra=hoje",
-   "schedule": "30 14 14 10 *"
-  },
-  {
    "path": "/api/radar-trends",
    "schedule": "0 10 * * *"
   },

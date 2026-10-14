@@ -22,7 +22,9 @@ import { createAdminClient } from './supabase.js';
 
 const ENDPOINT = 'https://api.perplexity.ai/chat/completions';
 const MODELO = 'sonar';
-const SEGMENTOS_POR_LOTE = 4;
+// 4 em paralelo levou HTTP 429 em 3 de 12 grupos (14/10). Dois por vez e nova tentativa.
+const SEGMENTOS_POR_LOTE = 2;
+const TENTATIVAS_429 = 3;
 const ITENS_POR_SEGMENTO = 4;
 const TIMEOUT_MS = 45000;
 const JANELA_DIAS = 10;
@@ -122,6 +124,18 @@ function texto(valor: unknown, limite: number): string | null {
 }
 
 async function buscarSegmento(segmento: string, nota: string | null, chave: string): Promise<Item[]> {
+  for (let tentativa = 1; ; tentativa++) {
+    try {
+      return await buscarUmaVez(segmento, nota, chave);
+    } catch (e: unknown) {
+      const limite = e instanceof Error && e.message.includes('HTTP 429');
+      if (!limite || tentativa >= TENTATIVAS_429) throw e;
+      await new Promise(r => setTimeout(r, 4000 * tentativa));
+    }
+  }
+}
+
+async function buscarUmaVez(segmento: string, nota: string | null, chave: string): Promise<Item[]> {
   const controle = new AbortController();
   const relogio = setTimeout(() => controle.abort(), TIMEOUT_MS);
   try {
