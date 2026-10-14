@@ -102,7 +102,10 @@ export async function driveVideo(db:DB,job:Job,url:string) {
   }
  }finally{await reader.cancel().catch(()=>{});reader.releaseLock()}
  if(read!==total||offset!==total||!finished)throw new Error('drive_source_size')
- return asset(finished)
+ const pronto=asset(finished)
+ // Subiu a versão nova: a antiga sai da pasta do cliente.
+ await aposentarVersoesAntigas(parent,String(p.name||''),String(finished.id))
+ return pronto
 }
 
 /**
@@ -122,6 +125,50 @@ export async function linkDeDownload(driveId:string):Promise<string|null> {
   if(!r.ok&&r.status!==409)return null
  } catch { return null }
  return `https://drive.google.com/file/d/${driveId}/view`
+}
+
+/**
+ * Versão escrita no nome do arquivo. "... v3.MP4" devolve 3, sem marcador é 1.
+ *
+ * Só marcador explícito conta. João escolheu assim em 14/10/2026: juntar
+ * "LEGENDADO", "CAPTIONS" e "FINAL" como etapas da mesma peça resolveria o
+ * caso da Dra. Érika, mas arrisca apagar peça distinta de nome parecido.
+ */
+export function versaoDoNome(nome:string) {
+ const sem=String(nome||'').replace(/\.[^.]+$/,'')
+ const puro=sem.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
+ const m=puro.match(/\bv(\d{1,3})\b\s*$/)
+ return {base:puro.replace(/\s*\bv\d{1,3}\b\s*$/,'').replace(/[^a-z0-9]+/g,' ').trim(),versao:m?Number(m[1]):1}
+}
+
+/**
+ * Deixa na pasta do cliente só a última versão da peça.
+ *
+ * João, 14/10/2026: "no Drive tá v1 e v2, quero somente o vídeo que de fato
+ * foi o último, a versão enviada". Antes desta regra o Drive guardava as duas
+ * e ninguém sabia qual era a boa: 15 arquivos velhos no primeiro inventário.
+ *
+ * Manda para a LIXEIRA, não apaga: o Drive guarda 30 dias, e versão errada
+ * removida por engano precisa ter volta.
+ */
+export async function aposentarVersoesAntigas(parent:string,nome:string,manterId:string) {
+ const novo=versaoDoNome(nome)
+ if(!novo.base)return []
+ const aposentados:string[]=[]
+ try {
+  const r=await google(`/files?q=${encodeURIComponent(`'${parent}' in parents and trashed=false`)}&fields=${encodeURIComponent('files(id,name,mimeType)')}&pageSize=1000`)
+  if(!r.ok)return []
+  const {files=[]}=await r.json() as {files:{id:string;name:string;mimeType:string}[]}
+  for(const f of files){
+   if(f.id===manterId||!String(f.mimeType||'').startsWith('video/'))continue
+   const velho=versaoDoNome(f.name)
+   if(velho.base!==novo.base||velho.versao>=novo.versao)continue
+   const t=await google(`/files/${f.id}?supportsAllDrives=true`,{method:'PATCH',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({trashed:true})})
+   if(t.ok)aposentados.push(f.name)
+  }
+ } catch { /* arquivar o novo vale mais que limpar o velho */ }
+ return aposentados
 }
 
 export function validDriveThumbnailURL(raw:string) {

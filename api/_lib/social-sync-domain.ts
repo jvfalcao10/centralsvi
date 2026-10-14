@@ -12,6 +12,18 @@ export const SOCIAL_WHATSAPP_SOURCES:Record<string,WhatsAppSource> = {
  'whatsapp:math':{id:'whatsapp:math',group:SOCIAL_MATH_GROUP,groupName:'MATH | EDITOR | SVI',author:'Math',unidentifiedTitle:'Vídeo do Math · identificar peça',senders:SOCIAL_MATH_SENDERS},
  'whatsapp:sarah':{id:'whatsapp:sarah',group:'120363429541277814@g.us',groupName:'SARAH | FILMMAKER | EDITORA | SVI',author:'Sarah',unidentifiedTitle:'Vídeo da Sarah · identificar peça',senders:new Set(['559492941072@s.whatsapp.net','5594992941072@s.whatsapp.net','13868852076575@lid'])},
 }
+/**
+ * Quem, dentro do grupo do CLIENTE, tem vídeo que vale guardar no Drive.
+ *
+ * João, 14/10/2026: "vídeos que a Sarah também envia e eu envio nos grupos dos
+ * clientes, também é pra subir pro Drive". Só os dois: o que o robô entrega já
+ * está no Drive, e o material bruto do cliente ficou de fora por decisão dele.
+ */
+export const SOCIAL_ARQUIVO_SENDERS = new Set([
+ '559492404033@s.whatsapp.net','5594992404033@s.whatsapp.net','43229013668067@lid',
+ '559492941072@s.whatsapp.net','5594992941072@s.whatsapp.net','13868852076575@lid',
+])
+
 export const digest = (s:string|Buffer) => createHash('sha256').update(s).digest('hex')
 export const normalized = (s:string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()
 export const mediaType = (name:string, mime='') => {
@@ -26,6 +38,32 @@ export function parseDelivery(caption:string, messageId:string, source=SOCIAL_WH
   card_id:'wa-'+digest(valid?`${source.group}|${normalized(parts[0])}|${normalized(parts[1])}`:source.id==='whatsapp:math'?messageId:`${source.group}|${messageId}`).slice(0,24),
   delivery_version:valid?Number(parts[2].slice(1)):null }
 }
+/**
+ * Vídeo no grupo do cliente que vai só para o Drive.
+ *
+ * Nunca vira card. Vídeo que o João manda no grupo costuma SER a entrega que o
+ * cliente já recebeu; virando card, a peça voltaria para o mesmo grupo pelo
+ * envio automático, e o cliente receberia de novo o que ele acabou de ver.
+ */
+export function videoParaArquivo(m:Record<string,any>, grupo:string, cliente:string) {
+ if(m.chatid!==grupo || m.wasSentByApi)return null
+ if(![m.sender,m.sender_pn,m.sender_lid].some(s=>SOCIAL_ARQUIVO_SENDERS.has(s)))return null
+ let content=m.content; if(typeof content==='string'){try{content=JSON.parse(content)}catch{content={}}}
+ content=content?.videoMessage || content?.documentMessage || content || {}
+ const name=String(content.fileName||content.title||'')
+ const mime=String(content.mimetype||content.mimeType||m.mimetype||'')
+ const kind=String(m.messageType||m.type||'').toLowerCase()
+ if(!kind.includes('video') && !mediaType(name,mime).startsWith('video/'))return null
+ // Sem nome de arquivo não dá para saber qual peça é nem qual versão substitui.
+ if(!name)return null
+ const id=String(m.id||''); if(!id||!m.messageTimestamp)return null
+ const t=Number(m.messageTimestamp);if(!Number.isFinite(t)||t<=0)return null
+ const at=new Date(t<1e12?t*1000:t).toISOString()
+ return { key:'arq:'+id, provider:'whatsapp' as const, source_id:id, card_id:'arquivo-'+digest(id).slice(0,24),
+  payload:{ arquivo_apenas:true, source:'whatsapp:clientes', grupo, client:cliente, message_id:id,
+   name, type:mediaType(name,mime)||'video/mp4', bytes:Number(content.fileLength||content.size||0), at } }
+}
+
 export function whatsappVideo(m:Record<string,any>, source:WhatsAppSource) {
  if (m.chatid!==source.group || ![m.sender,m.sender_pn,m.sender_lid].some(s=>source.senders.has(s)) || m.wasSentByApi || m.fromMe) return null
  let content=m.content; if(typeof content==='string') {try{content=JSON.parse(content)}catch{content={}}}

@@ -9,7 +9,8 @@ import { driveVideo } from './social-drive.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { timingSafeEqual } from 'node:crypto'
 import { createAdminClient } from './supabase.js'
-import { allowedMediaURL, deliveredByTeam, digest, whatsappVideo, mediaType, normalized, SOCIAL_WHATSAPP_SOURCES, taskClient } from './social-sync-domain.js'
+import { allowedMediaURL, deliveredByTeam, digest, whatsappVideo, videoParaArquivo, mediaType, normalized, SOCIAL_WHATSAPP_SOURCES, taskClient } from './social-sync-domain.js'
+import { CLIENT_GROUPS } from './social-client-approval.js'
 const MAX_BYTES=50*1024*1024
 const CLICKUP='https://api.clickup.com/api/v2'
 const UAZ='https://svicompany.uazapi.com'
@@ -35,7 +36,27 @@ async function discover(db:DB,source:string) {
  let count=0
  const until=Date.now()-1000,since=Number(state.cursor_ms)-300000
  try {
-  if(Object.prototype.hasOwnProperty.call(SOCIAL_WHATSAPP_SOURCES,source)) {
+  // Arquivo dos grupos de CLIENTE: varre os 24 grupos de uma vez, aceita só o
+  // que o João e a Sarah mandam, e nunca cria card.
+  if(source==='whatsapp:clientes') {
+   if(!process.env.SOCIAL_UAZ_TOKEN)throw new SyncError('configuration_missing')
+   for(const [jid,grupo] of Object.entries(CLIENT_GROUPS)) {
+    for(let offset=0;offset<400;offset+=100){
+     const data=await uaz('/message/find',{chatid:jid,limit:100,offset})
+     if(!Array.isArray(data.messages))throw new SyncError('source_shape_invalid')
+     const rows=[]
+     let passou=false
+     for(const message of data.messages){
+      const raw=Number(message.messageTimestamp),timestamp=raw<1e12?raw*1000:raw
+      if(timestamp<since){passou=true;continue}
+      const achado=videoParaArquivo(message,jid,grupo.client)
+      if(achado){rows.push(achado);count++}
+     }
+     await queue(db,rows)
+     if(!data.hasMore||passou)break
+    }
+   }
+  } else if(Object.prototype.hasOwnProperty.call(SOCIAL_WHATSAPP_SOURCES,source)) {
    const config=SOCIAL_WHATSAPP_SOURCES[source]
    if(!process.env.SOCIAL_UAZ_TOKEN)throw new SyncError('configuration_missing')
    const {data:catalogRows}=checked(await db.from('central_social_cards').select('client').limit(1000))
@@ -126,6 +147,16 @@ async function asset(db:DB,job:Job,a:Record<string,any>) {
 }
 async function processJob(db:DB,job:Job) {
  try {
+  // Arquivo puro: desce do WhatsApp, sobe no Drive e acaba. Sem card, sem
+  // etapa, sem aprovação, sem risco de a peça voltar para o grupo de onde veio.
+  if(job.payload?.arquivo_apenas) {
+   const baixado=await uaz('/message/download',{id:job.source_id})
+   if(!baixado.fileURL)throw new SyncError('media_unavailable')
+   const guardado=await driveVideo(db,job,String(baixado.fileURL))
+   checked(await db.from('central_social_inbox').update({status:'done',error:null,lease_until:null,
+    updated_at:new Date().toISOString()}).eq('key',job.key))
+   return {key:job.key,arquivado:guardado.name,pasta:guardado.folder_label}
+  }
   const {data:existing}=checked(await db.from('central_social_cards').select('assets,client').eq('id',job.card_id).maybeSingle())
   let metadata:Record<string,unknown>,files:Record<string,any>[]
   let knownAssets:any[]=existing?.assets||[]
@@ -189,7 +220,7 @@ export async function handleSocialSync(req:VercelRequest,res:VercelResponse) {
   if(mode==='previews')return res.json(await refreshVideoPreviews(db,3))
   if(mode==='intake')return res.json(await socialIntake(db,req.body?.message||{}))
   if(mode==='collect'){
-   const source=String(req.body?.source||'');if(!['clickup:jose','clickup:math',...Object.keys(SOCIAL_WHATSAPP_SOURCES).filter(s=>s.startsWith('whatsapp:'))].includes(source))return res.status(400).json({error:'Invalid source'})
+   const source=String(req.body?.source||'');if(!['clickup:jose','clickup:math','whatsapp:clientes',...Object.keys(SOCIAL_WHATSAPP_SOURCES).filter(s=>s.startsWith('whatsapp:'))].includes(source))return res.status(400).json({error:'Invalid source'})
    return res.json(await discover(db,source))
   }
   if(mode==='process'){
