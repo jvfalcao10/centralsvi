@@ -4,7 +4,7 @@ import { processCaptions } from './social-caption-worker.js'
 import { processFeedback } from './social-feedback.js'
 import { socialIntake } from './social-intake.js'
 import { autoEnviarPecas, avisarNoAr } from './social-envio-cliente.js'
-import { identifyGroupDelivery } from './social-delivery.js'
+import { identifyGroupDelivery, pecaQueEleSubstitui } from './social-delivery.js'
 import { driveVideo } from './social-drive.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { timingSafeEqual } from 'node:crypto'
@@ -73,8 +73,9 @@ async function discover(db:DB,source:string) {
   } else if(Object.prototype.hasOwnProperty.call(SOCIAL_WHATSAPP_SOURCES,source)) {
    const config=SOCIAL_WHATSAPP_SOURCES[source]
    if(!process.env.SOCIAL_UAZ_TOKEN)throw new SyncError('configuration_missing')
-   const {data:catalogRows}=checked(await db.from('central_social_cards').select('client').limit(1000))
-   const catalog=[...new Set((catalogRows||[]).map(c=>c.client))].filter(c=>c&&c!=='Identificar cliente')
+   const {data:catalogRows}=checked(await db.from('central_social_cards').select('id,client,title,stage,posted_at,created_at').limit(1000))
+   const abertas=(catalogRows||[]) as {id:string;client:string;title:string;stage:string;posted_at:string|null;created_at:string}[]
+   const catalog=[...new Set(abertas.map(c=>c.client))].filter(c=>c&&c!=='Identificar cliente')
    const {data:clientRows}=await db.from('clients').select('name').limit(1000)
    const roster=[...new Set((clientRows||[]).map((c:Record<string,any>)=>String(c.name||'')))].filter(Boolean)
    // Full pagination to the saved watermark. No cursor advance on an incomplete scan.
@@ -88,7 +89,13 @@ async function discover(db:DB,source:string) {
      if(timestamp<since)continue
      const parsed=whatsappVideo(message,config)
      const delivery=parsed?identifyGroupDelivery(parsed,catalog,roster):null
-     if(delivery){rows.push({key:delivery.key,provider:delivery.provider,source_id:delivery.source_id,card_id:delivery.card_id,payload:{...delivery.payload,client:delivery.client,title:delivery.title,delivery_version:delivery.delivery_version}});count++}
+     if(delivery){
+      // Reenvio da mesma peça entra no card que já existe, em vez de abrir
+      // outro. O banco cuida do resto: volta para Conferir, zera aprovação,
+      // link e agendamento, e sobe a versão. "O último enviado é o certo."
+      const anterior=pecaQueEleSubstitui(delivery,abertas)
+      rows.push({key:delivery.key,provider:delivery.provider,source_id:delivery.source_id,card_id:anterior||delivery.card_id,payload:{...delivery.payload,client:delivery.client,title:delivery.title,delivery_version:delivery.delivery_version,...(anterior?{substitui:anterior}:{})}});count++
+     }
     }
     await queue(db,rows)
     // Provider contract: newest first. Stop only after reaching the overlap watermark.
