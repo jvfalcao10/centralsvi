@@ -23,7 +23,10 @@ export function identifyGroupDelivery(delivery:NonNullable<ReturnType<typeof wha
  */
 export function baseDaPeca(valor:string) {
  return normalized(String(valor||'')
-  .replace(/\.[^.]+$/,'')
+  // Só extensão de verdade. Com /\.[^.]+$/ o título "[DR. DANIEL] Estatico
+  // ANUNCIO ... (E2)" virava "QUA 09/09 · [DR", porque o ponto de "DR." comia o
+  // resto, e dois anúncios distintos do mesmo teste passavam por uma peça só.
+  .replace(/\.[a-z0-9]{2,5}$/i,'')
   .replace(/\s*\((?:novo|nova|final|finalizado|corrigido)\)\s*$/i,'')
   .replace(/\s+v\d{1,3}\s*$/i,''))
 }

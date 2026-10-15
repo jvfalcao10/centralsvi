@@ -57,3 +57,28 @@ describe('qual peça a entrega substitui', () => {
   it('nome curto demais não vira regra', () =>
     expect(pecaQueEleSubstitui(entrega('v2.MP4'), [card({ title: '' })])).toBeNull())
 })
+
+// Defeito achado ao montar a limpeza, antes de arquivar nada: o corte de
+// extensão era /\.[^.]+$/ e, num título com ponto no meio, comia tudo depois
+// dele. Os dois anúncios do mesmo teste do Dr. Daniel viravam "qua 09 09 dr" e
+// passavam por uma peça só.
+describe('ponto no meio do nome não encurta a base', () => {
+  const E2 = 'QUA 09/09 · [DR. DANIEL] Estatico ANUNCIO Meta 1080x1350: pomada x consulta com exame (E2)'
+  const E1 = 'QUA 09/09 · [DR. DANIEL] Estatico ANUNCIO Meta 1080x1350: pomada, literal (E1)'
+
+  it('dois anúncios do mesmo teste continuam distintos', () => {
+    expect(baseDaPeca(E2)).not.toBe(baseDaPeca(E1))
+    expect(baseDaPeca(E2).length).toBeGreaterThan(40)
+  })
+
+  it('e um não substitui o outro', () => {
+    const cards = [{ id: 'e1', client: 'DR. DANIEL PERALBA', title: E1, stage: 'para_anuncio', posted_at: null, created_at: '2026-09-25T19:04:00Z' }]
+    expect(pecaQueEleSubstitui({ client: 'DR. DANIEL PERALBA', payload: { name: E2 + '.png' } }, cards)).toBeNull()
+  })
+
+  it('extensão de verdade continua saindo', () => {
+    expect(baseDaPeca('Dra Esia - papinha de bebê v2.MP4')).toBe('dra esia papinha de bebe')
+    expect(baseDaPeca('arquivo.webm')).toBe('arquivo')
+    expect(baseDaPeca('Dra.Enia.MOV')).toBe('dra enia')
+  })
+})
