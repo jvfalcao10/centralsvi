@@ -30,8 +30,10 @@ export function CampoDataHora({ value, onChange, disabled, id }: {
  }
  return (
   <div className="relative mt-2">
+   {/* Só no clique, nunca no foco: quem chega pelo teclado ou quer digitar a
+       data na mão não pode ser interrompido por um calendário abrindo sozinho. */}
    <Input ref={campo} id={id} type="datetime-local" value={value} disabled={disabled}
-     onChange={e => onChange(e.target.value)} onClick={abrir} onFocus={abrir}
+     onChange={e => onChange(e.target.value)} onClick={abrir}
      className="h-12 cursor-pointer pr-12 text-base [&::-webkit-calendar-picker-indicator]:opacity-0"/>
    <button type="button" onClick={abrir} disabled={disabled} tabIndex={-1}
      aria-label="Abrir calendário"
