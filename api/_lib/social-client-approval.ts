@@ -1,5 +1,6 @@
 import { normalized, taskClient, SOCIAL_WHATSAPP_SOURCES } from './social-sync-domain.js'
 import { socialPatch, type SocialCard } from './social-domain.js'
+import { newApprovalLink } from './social-approval-link.js'
 import type { createAdminClient } from './supabase.js'
 
 // Client approval written in the client's own WhatsApp group (João, 03/10/2026).
@@ -158,7 +159,25 @@ export function receiptStore(db:ReturnType<typeof createAdminClient>):Store {
   // encontra a peça, porque só vale para quem está aguardando o cliente.
   async markSent(c){
    if(c.stage!=='conferir'||c.ingest_pending||!c.selected_assets.length)return ''
-   const {error}=await db.rpc('central_social_apply',{p_id:c.id,p_expected:c.version,p_patch:socialPatch(c,{action:'solicitar'}),p_action:'solicitar',p_actor:'Sofia · entregue no grupo do cliente',p_actor_id:null})
+   // Nasce com link de aprovação, mesmo o arquivo tendo ido na mão. Sem ele a
+   // peça ficava em "aguardando cliente" sem endereço nenhum, e a cobrança
+   // diária saía dizendo "ficou uma peça esperando vocês" sem nada clicável:
+   // foi o que o Spa Nature recebeu em 15/10/2026 e respondeu "qual vídeo
+   // ficou faltando?". O cliente ainda não viu esse link, e é justamente por
+   // isso que ele precisa existir, para a cobrança ter o que oferecer.
+   // Se o selo do link falhar, a etapa muda do mesmo jeito: marcar que a peça
+   // está com o cliente vale mais que o link, e sem isso a aprovação que vier
+   // depois não encontra a peça.
+   let link:ReturnType<typeof newApprovalLink>|null=null
+   try{link=newApprovalLink(c.id)}catch{link=null}
+   const {error}=link
+    ?await db.rpc('central_social_request_link',{p_id:c.id,p_expected:c.version,
+      p_patch:{...socialPatch(c,{action:'solicitar'}),token_hash:link.hash,
+       token_expires_at:new Date(Date.now()+30*86400000).toISOString()},
+      p_ciphertext:link.ciphertext,p_actor:'Sofia · entregue no grupo do cliente',p_actor_id:null,p_action:'solicitar'})
+    :await db.rpc('central_social_apply',{p_id:c.id,p_expected:c.version,
+      p_patch:socialPatch(c,{action:'solicitar'}),p_action:'solicitar',
+      p_actor:'Sofia · entregue no grupo do cliente',p_actor_id:null})
    return error?(error.message.includes('version_conflict')?'central_conflito':'central_erro'):''
   },
  }

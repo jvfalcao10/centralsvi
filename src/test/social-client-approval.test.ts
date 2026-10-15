@@ -1,6 +1,7 @@
-import { describe,it,expect } from 'vitest'
+import { describe,it,expect,vi } from 'vitest'
 import {clientVerdict,isTeamSender,matchesClient,clientGroupApproval,type Store,receiptStore} from '../../api/_lib/social-client-approval'
 import { socialIntake } from '../../api/_lib/social-intake'
+import type { SocialCard } from '../../api/_lib/social-domain'
 
 const SORAIA='120363405081976310@g.us'
 const T0=Date.parse('2026-10-02T20:00:00Z'), MIN=60000
@@ -247,4 +248,52 @@ describe('peça de um cliente não responde à mensagem de outro',()=>{
   const achados=[peca('um','Dra. Erika Figueiredo',1),peca('dois','Erika Odonto',2)]
   expect(await loja(achados).cardByFile('video.mp4',['erika'])).toBeNull()
  })
+})
+
+// João, 15/10/2026: o Spa Nature recebeu "ficou uma peça esperando vocês" sem
+// link nenhum e respondeu "qual vídeo ficou faltando?". A peça tinha ido na mão
+// no grupo, e marcá-la como "com o cliente" não criava endereço de aprovação.
+describe('peça entregue na mão nasce com link', () => {
+  // O selo do link vem do segredo do ambiente; sem ele newApprovalLink lança.
+  vi.stubEnv('SOCIAL_SYNC_SECRET', 'segredo-de-teste-com-mais-de-32-caracteres')
+
+  const card = { id: 'wa-1', stage: 'conferir', version: 3, ingest_pending: false,
+    selected_assets: ['a1'] } as unknown as SocialCard
+
+  const bancoQueGrava = () => {
+    const chamadas: { fn: string; args: Record<string, unknown> }[] = []
+    return { chamadas, db: { rpc: async (fn: string, args: Record<string, unknown>) => {
+      chamadas.push({ fn, args }); return { error: null }
+    }, from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }) }) } }
+  }
+
+  it('cria o link de aprovação junto com a mudança de etapa', async () => {
+    const { chamadas, db } = bancoQueGrava()
+    expect(await receiptStore(db as never).markSent(card)).toBe('')
+    expect(chamadas).toHaveLength(1)
+    const { fn, args } = chamadas[0]
+    expect(fn, 'tem que guardar o ciphertext, senão o link não abre depois').toBe('central_social_request_link')
+    expect(String(args.p_ciphertext).length).toBeGreaterThan(40)
+    expect((args.p_patch as Record<string, unknown>).stage).toBe('aguardando')
+    expect((args.p_patch as Record<string, unknown>).token_hash).toBeTruthy()
+    expect(Date.parse(String((args.p_patch as Record<string, unknown>).token_expires_at))).toBeGreaterThan(Date.now())
+  })
+
+  // Produção não pode quebrar por causa do selo: marcar que a peça está com o
+  // cliente vale mais que o link, e sem isso a aprovação que vier depois não
+  // encontra a peça.
+  it('sem o segredo do selo, muda a etapa do mesmo jeito', async () => {
+    vi.stubEnv('SOCIAL_SYNC_SECRET', '')
+    const { chamadas, db } = bancoQueGrava()
+    expect(await receiptStore(db as never).markSent(card)).toBe('')
+    expect(chamadas[0].fn).toBe('central_social_apply')
+    vi.stubEnv('SOCIAL_SYNC_SECRET', 'segredo-de-teste-com-mais-de-32-caracteres')
+  })
+
+  it('não mexe em peça que não está em conferir nem sem arquivo', async () => {
+    const { chamadas, db } = bancoQueGrava()
+    await receiptStore(db as never).markSent({ ...card, stage: 'aguardando' })
+    await receiptStore(db as never).markSent({ ...card, selected_assets: [] })
+    expect(chamadas).toHaveLength(0)
+  })
 })
