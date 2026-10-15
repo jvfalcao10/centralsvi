@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { pecasParadas, dataDoArquivo, textoDoGrupo, textoDoJoao, cobrarAjustes, corta,
  pecasComOCliente, textoDoCliente, dataDoTitulo, pecasComDataChegando, textoDasDatas,
- aprovadasSemData, textoDasAprovadas } from '../../api/_lib/social-cobranca'
+ aprovadasSemData, textoDasAprovadas, cobrarClientes, nomeNaCobranca } from '../../api/_lib/social-cobranca'
 const DIA_MS = 86400000
 import type { SocialCard } from '../../api/_lib/social-domain'
 
@@ -278,5 +278,48 @@ describe('peça aprovada que ninguém programou', () => {
   expect(t).toContain('aprovada hoje')
   expect(t).toContain('Aprovada não é publicada')
   expect(t).toContain('central.svicompany.com.br/content/social')
+ })
+})
+
+// João, 15/10/2026, com o print do grupo do Spa Nature: a Sofia mandou "ficou
+// uma peça esperando vocês" SEM link nenhum, e a cliente respondeu "qual vídeo
+// ficou faltando?" e "o link não está abrindo". Eram 6 peças em Aguardando sem
+// link vivo, 4 delas velhas o bastante para entrar na cobrança daquela manhã.
+describe('cobrança sem link não sai', () => {
+ const banco = (cards: SocialCard[]) => ({
+  from: () => ({ select: () => ({ eq: () => ({ limit: async () => ({ data: cards, error: null }) }) }) }),
+ })
+ const parada = (id: string, client: string, extra: Partial<SocialCard> = {}) => card({
+  id, client, stage: 'aguardando', updated_at: new Date(AGORA - 3 * DIA_MS).toISOString(), ...extra })
+
+ it('item sem link fica de fora e vira aviso pro João', async () => {
+  const enviadas: { jid: string; texto: string }[] = []
+  // approvalLink real precisa de banco e segredo; aqui só o caminho de falha,
+  // que é exatamente o que aconteceu em produção.
+  const r = await cobrarClientes(banco([parada('c1', 'SPA NATURE')]) as never,
+   async (jid, texto) => { enviadas.push({ jid, texto }) }, AGORA)
+  expect(r.sem_link).toBe(1)
+  expect(r.clientes, 'nenhum grupo de cliente recebeu').toBe(0)
+  expect(enviadas).toHaveLength(1)
+  expect(enviadas[0].jid).toBe('559492404033')
+  expect(enviadas[0].texto).toContain('SEM link vivo')
+  expect(enviadas[0].texto).toContain('SPA NATURE')
+  expect(enviadas[0].texto).toContain('Reenvia pela Central')
+ })
+})
+
+// "Spa Nature - 5%" e "Dra Enia - vídeo 08" viravam os dois "Vídeo para
+// aprovação", e numa lista de cinco o cliente não sabe qual é qual.
+describe('nome da peça na cobrança', () => {
+ it('o genérico leva junto o nome que a casa usa', () => {
+  expect(nomeNaCobranca('SPA NATURE', 'Spa Nature - 5%', true, 1)).toBe('Vídeo para aprovação · 5%')
+  expect(nomeNaCobranca('Dra Enia', 'Dra Enia - vídeo 08', true, 1)).toBe('Vídeo para aprovação · vídeo 08')
+ })
+ it('título que já se explica fica limpo, sem repetição', () => {
+  expect(nomeNaCobranca('PROURO', 'Prouro - pergunta 01', true, 1)).toBe('Pergunta 01')
+  expect(nomeNaCobranca('Dra Enia', 'Dra Enia - primeira consulta', true, 1)).toBe('Primeira consulta')
+ })
+ it('nunca devolve vazio', () => {
+  expect(nomeNaCobranca('SPA NATURE', 'Spa Nature', true, 1).length).toBeGreaterThan(3)
  })
 })

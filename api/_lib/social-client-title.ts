@@ -11,7 +11,7 @@ function semAcento(value: string) {
  return String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
 
-export function clientFacingTitle(client: string, title: string, video = false, files = 1) {
+export function clientFacingTitle(client: string, title: string, video = false, files = 1, cru = false) {
  // Peça sem cliente ou sem título ainda precisa de um nome, e nunca pode derrubar
  // a página nem a prévia por causa de um campo vazio.
  // O genérico nunca mente: descreve o que a pessoa vai abrir.
@@ -56,15 +56,15 @@ export function clientFacingTitle(client: string, title: string, video = false, 
 
  // 8. Se sobrou pouco, ou só o nome do cliente, ou só um formato solto, usa o genérico.
  const nu = semAcento(t).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim()
- if (nu.length < 4) return generico
- if (nu === alvo || alvo.includes(nu) || new RegExp(`^(?:${FORMATOS})(?:\\s+\\d+)?$`, 'i').test(nu)) return generico
+ if (nu.length < 4) return cru ? t.trim() : generico
+ if (nu === alvo || alvo.includes(nu) || new RegExp(`^(?:${FORMATOS})(?:\\s+\\d+)?$`, 'i').test(nu)) return cru ? t.trim() : generico
  // "DOUTORA ÉRIKA" para a cliente "Dra. Érika" não diz nada ao cliente: é o nome dele.
  // Tira tratamento e os termos do próprio cliente; se não sobrar assunto, usa o genérico.
  const TRATAMENTO = /^(?:dr|dra|drs|doutor|doutora|sr|sra|clinica|cl[ií]nica|col[ée]gio|espa[çc]o|instituto|centro|dr[ºª]?)$/
  const termosCliente = new Set(alvo.split(' ').filter(Boolean))
  const assunto = nu.split(' ').filter(p => p && !TRATAMENTO.test(p) && !termosCliente.has(p) && !/^\d{1,3}$/.test(p))
- if (!assunto.join('').length || assunto.join('').length < 4) return generico
- if (!/[\p{Ll}]{3}/u.test(t) && t.length < 12) return generico
+ if (!assunto.join('').length || assunto.join('').length < 4) return cru ? t.trim() : generico
+ if (!/[\p{Ll}]{3}/u.test(t) && t.length < 12) return cru ? t.trim() : generico
 
  return t.charAt(0).toUpperCase() + t.slice(1)
 }

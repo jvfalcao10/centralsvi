@@ -164,7 +164,7 @@ export function pecasComOCliente(cards: SocialCard[], agora = Date.now()): PecaN
   .filter(({ enviado_ms }) => Number.isFinite(enviado_ms) && agora - enviado_ms >= ESPERA_CLIENTE)
   .map(({ c, enviado_ms }) => ({
    card_id: c.id, client: c.client,
-   title: clientFacingTitle(c.client, c.title,
+   title: nomeNaCobranca(c.client, c.title,
     c.assets.some(a => c.selected_assets.includes(a.id) && a.type.startsWith('video/')),
     c.selected_assets.length),
    enviado_ms, dias: Math.floor((agora - enviado_ms) / DIA), url: null,
@@ -173,6 +173,21 @@ export function pecasComOCliente(cards: SocialCard[], agora = Date.now()): PecaN
 }
 
 const mandei = (dias: number) => dias <= 1 ? 'mandei ontem' : `mandei há ${dias} dias`
+
+/**
+ * O nome da peça na cobrança.
+ *
+ * O título limpo vira genérico quando sobra pouco ("Spa Nature - 5%" vira "5%",
+ * "Dra Enia - vídeo 08" é só formato mais número). Numa lista de cinco peças o
+ * cliente lê "Vídeo para aprovação" repetido e não sabe qual é qual. Aqui o
+ * resto cru entra junto, que é como a casa chama a peça.
+ */
+export function nomeNaCobranca(client: string, title: string, video: boolean, arquivos: number) {
+ const limpo = clientFacingTitle(client, title, video, arquivos)
+ const cru = clientFacingTitle(client, title, video, arquivos, true)
+ if (limpo !== cru && cru.length > 1) return `${limpo} · ${cru}`
+ return limpo
+}
 
 export function textoDoCliente(pecas: PecaNoCliente[], agora = Date.now()) {
  const uma = pecas.length === 1
@@ -302,6 +317,7 @@ export async function cobrarClientes(
  const porCliente = new Map<string, PecaNoCliente[]>()
  for (const p of paradas) porCliente.set(p.client, [...(porCliente.get(p.client) || []), p])
  let clientes = 0, pecas = 0
+ const semLink: PecaNoCliente[] = []
  for (const [cliente, lista] of porCliente) {
   const grupo = grupoDoCliente(cliente)
   // Cliente sem grupo único não é cobrado: mandar peça no grupo errado é pior
@@ -311,9 +327,24 @@ export async function cobrarClientes(
    const card = cards.find(c => c.id === p.card_id)
    if (card) p.url = await approvalLink(db, card).catch(() => null)
   }
-  try { await enviar(grupo.jid, textoDoCliente(lista, agora)); clientes++; pecas += lista.length } catch { /* segue */ }
+  // Peça SEM link vivo não é cobrada. João, 15/10/2026, com o print do grupo do
+  // Spa Nature: a Sofia mandou "ficou uma peça esperando vocês" sem endereço
+  // nenhum, e a cliente respondeu "qual vídeo ficou faltando?" e "o link não
+  // está abrindo". Cobrar sem dar o caminho é pior que não cobrar: transfere o
+  // trabalho pra quem já não sabe o que fazer.
+  const comLink = lista.filter(p => p.url)
+  semLink.push(...lista.filter(p => !p.url))
+  if (!comLink.length) continue
+  try { await enviar(grupo.jid, textoDoCliente(comLink, agora)); clientes++; pecas += comLink.length } catch { /* segue */ }
  }
- return { clientes, pecas, velhas: velhas.length }
+ // O que não deu para cobrar vira tarefa do João, com o motivo na cara.
+ if (semLink.length) {
+  const texto = [`${saudacao(agora)}! Peça em Aguardando cliente SEM link vivo, não dá para cobrar:`,
+   ...semLink.map(p => `*${p.client}* · ${p.title} (${mandei(p.dias)})`),
+   'Ou o cliente nunca recebeu o link, ou ele venceu. Reenvia pela Central que eu volto a cobrar sozinha.'].join('\n\n')
+  try { await enviar(JOAO, texto) } catch { /* segue */ }
+ }
+ return { clientes, pecas, velhas: velhas.length, sem_link: semLink.length }
 }
 
 export async function lembrarDatas(
