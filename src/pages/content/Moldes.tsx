@@ -1,15 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, LayoutTemplate, Search, Users } from 'lucide-react'
+import { BookOpen, LayoutTemplate, Search, Users } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { MOLDES, POSTS, type PostMolde } from '@/data/moldes'
+import { BANCO } from '@/data/banco-carrosseis'
+import { BancoCarrosseis } from '@/components/content/BancoCarrosseis'
+import { VisorLaminas, type Laminas } from '@/components/content/VisorLaminas'
 
 // Moldes de post (07/10/2026). Vitrine dos moldes de carrossel e estático da casa e dos posts feitos em cada um,
 // organizada de dois jeitos: por lista (cada molde é uma lista) e por cliente.
 // Os dados vêm de src/data/moldes.ts, gerado pelo exportador em conteudo-joao/carrosseis.
+//
+// Em 15/10/2026 entrou a terceira aba, o Banco de Carrosséis Best-Sellers: o curso
+// comprado no Hotmart estava parado em ~/Dev/cursos e nunca tinha chegado na tela.
+// Molde da casa é a arte pronta; formato do banco é o roteiro. Ficam juntos porque
+// a social escolhe os dois na mesma hora, montando a pauta.
 
 const CHAVE_ABA = 'moldes:aba'
 /** Os posts do próprio perfil do João; o resto é de cliente. */
@@ -66,8 +73,7 @@ export default function Moldes() {
   const [lista, setLista] = useState<string>(MOLDES[0]?.id ?? '')
   const [cliente, setCliente] = useState<string>('todos')
   const [busca, setBusca] = useState('')
-  const [aberto, setAberto] = useState<PostMolde | null>(null)
-  const [lamina, setLamina] = useState(0)
+  const [aberto, setAberto] = useState<Laminas | null>(null)
 
   useEffect(() => { try { localStorage.setItem(CHAVE_ABA, aba) } catch { /* sem armazenamento local */ } }, [aba])
 
@@ -83,16 +89,13 @@ export default function Moldes() {
   const postsDaLista = filtrados.filter(p => p.molde === lista)
   const postsDoCliente = cliente === 'todos' ? filtrados : filtrados.filter(p => p.cliente === cliente)
 
-  function abrir(p: PostMolde) { setAberto(p); setLamina(0) }
-  useEffect(() => {
-    if (!aberto) return
-    const tecla = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight') setLamina(i => Math.min(aberto.laminas.length - 1, i + 1))
-      if (e.key === 'ArrowLeft') setLamina(i => Math.max(0, i - 1))
-    }
-    window.addEventListener('keydown', tecla)
-    return () => window.removeEventListener('keydown', tecla)
-  }, [aberto])
+  function abrir(p: PostMolde) {
+    setAberto({
+      titulo: p.titulo,
+      subtitulo: `${p.cliente} · molde ${NOME_MOLDE[p.molde] || p.molde}`,
+      laminas: p.laminas,
+    })
+  }
 
   return (
     <div className="space-y-5 p-4 md:p-6">
@@ -100,13 +103,13 @@ export default function Moldes() {
         <div>
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2"><LayoutTemplate className="h-6 w-6 shrink-0 text-primary" /> Moldes de post</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {MOLDES.length} moldes e {POSTS.length} posts feitos neles. Cada molde é uma lista; os posts também estão separados por cliente.
+            {MOLDES.length} moldes da casa com {POSTS.length} posts feitos neles, mais {BANCO.length} formatos do Banco de Carrosséis Best-Sellers.
           </p>
           <Link to="/content/social" className="inline-flex mt-2 text-sm text-primary underline underline-offset-4">Voltar para Social media · Postagens →</Link>
         </div>
         <div className="relative w-full md:w-72">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar post, cliente ou molde" className="pl-9" aria-label="Buscar" />
+          <Input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar post, cliente, molde ou formato" className="pl-9" aria-label="Buscar" />
         </div>
       </header>
 
@@ -114,6 +117,7 @@ export default function Moldes() {
         <TabsList>
           <TabsTrigger value="listas" className="gap-1.5"><LayoutTemplate className="h-4 w-4" /> Listas</TabsTrigger>
           <TabsTrigger value="clientes" className="gap-1.5"><Users className="h-4 w-4" /> Clientes</TabsTrigger>
+          <TabsTrigger value="banco" className="gap-1.5"><BookOpen className="h-4 w-4" /> Best-sellers</TabsTrigger>
         </TabsList>
 
         <TabsContent value="listas" className="space-y-4 pt-2">
@@ -150,41 +154,13 @@ export default function Moldes() {
           </div>
           <Grade posts={postsDoCliente} onAbrir={abrir} />
         </TabsContent>
+
+        <TabsContent value="banco">
+          <BancoCarrosseis busca={busca} />
+        </TabsContent>
       </Tabs>
 
-      <Dialog open={!!aberto} onOpenChange={o => { if (!o) setAberto(null) }}>
-        <DialogContent className="max-w-3xl">
-          {aberto && (
-            <>
-              <DialogHeader>
-                <DialogTitle>{aberto.titulo}</DialogTitle>
-                <DialogDescription>{aberto.cliente} · molde {NOME_MOLDE[aberto.molde] || aberto.molde} · lâmina {lamina + 1} de {aberto.laminas.length}</DialogDescription>
-              </DialogHeader>
-              <div className="relative mx-auto w-full max-w-md">
-                <img src={aberto.laminas[lamina]} alt={`Lâmina ${lamina + 1}`} className="w-full rounded-lg border aspect-[4/5] object-cover" />
-                {lamina > 0 && (
-                  <button type="button" onClick={() => setLamina(lamina - 1)} aria-label="Lâmina anterior"
-                    className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white hover:bg-black/80"><ChevronLeft className="h-5 w-5" /></button>
-                )}
-                {lamina < aberto.laminas.length - 1 && (
-                  <button type="button" onClick={() => setLamina(lamina + 1)} aria-label="Próxima lâmina"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white hover:bg-black/80"><ChevronRight className="h-5 w-5" /></button>
-                )}
-              </div>
-              {aberto.laminas.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                  {aberto.laminas.map((src, i) => (
-                    <button key={src} type="button" onClick={() => setLamina(i)} aria-label={`Ver lâmina ${i + 1}`}
-                      className={`shrink-0 w-16 rounded-md overflow-hidden border-2 ${i === lamina ? 'border-primary' : 'border-transparent opacity-70 hover:opacity-100'}`}>
-                      <img src={src} alt="" loading="lazy" className="aspect-[4/5] w-full object-cover" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      <VisorLaminas item={aberto} onFechar={() => setAberto(null)} />
     </div>
   )
 }
