@@ -1,0 +1,14 @@
+-- Papel "design" para o designer.
+--
+-- João, 15/10/2026: "acesso de design pra ele, pra ver os moldes, postagens e
+-- etc". O José monta as artes e precisa ver as peças no quadro e os moldes,
+-- incluindo os 22 formatos do Banco de Carrosséis que entraram hoje.
+--
+-- Não entra como `social`: a social media decide pauta e data, e por isso vê
+-- Datas, Radar e as senhas das contas dos clientes. O designer não publica,
+-- então nada disso é dele. Também não entra como `executor`, que abriria
+-- carteira de clientes, tarefas e relatórios de anúncio junto.
+--
+-- É papel LATERAL, igual a `traffic` e `social`: fora da escada de hierarquia,
+-- com área própria na navegação.
+alter type public.app_role add value if not exists 'design';

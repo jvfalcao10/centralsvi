@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Users, Shield, Crown, Crosshair, Wrench, UserCog, UserPlus, Mail, Clock, Copy, Check, Trash2, User, Search, Activity, X } from 'lucide-react'
+import { Users, Shield, Crown, Crosshair, Wrench, UserCog, UserPlus, Mail, Clock, Copy, Check, Trash2, User, Search, Activity, X, Palette } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth, UserRole } from '@/contexts/AuthContext'
@@ -79,6 +79,7 @@ const ROLE_CONFIG: Record<UserRole, { label: string; description: string; icon: 
   executor: { label: 'Executor', description: 'Entregas + Scripts (apenas próprias)', icon: Wrench, className: 'bg-green-500/20 text-green-400 border-green-500/30' },
   traffic: { label: 'Gestor de Tráfego', description: 'Acesso restrito ao módulo Tráfego', icon: Wrench, className: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
   social: { label: 'Social Media', description: 'Acesso restrito a Postagens, Moldes e Datas', icon: Wrench, className: 'bg-sky-500/20 text-sky-400 border-sky-500/30' },
+  design: { label: 'Design', description: 'Acesso restrito a Postagens e Moldes', icon: Palette, className: 'bg-violet-500/20 text-violet-400 border-violet-500/30' },
   client: { label: 'Cliente', description: 'Acesso ao painel de conteúdo (cliente externo)', icon: User, className: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
   user: { label: 'Usuário', description: 'Acesso básico', icon: UserCog, className: 'bg-slate-500/20 text-slate-400 border-slate-500/30' },
 }
@@ -301,7 +302,7 @@ export default function Team() {
   // desta lista e, sem estarem nela, a pessoa some da Equipe mesmo tendo conta,
   // perfil e papel: foi o que aconteceu com a Rayana no primeiro dia e com a
   // Sarah desde que o papel social existe.
-  const STAFF_ROLES: UserRole[] = ['admin', 'manager', 'seller', 'executor', 'traffic', 'social', 'user']
+  const STAFF_ROLES: UserRole[] = ['admin', 'manager', 'seller', 'executor', 'traffic', 'social', 'design', 'user']
   const staffMembersAll = members.filter(m => STAFF_ROLES.includes(m.role))
   const clientMembersAll = members.filter(m => m.role === 'client')
 
@@ -408,6 +409,7 @@ export default function Team() {
                 <SelectItem value="executor">Executor</SelectItem>
                 <SelectItem value="traffic">Gestor de Tráfego</SelectItem>
                 <SelectItem value="social">Social Media</SelectItem>
+                <SelectItem value="design">Design</SelectItem>
                 <SelectItem value="user">Usuário</SelectItem>
               </SelectContent>
             </Select>
@@ -468,6 +470,8 @@ export default function Team() {
                               <SelectItem value="executor">Executor</SelectItem>
                               <SelectItem value="traffic">Gestor de Tráfego</SelectItem>
                               <SelectItem value="social">Social Media</SelectItem>
+                              <SelectItem value="design">Design</SelectItem>
+                <SelectItem value="design">Design</SelectItem>
                             </SelectContent>
                           </Select>
                         </TableCell>
@@ -643,6 +647,8 @@ export default function Team() {
                               <SelectItem value="executor">Executor</SelectItem>
                               <SelectItem value="traffic">Gestor de Tráfego</SelectItem>
                               <SelectItem value="social">Social Media</SelectItem>
+                              <SelectItem value="design">Design</SelectItem>
+                <SelectItem value="design">Design</SelectItem>
                               <SelectItem value="client">Cliente externo</SelectItem>
                             </SelectContent>
                           </Select>
@@ -826,6 +832,11 @@ export default function Team() {
                   <SelectItem value="social">
                     <div className="flex items-center gap-2">
                       <Wrench className="h-3.5 w-3.5 text-sky-400" /> Social Media: Postagens, Moldes e Datas
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="design">
+                    <div className="flex items-center gap-2">
+                      <Palette className="h-3.5 w-3.5 text-violet-400" /> Design: Postagens e Moldes
                     </div>
                   </SelectItem>
                 </SelectContent>

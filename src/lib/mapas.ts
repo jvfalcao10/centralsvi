@@ -9,7 +9,7 @@ import type { UserRole } from '@/contexts/AuthContext'
  */
 
 /** Permissão da rota /mapas: todo papel interno entra, cliente não. */
-export const MAPAS_ROTA = { requiredRole: 'executor' as UserRole, allowTraffic: true, allowSocial: true }
+export const MAPAS_ROTA = { requiredRole: 'executor' as UserRole, allowTraffic: true, allowSocial: true, allowDesign: true }
 
 export const PASTAS_MAPA = [
   { valor: 'geral', rotulo: 'Geral' },

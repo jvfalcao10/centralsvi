@@ -176,7 +176,7 @@ const App = () => (
                 <ProtectedRoute requiredRole="admin"><AppLayout><FinancialReview /></AppLayout></ProtectedRoute>
               } />
               <Route path="/acessos" element={
-                <ProtectedRoute requiredRole="executor" allowSocial><AppLayout><Acessos /></AppLayout></ProtectedRoute>
+                <ProtectedRoute requiredRole="executor" allowSocial allowDesign><AppLayout><Acessos /></AppLayout></ProtectedRoute>
               } />
               {/* Quem posta precisa entrar nas contas do cliente. */}
               <Route path="/senhas" element={
@@ -290,9 +290,9 @@ const App = () => (
               <Route path="/conteudo/criador-carrossel" element={
                 <ProtectedRoute requiredRole="admin"><AppLayout><Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando o Criador de carrossel…</div>}><CriadorCarrossel /></Suspense></AppLayout></ProtectedRoute>
               } />
-              <Route path="/content/social" element={<ProtectedRoute requiredRole="executor" allowTraffic allowSocial><AppLayout><Social /></AppLayout></ProtectedRoute>} />
+              <Route path="/content/social" element={<ProtectedRoute requiredRole="executor" allowTraffic allowSocial allowDesign><AppLayout><Social /></AppLayout></ProtectedRoute>} />
               <Route path="/content/moldes" element={
-                <ProtectedRoute requiredRole="executor" allowSocial><AppLayout><Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando os moldes…</div>}><Moldes /></Suspense></AppLayout></ProtectedRoute>
+                <ProtectedRoute requiredRole="executor" allowSocial allowDesign><AppLayout><Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando os moldes…</div>}><Moldes /></Suspense></AppLayout></ProtectedRoute>
               } />
               {/* Mapas mentais: toda a equipe interna (admin, manager, seller, executor, traffic, social); cliente não entra. */}
               <Route path="/mapas" element={

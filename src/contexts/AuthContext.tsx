@@ -3,7 +3,7 @@ import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { Profile } from '@/types'
 
-export type UserRole = 'admin' | 'manager' | 'seller' | 'executor' | 'traffic' | 'social' | 'client' | 'user'
+export type UserRole = 'admin' | 'manager' | 'seller' | 'executor' | 'traffic' | 'social' | 'design' | 'client' | 'user'
 export type SignupStatus = 'pending' | 'approved' | 'rejected' | null
 
 /** Primeira rota que cada role consegue acessar — usado no redirect pós-login. */
@@ -19,6 +19,9 @@ export function defaultRouteForRole(role: UserRole | null): string {
     case 'traffic':
       return '/operacional/trafego'
     case 'social':
+      return '/content/social'
+    // O designer cai no quadro das peças, que é onde o trabalho dele chega.
+    case 'design':
       return '/content/social'
     case 'client':
       return '/minha-area'
@@ -44,6 +47,7 @@ interface AuthContextType {
   /** True se o role atual é 'traffic' (gestor de tráfego, escopo restrito). */
   isTraffic: boolean
   isSocial: boolean
+  isDesign: boolean
   /** True se é qualquer role de staff (admin/manager/seller/executor/traffic). */
   isStaff: boolean
   /** Força refetch de role + signup status (após aprovação, por exemplo). */
@@ -70,6 +74,7 @@ const AuthContext = createContext<AuthContextType>({
   isClient: false,
   isTraffic: false,
   isSocial: false,
+  isDesign: false,
   isStaff: false,
   refresh: async () => {},
 })
@@ -124,6 +129,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setRole('traffic')
         } else if (roles.includes('social')) {
           setRole('social')
+        } else if (roles.includes('design')) {
+          setRole('design')
         } else if (roles.includes('client')) {
           setRole('client')
         } else {
@@ -195,7 +202,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const can = (requiredRole: UserRole): boolean => {
     // Client e Traffic nunca passam em check de hierarquia staff
-    if (!role || role === 'client' || role === 'user' || role === 'traffic' || role === 'social') return false
+    if (!role || role === 'client' || role === 'user' || role === 'traffic' || role === 'social' || role === 'design') return false
     return (STAFF_HIERARCHY[role] ?? 0) >= (STAFF_HIERARCHY[requiredRole] ?? 0)
   }
 
@@ -203,7 +210,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isTraffic = role === 'traffic'
   // Papel lateral, igual ao traffic: vê só a área dele, não entra na escada.
   const isSocial = role === 'social'
-  const isStaff = role ? (role in STAFF_HIERARCHY || role === 'traffic' || role === 'social') : false
+  const isDesign = role === 'design'
+  const isStaff = role ? (role in STAFF_HIERARCHY || role === 'traffic' || role === 'social' || role === 'design') : false
 
   const refresh = async () => {
     if (user) await hydrate(user.id)
@@ -213,7 +221,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider
       value={{
         user, session, profile, role, signupStatus, loading, roleLoaded,
-        signOut, can, isClient, isTraffic, isSocial, isStaff, refresh,
+        signOut, can, isClient, isTraffic, isSocial, isDesign, isStaff, refresh,
       }}
     >
       {children}

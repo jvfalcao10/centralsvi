@@ -120,15 +120,43 @@ export const SOCIAL_AREAS: NavigationArea[] = [
   ] },
 ]
 
-export function getVisibleNavigation({ can, isTraffic = false, isSocial = false, isClient = false }: {
+/**
+ * O que o designer vê.
+ *
+ * Papel lateral, igual ao de tráfego e ao de social. João, 15/10/2026:
+ * "acesso de design pra ele, pra ver os moldes, postagens e etc".
+ *
+ * Postagens porque é onde a arte dele chega e volta com ajuste, e Moldes
+ * porque é de onde ele tira a referência, incluindo os formatos do Banco de
+ * Carrosséis. Datas e Radar ficam fora porque quem decide pauta é a social, e
+ * as senhas das contas dos clientes também, porque o designer não publica.
+ */
+export const DESIGN_AREAS: NavigationArea[] = [
+  { id: 'social', title: 'Postagens', icon: 'operations', direct: true, items: [
+    { title: 'Social media · Postagens', url: '/content/social', minRole: 'design' },
+  ] },
+  { id: 'moldes', title: 'Moldes', icon: 'carousel', direct: true, items: [
+    { title: 'Moldes de post', url: '/content/moldes', minRole: 'design' },
+  ] },
+  { id: 'acessos', title: 'Acessos', icon: 'resources', direct: true, items: [
+    { title: 'Acessos e ferramentas', url: '/acessos', minRole: 'design' },
+  ] },
+  { id: 'mapas', title: 'Mapas', icon: 'map', direct: true, items: [
+    { title: 'Mapas', url: '/mapas', minRole: 'design' },
+  ] },
+]
+
+export function getVisibleNavigation({ can, isTraffic = false, isSocial = false, isDesign = false, isClient = false }: {
   can: (role: UserRole) => boolean
   isTraffic?: boolean
   isSocial?: boolean
+  isDesign?: boolean
   isClient?: boolean
 }): { main: NavigationArea[]; footer: NavigationArea[] } {
   if (isClient) return { main: [], footer: [] }
   if (isTraffic) return { main: TRAFFIC_AREAS, footer: [] }
   if (isSocial) return { main: SOCIAL_AREAS, footer: [] }
+  if (isDesign) return { main: DESIGN_AREAS, footer: [] }
   const visible = (areas: NavigationArea[]) => areas
     .map(area => ({ ...area, items: area.items.filter(item => can(item.minRole)) }))
     .filter(area => area.items.length > 0)
