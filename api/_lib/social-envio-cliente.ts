@@ -82,8 +82,19 @@ export async function filaDoEnvioAoCliente(
 // ---------------------------------------------------------------------------
 /** Chave de desligamento. Uma linha para voltar ao envio só pela mão. */
 export const AUTO_ENVIO = true
-/** Prefixo das peças que vêm do ClickUp, as únicas fora do automático. */
-export const PREFIXO_MANUAL = 'cu:'
+/**
+ * As peças que vêm do ClickUp, as únicas fora do automático.
+ *
+ * Era por prefixo do id ('cu:') e a trava NUNCA pegou: o 'cu:' está na chave da
+ * fila de sync (social-sync.ts), enquanto o card nasce com o id puro do ClickUp.
+ * Nenhum dos 320 cards começava com 'cu:', então peça do ClickUp seguia elegível
+ * ao envio automático, que é justamente o caminho onde o cliente é DEDUZIDO do
+ * nome da tarefa. A origem verdadeira está no endereço da tarefa.
+ */
+export const ORIGEM_MANUAL = 'clickup.com'
+export function vemDoClickUp(card: Pick<SocialCard, 'source_url'>) {
+ return String(card.source_url || '').includes(ORIGEM_MANUAL)
+}
 /** Minutos de carência depois da última mexida na peça, para a equipe ainda pegar. */
 const CARENCIA_MS = 10 * 60000
 const ABRE = 8, FECHA = 18
@@ -107,7 +118,7 @@ export function podeAutoEnviar(card: SocialCard, agora = Date.now()): string {
  // que é texto interno da equipe. Entrega do grupo de edição e peça criada na
  // mão entram, porque nas duas o cliente casa com o catálogo ou foi digitado
  // por uma pessoa no formulário.
- if (card.id.startsWith(PREFIXO_MANUAL)) return 'peca do clickup passa por gente'
+ if (vemDoClickUp(card)) return 'peca do clickup passa por gente'
  if (!card.client || card.client === 'Identificar cliente') return 'cliente nao identificado'
  if (!grupoDoCliente(card.client)) return 'cliente sem grupo unico no whatsapp'
  const selecionados = card.assets.filter(a => card.selected_assets.includes(a.id))
@@ -138,8 +149,10 @@ export async function autoEnviarPecas(db: DB, limite = LOTE_MAXIMO, agora = Date
  // trava passou a aceitar peça criada na mão e a consulta continuou em 'wa-%':
  // a volta devolvia "enviadas: 0" com motivos vazio, ou seja nenhum candidato,
  // e parecia que a trava tinha barrado quando a peça nem chegava a ser olhada.
+ // Depois os dois concordaram no prefixo 'cu:', que nenhum card tem: peça do
+ // ClickUp entrava na volta. Por isso agora os dois leem a origem da tarefa.
  const { data, error } = await db.from('central_social_cards').select('*')
-  .eq('stage', 'conferir').not('id', 'like', `${PREFIXO_MANUAL}%`).neq('client', 'Identificar cliente')
+  .eq('stage', 'conferir').not('source_url', 'ilike', `%${ORIGEM_MANUAL}%`).neq('client', 'Identificar cliente')
   .order('updated_at', { ascending: true }).limit(20)
  if (error) return { enviadas: 0, motivos: { erro_de_leitura: 1 } }
  const motivos: Record<string, number> = {}

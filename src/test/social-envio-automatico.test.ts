@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { podeAutoEnviar, horaDeBrasilia, videoAindaComprimindo, PREFIXO_MANUAL } from '../../api/_lib/social-envio-cliente'
+import { podeAutoEnviar, horaDeBrasilia, videoAindaComprimindo, vemDoClickUp, ORIGEM_MANUAL } from '../../api/_lib/social-envio-cliente'
 import type { SocialCard } from '../../api/_lib/social-domain'
 
 // João, 13/10/2026: "ela não enviou automaticamente". A peça do editor caía em
@@ -37,8 +37,18 @@ describe('trava do envio automático', () => {
    expect(podeAutoEnviar(card({ stage }), bsb('11:00'))).toBe('etapa nao e conferir')
  })
 
+ // O card do ClickUp nasce com o id PURO da tarefa: 1247yh1ky3v, sem prefixo.
+ // A trava antiga procurava 'cu:' no id e nunca pegou nenhum dos 320 cards.
  it('peça do ClickUp continua passando por gente, porque lá o cliente é deduzido', () => {
-  expect(podeAutoEnviar(card({ id: 'cu:86cbbqbcn' }), bsb('11:00'))).toBe('peca do clickup passa por gente')
+  const doClickUp = card({ id: '1247yh1ky3v', source_url: 'https://app.clickup.com/t/1247yh1ky3v' })
+  expect(podeAutoEnviar(doClickUp, bsb('11:00'))).toBe('peca do clickup passa por gente')
+ })
+
+ it('o id da tarefa sozinho não denuncia o ClickUp: quem diz é a origem', () => {
+  expect(vemDoClickUp({ source_url: '' })).toBe(false)
+  expect(vemDoClickUp({ source_url: 'https://app.clickup.com/t/1247yh1ky3v' })).toBe(true)
+  // Sem origem, o id cru do ClickUp passaria batido, que é o buraco de antes.
+  expect(podeAutoEnviar(card({ id: '1247yh1ky3v' }), bsb('11:00'))).toBe('ok')
  })
 
  it('peça criada na mão no formulário pode ir, porque o cliente foi digitado', () => {
@@ -90,10 +100,13 @@ describe('trava do envio automático', () => {
 // "enviadas: 0" com motivos VAZIO, que é o sintoma de "nenhum candidato
 // chegou a ser olhado", não de "a trava barrou".
 describe('a consulta e a trava olham o mesmo conjunto', () => {
- it('a peça do ClickUp é a única excluída, e pelo mesmo prefixo', () => {
-  expect(PREFIXO_MANUAL).toBe('cu:')
-  expect(podeAutoEnviar(card({ id: `${PREFIXO_MANUAL}86cbbqbcn` }), bsb('11:00'))).toBe('peca do clickup passa por gente')
-  for (const id of ['wa-abc123', 'manual-20261013-arte-ab12'])
-   expect(podeAutoEnviar(card({ id }), bsb('11:00')), id).toBe('ok')
+ // A consulta filtra por source_url ilike '%clickup.com%'. Este teste existe
+ // para que mudar um lado sem o outro quebre aqui, e não em produção.
+ it('a peça do ClickUp é a única excluída, e pela mesma origem', () => {
+  expect(ORIGEM_MANUAL).toBe('clickup.com')
+  expect(podeAutoEnviar(card({ source_url: `https://app.${ORIGEM_MANUAL}/t/1247yh1ky3v` }), bsb('11:00')))
+   .toBe('peca do clickup passa por gente')
+  for (const source_url of ['', 'https://drive.google.com/file/d/x1/view'])
+   expect(podeAutoEnviar(card({ source_url }), bsb('11:00')), source_url || '(vazio)').toBe('ok')
  })
 })
