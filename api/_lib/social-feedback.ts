@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { SocialCard } from './social-domain.js'
 import { SocialError } from './social-domain.js'
+import { jaFalamosHoje, semSaudacao } from './social-whats.js'
 type DB=SupabaseClient
 // Envio de vídeo pelo uazapi é síncrono: ele responde depois de entregar.
 const PRAZO_MIDIA=75000
@@ -77,7 +78,10 @@ export function feedbackText(job:FeedbackJob) {
  * Se a mídia for recusada, o texto vai sozinho: o link é o que não pode
  * faltar, porque é por ele que a aprovação acontece.
  */
-async function entregarNoWhats(job:FeedbackJob,text:string) {
+async function entregarNoWhats(job:FeedbackJob,texto:string) {
+ // Cumprimento só na primeira fala do dia naquele grupo. Decidido aqui, no
+ // envio, porque a mensagem pode ter ficado minutos na fila.
+ const text=await jaFalamosHoje(job.destination).then(falou=>falou?semSaudacao(texto):texto).catch(()=>texto)
  const base={number:job.destination,readchat:false,readmessages:false,
   track_source:'central-social',track_id:`feedback-${job.event_id}`,async:false}
  const video=(job.payload as {midia_url?:string}).midia_url

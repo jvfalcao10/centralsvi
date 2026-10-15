@@ -33,6 +33,7 @@ export const CLIENT_GROUPS:Record<string,{client:string;aliases:string[]}> = {
  '120363428466672308@g.us':{client:'Clínica LIV',aliases:['liv']},
  '120363406261232737@g.us':{client:'Aerojet',aliases:['aerojet']},
  '120363408134784827@g.us':{client:'Dra. Luana',aliases:['luana']},
+ '120363430249741459@g.us':{client:'Rafael Melo Advocacia',aliases:['rafael melo','rafael']},
 }
 // Last 8 digits, the same rule as the Sofia whitelist; 33005199 is Sofia herself.
 const TEAM_SUFFIX = ['92404033','92941072','92416107','92446604','96142150','96238835','91836693','96740929','20007880','33005199']

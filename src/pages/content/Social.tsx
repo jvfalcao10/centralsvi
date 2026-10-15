@@ -24,7 +24,29 @@ import { useEvent } from '@/hooks/use-event'
 // Comparar 480 KB custa poucos milissegundos; redesenhar 138 cards com arrastar
 // e soltar custa muito mais. A cada minuto o quadro se recarrega, e quase sempre
 // nada mudou.
-const mesmasPecas=(a:Card[],b:Card[])=>a.length===b.length&&a.every((c,i)=>c.id===b[i].id&&c.version===b[i].version&&c.stage===b[i].stage&&c.caption===b[i].caption&&c.client===b[i].client&&c.title===b[i].title&&c.note===b[i].note&&c.preview===b[i].preview&&c.ingest_pending===b[i].ingest_pending&&c.caption_draft===b[i].caption_draft)
+// A prévia é um endereço ASSINADO, e o servidor assina de novo a cada leitura.
+// Comparar a URL inteira dava "mudou" em toda volta de 60s, a lista era trocada,
+// o src de cada miniatura mudava e o navegador rebaixava as 210 imagens: o
+// quadro piscava inteiro de minuto em minuto. João mandou a gravação em
+// 15/10/2026. O que identifica a imagem é o CAMINHO, não a assinatura.
+const caminhoDaPrevia=(url?:string|null)=>{if(!url)return '';const corte=url.indexOf('?');return corte<0?url:url.slice(0,corte)}
+const mesmasPecas=(a:Card[],b:Card[])=>a.length===b.length&&a.every((c,i)=>c.id===b[i].id&&c.version===b[i].version&&c.stage===b[i].stage&&c.caption===b[i].caption&&c.client===b[i].client&&c.title===b[i].title&&c.note===b[i].note&&caminhoDaPrevia(c.preview)===caminhoDaPrevia(b[i].preview)&&c.ingest_pending===b[i].ingest_pending&&c.caption_draft===b[i].caption_draft)
+/**
+ * Mantém o endereço que o navegador já carregou.
+ *
+ * Mesmo quando UMA peça muda, a lista inteira é trocada e, sem isto, as outras
+ * 209 miniaturas ganhariam assinatura nova e recarregariam junto. A assinatura
+ * vale 1 hora; aos 40 minutos ela é renovada, então a imagem só recarrega uma
+ * vez a cada 40 minutos em vez de a cada minuto.
+ */
+const VALIDADE_PREVIA=40*60000
+function preservarPrevias(anterior:Card[],novo:Card[]){
+ const vistas=new Map(anterior.map(c=>[c.id,c.preview]))
+ return novo.map(c=>{
+  const antiga=vistas.get(c.id)
+  return antiga&&antiga!==c.preview&&caminhoDaPrevia(antiga)===caminhoDaPrevia(c.preview)?{...c,preview:antiga}:c
+ })
+}
 import { useToast } from '@/hooks/use-toast'
 
 type Event = {id:number; action:string; actor:string; revision:number; created_at:string; details:{from:string;to:string;evidence?:string;note?:string}}
@@ -53,12 +75,18 @@ export default function Social() {
  const load=useCallback(async()=>{
   const epoch=boardEpoch.current,request=++boardRead.current;setError('')
   await Promise.all([
-   (async()=>{try{const data=await socialApi();if(request===boardRead.current&&epoch===boardEpoch.current&&!moving.current)setCards(anterior=>mesmasPecas(anterior,data.cards)?anterior:data.cards)}catch(e){if(request===boardRead.current)setError((e as Error).message)}finally{if(request===boardRead.current)setLoading(false)}})(),
+   (async()=>{try{const data=await socialApi();if(request===boardRead.current&&epoch===boardEpoch.current&&!moving.current)setCards(anterior=>mesmasPecas(anterior,data.cards)?anterior:preservarPrevias(anterior,data.cards))}catch(e){if(request===boardRead.current)setError((e as Error).message)}finally{if(request===boardRead.current)setLoading(false)}})(),
    (async()=>{try{const status=await socialApi('?sync=status');if(request===boardRead.current)setSync(status)}catch{/* Sync health must not block the board. */}})(),
   ])
  },[])
  const open=useCallback(async(id:string)=>{const request=++detailRequest.current;setDetailLoading(true);setCard(null);setFeedback(null);setRouteDirty(false);setApprovalUrl('');try{const d=await socialApi('?id='+encodeURIComponent(id));if(request!==detailRequest.current)return;setCard(d.card);setFeedback(d.feedback);setApprovalUrl(d.approval_url||'');setEditClient(d.card.client);setEditTitle(d.card.title);setEvents(d.events);setCaption(d.card.caption);setNote(d.card.note);setSelected(d.card.selected_assets.length?d.card.selected_assets:ordemDasLaminas<Asset>(d.card.assets).map(a=>a.id));}catch(e){if(request===detailRequest.current)setError((e as Error).message)}finally{if(request===detailRequest.current)setDetailLoading(false)}},[])
- useEffect(()=>{void load();const timer=setInterval(()=>void load(),60000);return()=>clearInterval(timer)},[load])
+ // A assinatura das miniaturas vale 1 hora. De 40 em 40 minutos as prévias
+ // guardadas são soltas, para nenhuma vencer na tela do usuário.
+ const previasDesde=useRef(Date.now())
+ useEffect(()=>{void load();const timer=setInterval(()=>{
+  if(Date.now()-previasDesde.current>VALIDADE_PREVIA){previasDesde.current=Date.now();boardRead.current++}
+  void load()
+ },60000);return()=>clearInterval(timer)},[load])
  const cardId=params.get('peca')
  useEffect(()=>{if(cardId)void open(cardId);else setCard(null)},[cardId,open])
 

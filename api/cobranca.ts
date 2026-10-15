@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createAdminClient } from './_lib/supabase.js'
 import { rondaDiaria } from './_lib/social-cobranca.js'
+import { jaFalamosHoje, semSaudacao } from './_lib/social-whats.js'
 
 /**
  * A ronda diária da Sofia, às 8h30 de Brasília, de segunda a sexta.
@@ -10,9 +11,11 @@ import { rondaDiaria } from './_lib/social-cobranca.js'
  *    com o MESMO link que já está com ele.
  * 3. Data chegando e peça não pronta: avisa quem está com ela, e o João.
  */
-async function whats(jid: string, texto: string) {
+async function whats(jid: string, bruto: string) {
  const token = process.env.SOCIAL_UAZ_TOKEN || ''
  if (!token) throw new Error('uaz_token_ausente')
+ // Cumprimento só na primeira fala do dia naquele grupo.
+ const texto = await jaFalamosHoje(jid) ? semSaudacao(bruto) : bruto
  const r = await fetch('https://svicompany.uazapi.com/send/text', {
   method: 'POST', headers: { token, 'Content-Type': 'application/json' },
   body: JSON.stringify({ number: jid, text: texto, linkPreview: false, readchat: false, readmessages: false, async: false }),

@@ -145,12 +145,18 @@ describe('uma mensagem só para o cliente', () => {
    texto_pronto:'Bom dia!\n\n*Primeira consulta*\n\nPara aprovar, é só abrir:\nhttps://aprovar.svicompany.com.br/p/abc',
    midia_url:'https://svicompany.uazapi.com/x.mp4'}} as never
 
+ // /message/find é LEITURA (a Sofia conferindo se já falou no grupo hoje), não
+ // envio. O que estes testes afirmam é sobre quantas mensagens saem.
  const espiar = (resposta:(path:string)=>Promise<unknown>) => {
-  const paths:string[]=[]
+  const enviados:string[]=[]
   if(!AbortSignal.timeout)vi.stubGlobal('AbortSignal',{...AbortSignal,timeout:()=>new AbortController().signal})
-  vi.stubGlobal('fetch',vi.fn(async(url:string)=>{paths.push(new URL(String(url)).pathname);return resposta(new URL(String(url)).pathname)}))
+  vi.stubGlobal('fetch',vi.fn(async(url:string)=>{
+   const path=new URL(String(url)).pathname
+   if(path.startsWith('/send/'))enviados.push(path)
+   return resposta(path)
+  }))
   vi.stubEnv('SOCIAL_UAZ_TOKEN','t')
-  return paths
+  return enviados
  }
 
  it('vídeo aceito manda uma vez e não manda o texto depois',async()=>{
