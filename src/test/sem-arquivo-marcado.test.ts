@@ -11,7 +11,7 @@ const { semArquivoMarcado } = await import('../lib/social-board')
 // Pegou três peças no mesmo dia. A pior foi a Dra. Érika, Dia do Médico: a
 // arte CORRIGIDA estava na Central desde 14/10 e a peça ficou parada em
 // Ajustes com as duas versões sem marcar, a três dias da data.
-const peca = (extra: Partial<Parameters<typeof semArquivoMarcado>[0]> = {}) => ({
+const peca = (extra: Record<string, unknown> = {}) => ({
  stage: 'conferir', assets: [{ id: 'a' }, { id: 'b' }], selected_assets: [], ...extra,
 }) as Parameters<typeof semArquivoMarcado>[0]
 
@@ -30,7 +30,7 @@ describe('aviso de peça sem arquivo marcado', () => {
  })
 
  it('avisa em toda etapa que ainda vai para o cliente', () => {
-  for (const stage of ['conferir', 'aguardando', 'ajustes', 'aprovado', 'para_anuncio', 'agendado'])
+  for (const stage of ['interna', 'conferir', 'aguardando', 'ajustes', 'aprovado', 'para_anuncio', 'agendado'])
    expect(semArquivoMarcado(peca({ stage })), stage).toBe(true)
  })
 
