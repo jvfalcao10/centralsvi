@@ -7,8 +7,10 @@ describe('Aprovação de uma versão exata',()=>{
  it('não libera postagem porque a tarefa foi feita',()=>expect(()=>socialPatch(card(),{action:'postar',confirmed:true},now)).toThrow('aprovação'))
  it('exige aprovador e evidência para registro da equipe',()=>{expect(()=>socialPatch(card(),{action:'aprovar',name:'Maria'},now)).toThrow('onde e quando');expect(()=>socialPatch(card(),{action:'aprovar',evidence:'Grupo hoje às 14h'},now)).toThrow('quem aprovou')})
  it('não aceita aprovação sem arquivo final',()=>expect(()=>socialPatch(card({selected_assets:[]}),{action:'cliente_aprovar',name:'Maria'},now)).toThrow('arquivo'))
- it('mudar legenda invalida aprovação e link anterior',()=>expect(socialPatch(approved(),{action:'editar',caption:'Nova legenda',note:'',selected_assets:['a']},now)).toMatchObject({stage:'conferir',revision:2,approved_revision:null,token_hash:null}))
- it('mudar arquivo ou ordem requer nova aprovação',()=>expect(socialPatch(approved(),{action:'editar',caption:'Legenda',selected_assets:['b','a']},now)).toMatchObject({stage:'conferir',revision:2}))
+ it('mudar legenda invalida aprovação e link anterior',()=>expect(socialPatch(approved(),{action:'editar',caption:'Nova legenda',note:'',selected_assets:['a']},now)).toMatchObject({stage:'interna',revision:2,approved_revision:null,token_hash:null}))
+ it('mudar arquivo ou ordem requer nova aprovação',()=>expect(socialPatch(approved(),{action:'editar',caption:'Legenda',selected_assets:['b','a']},now)).toMatchObject({stage:'interna',revision:2}))
+ it('ação interna volta a peça para o time sem link nem aprovação',()=>expect(socialPatch(approved(),{action:'interna'},now)).toMatchObject({stage:'interna',approved_revision:null,token_hash:null,token_expires_at:null}))
+ it('mover para interna limpa link e aprovação como conferir',()=>expect(socialMovePatch(approved(),'interna','João',now)).toMatchObject({stage:'interna',approved_revision:null,approved_by:null,token_hash:null,token_expires_at:null}))
  it('nota interna não altera a versão aprovada',()=>expect(socialPatch(approved(),{action:'editar',caption:'Legenda',note:'Nota nova',selected_assets:['a']},now)).not.toHaveProperty('revision'))
  it('não permite incluir arquivo de outra peça ou repetir arquivo',()=>{expect(()=>socialPatch(card(),{action:'editar',selected_assets:['estranho']},now)).toThrow('inválida');expect(()=>socialPatch(card(),{action:'editar',selected_assets:['a','a']},now)).toThrow('inválida')})
  it('protege publicações já registradas de mudanças',()=>expect(()=>socialPatch(card({stage:'postado'}),{action:'editar',selected_assets:['a']},now)).toThrow('já postada'))
@@ -25,7 +27,7 @@ describe('Aprovação de uma versão exata',()=>{
 
 
 describe('movimentação interna direta',()=>{
- it.each(['conferir','aguardando','ajustes','aprovado','para_anuncio','agendado','postado','arquivado'])('aceita %s sem formulário',stage=>expect(socialMovePatch(card(),stage,'João',now).stage).toBe(stage))
+ it.each(['interna','conferir','aguardando','ajustes','aprovado','para_anuncio','agendado','postado','arquivado'])('aceita %s sem formulário',stage=>expect(socialMovePatch(card(),stage,'João',now).stage).toBe(stage))
  it('atribui liberação interna ao operador, sem inventar resposta de cliente',()=>expect(socialMovePatch(card(),'aprovado','João',now)).toMatchObject({approved_by:'João',approval_evidence:'Liberação interna pela equipe ao mover para Aprovado para postar na Central.'}))
  it('preserva a aprovação já registrada da mesma versão',()=>{expect(socialMovePatch(approved(),'aprovado','João',now)).not.toHaveProperty('approved_by')})
  it('não inventa aprovação nem data planejada ao agendar',()=>{const p=socialMovePatch(card(),'agendado','João',now);expect(p.scheduled_at).toBeNull();expect(p).not.toHaveProperty('approved_by')})

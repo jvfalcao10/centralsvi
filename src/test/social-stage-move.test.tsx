@@ -84,7 +84,7 @@ describe('direct staff movements',()=>{
  it('right-click offers stages without opening details and executes the selected move',async()=>{
   show();fireEvent.contextMenu(await screen.findByRole('button',{name:'Abrir Vídeo QA'}))
   expect(await screen.findByRole('menuitem',{name:'Copiar legenda'})).toBeVisible();expect(screen.queryByRole('dialog')).toBeNull()
-  fireEvent.click(screen.getByRole('menuitem',{name:'Postado'}))
+  fireEvent.click(screen.getByRole('menuitem',{name:'Feito (postado)'}))
   await waitFor(()=>expect(writes()[0][1]).toMatchObject({action:'mover',stage:'postado'}));expect(screen.queryByRole('dialog')).toBeNull()
  })
 })
@@ -111,9 +111,9 @@ describe('fast stage feedback',()=>{
   show();await screen.findByRole('button',{name:'Abrir Vídeo QA'});const reads=mocks.api.mock.calls.filter(([,body])=>!body).length
   await drop('postado')
   expect(screen.getByRole('combobox',{name:'Mudar etapa de Vídeo QA'})).toHaveValue('postado')
-  expect(screen.getByText('Salvando em Postado…')).toBeVisible();expect(mocks.toast).not.toHaveBeenCalled()
+  expect(screen.getByText('Salvando em Feito (postado)…')).toBeVisible();expect(mocks.toast).not.toHaveBeenCalled()
   await act(async()=>{finish()})
-  expect(screen.queryByText('Salvando em Postado…')).toBeNull();expect(mocks.api.mock.calls.filter(([,body])=>!body)).toHaveLength(reads)
+  expect(screen.queryByText('Salvando em Feito (postado)…')).toBeNull();expect(mocks.api.mock.calls.filter(([,body])=>!body)).toHaveLength(reads)
   mocks.api.mockImplementation(base);await drop('conferir');expect(writes()[1][1].version).toBe(5)
  })
  it('does not wait for sync health to show the cards',async()=>{

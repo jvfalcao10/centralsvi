@@ -5,7 +5,9 @@ import {SocialError} from './social-domain.js'
 const TIPOS=/^(image\/(jpeg|png|webp|gif)|video\/(mp4|quicktime))$/
 /** Teto do bucket no plano atual. Acima disso o upload falha calado. */
 const TETO=50*1024*1024
-const ETAPAS=['conferir','aguardando','ajustes','aprovado','agendado'] as const
+// Peça nova nunca entra em Enviar pra aprovação: de lá a Sofia manda sozinha
+// ao grupo do cliente. Entra em 'interna' para o time ver antes (João, 15/10/2026).
+const ETAPAS=['interna','aguardando','ajustes','aprovado','agendado'] as const
 
 const limpo=(v:unknown,max:number)=>typeof v==='string'?v.trim().replace(/\s+/g,' ').slice(0,max):''
 const semAcento=(v:string)=>v.normalize('NFD').replace(/[̀-ͯ]/g,'')
@@ -44,7 +46,7 @@ export async function enderecoDeUpload(db:SupabaseClient,body:Record<string,unkn
 export async function criarPecaManual(db:SupabaseClient,body:Record<string,unknown>,actor:string) {
  const client=limpo(body.client,120)
  const title=limpo(body.title,200)
- const stage=ETAPAS.includes(body.stage as typeof ETAPAS[number])?String(body.stage):'conferir'
+ const stage=ETAPAS.includes(body.stage as typeof ETAPAS[number])?String(body.stage):'interna'
  if(client.length<2)throw new SocialError(400,'Escolha o cliente.')
  if(title.length<3)throw new SocialError(400,'Dê um título à peça.')
 

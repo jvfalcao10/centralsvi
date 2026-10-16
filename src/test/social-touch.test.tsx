@@ -38,7 +38,7 @@ describe('touch scrolling and moving',()=>{
  })
  it('moves exactly once with a real touch pointer drag to Postado',async()=>{
   show();await begin();fireEvent.pointerMove(document,point(250,430))
-  await waitFor(()=>expect(screen.getByRole('region',{name:/^Postado$/})).toHaveClass('bg-primary/10'))
+  await waitFor(()=>expect(screen.getByRole('region',{name:/^Feito \(postado\)$/})).toHaveClass('bg-primary/10'))
   fireEvent.pointerUp(document,point(250,430))
   await waitFor(()=>expect(move).toHaveBeenCalledExactlyOnceWith(card.id,'postado'))
   expect(open).not.toHaveBeenCalled();expect(screen.queryByRole('region',{name:'Mover peça para outra etapa'})).toBeNull()
@@ -53,7 +53,7 @@ describe('touch scrolling and moving',()=>{
  })
  it('scrolls down inside the destination column while the handle is held near its lower edge',async()=>{
   show();await begin();fireEvent.pointerMove(document,point(250,455))
-  const list=screen.getByRole('region',{name:/^Postado$/}).querySelector('[data-touch-stage-list]')!
+  const list=screen.getByRole('region',{name:/^Feito \(postado\)$/}).querySelector('[data-touch-stage-list]')!
   await waitFor(()=>expect(list.scrollTop).toBeGreaterThan(0))
   await act(async()=>{fireEvent.pointerCancel(document,point(250,455))});expect(move).not.toHaveBeenCalled()
  })
@@ -67,8 +67,8 @@ describe('touch scrolling and moving',()=>{
  })
  it('also lets the user tap the handle then a stage without dragging',()=>{
   show();fireEvent.click(screen.getByRole('button',{name:'Mover Peça de teste'}))
-  expect(screen.getByRole('button',{name:'Conferir aprovação'})).toBeDisabled()
-  fireEvent.click(screen.getByRole('button',{name:'Postado'}))
+  expect(screen.getByRole('button',{name:'Enviar pra aprovação'})).toBeDisabled()
+  fireEvent.click(screen.getByRole('button',{name:'Feito (postado)'}))
   expect(move).toHaveBeenCalledExactlyOnceWith(card.id,'postado');expect(open).not.toHaveBeenCalled()
  })
  it('offers cancel and escape without any write',()=>{

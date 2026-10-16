@@ -159,7 +159,8 @@ export function receiptStore(db:ReturnType<typeof createAdminClient>):Store {
   // "Conferir" passa a ser mentira, e enquanto for, a aprovação que vier depois não
   // encontra a peça, porque só vale para quem está aguardando o cliente.
   async markSent(c){
-   if(c.stage!=='conferir'||c.ingest_pending||!c.selected_assets.length)return ''
+   // 'interna' conta igual: se o time mandou o arquivo na mão, a peça está com o cliente.
+   if(!['interna','conferir'].includes(c.stage)||c.ingest_pending||!c.selected_assets.length)return ''
    // Nasce com link de aprovação, mesmo o arquivo tendo ido na mão. Sem ele a
    // peça ficava em "aguardando cliente" sem endereço nenhum, e a cobrança
    // diária saía dizendo "ficou uma peça esperando vocês" sem nada clicável:

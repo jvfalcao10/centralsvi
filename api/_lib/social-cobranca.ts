@@ -282,7 +282,7 @@ const diaCurto = (ms: number) => {
  const d = new Date(ms - 3 * 3600000)
  return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`
 }
-const ETAPA: Record<string, string> = { conferir: 'ainda em conferência', ajustes: 'ainda em ajuste',
+const ETAPA: Record<string, string> = { interna: 'ainda em aprovação interna', conferir: 'ainda em conferência', ajustes: 'ainda em ajuste',
  aguardando: 'esperando o cliente aprovar', aprovado: 'aprovada, falta programar' }
 
 export function textoDasDatas(pecas: PecaComData[], agora = Date.now()) {
@@ -360,7 +360,7 @@ export async function lembrarDatas(
  for (const g of (grupos || []) as { author: string; jid: string }[]) {
   // Para o grupo do autor só o que depende dele. Peça esperando o cliente é
   // assunto da outra ronda.
-  const dele = chegando.filter(p => p.author === g.author && ['conferir', 'ajustes'].includes(p.stage))
+  const dele = chegando.filter(p => p.author === g.author && ['interna', 'conferir', 'ajustes'].includes(p.stage))
   if (!dele.length) continue
   try { await enviar(g.jid, textoDasDatas(dele, agora)); avisados++ } catch { /* segue */ }
  }

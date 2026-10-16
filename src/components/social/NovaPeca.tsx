@@ -7,10 +7,10 @@ import {socialApi} from '@/lib/social-board'
 import {toast} from 'sonner'
 
 const ETAPAS=[
- {id:'conferir',label:'Conferir',ajuda:'Entra para alguém olhar antes de seguir'},
- {id:'aguardando',label:'Aguardando cliente',ajuda:'Já pode ir para o cliente aprovar'},
- {id:'ajustes',label:'Em ajuste',ajuda:'Precisa de correção antes de sair'},
- {id:'aprovado',label:'Aprovado para postar',ajuda:'Pauta já fechada, pronta para publicar'},
+ {id:'interna',label:'Aprovação interna',ajuda:'O time confere; nada vai ao cliente'},
+ {id:'aguardando',label:'Com o cliente',ajuda:'Já foi para o cliente aprovar'},
+ {id:'ajustes',label:'Alteração do cliente',ajuda:'Precisa de correção antes de sair'},
+ {id:'aprovado',label:'Aprovado pelo cliente',ajuda:'Pauta já fechada, pronta para publicar'},
 ] as const
 
 const TETO=50*1024*1024
@@ -28,13 +28,13 @@ export function NovaPeca({clientes,aoCriar}:{clientes:string[];aoCriar:()=>void}
  const [aberto,setAberto]=useState(false)
  const [client,setClient]=useState('')
  const [title,setTitle]=useState('')
- const [stage,setStage]=useState<string>('conferir')
+ const [stage,setStage]=useState<string>('interna')
  const [arquivos,setArquivos]=useState<File[]>([])
  const [enviando,setEnviando]=useState(false)
  const [progresso,setProgresso]=useState('')
  const campo=useRef<HTMLInputElement>(null)
 
- const limpar=()=>{setClient('');setTitle('');setStage('conferir');setArquivos([]);setProgresso('')}
+ const limpar=()=>{setClient('');setTitle('');setStage('interna');setArquivos([]);setProgresso('')}
 
  const somar=(lista:FileList|null)=>{
   if(!lista)return

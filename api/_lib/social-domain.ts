@@ -44,7 +44,7 @@ export function ordemDasLaminas<T extends {name?:string}>(assets:T[]):T[] {
 
 export function socialMovePatch(c: SocialCard, target: unknown, actor: string, now = new Date()): Record<string, unknown> {
  const stage = text(target, 30)
- if (!['conferir','aguardando','ajustes','aprovado','para_anuncio','agendado','postado','arquivado'].includes(stage)) reject('Etapa inválida.')
+ if (!['interna','conferir','aguardando','ajustes','aprovado','para_anuncio','agendado','postado','arquivado'].includes(stage)) reject('Etapa inválida.')
  if (!actor.trim()) reject('Entre na Central novamente.')
  if (['aguardando','aprovado','para_anuncio','agendado','postado'].includes(stage)) {
   if (c.ingest_pending) reject('Aguarde a importação dos arquivos para continuar.')
@@ -63,7 +63,8 @@ export function socialMovePatch(c: SocialCard, target: unknown, actor: string, n
  if (!(c.selected_assets||[]).length && (c.assets||[]).length) patch.selected_assets = ordemDasLaminas(c.assets).map(a => a.id)
  // Moving back corrects the current board; the earlier publication stays in the event history.
  if (stage !== 'postado') Object.assign(patch,{posted_at:null,posted_url:null})
- if (['conferir','aguardando','ajustes','arquivado'].includes(stage)) Object.assign(patch,stage==='ajustes'?mantemOLink:cleared)
+ // 'interna' vale como 'conferir': ainda não saiu, então não guarda link nem aprovação.
+ if (['interna','conferir','aguardando','ajustes','arquivado'].includes(stage)) Object.assign(patch,stage==='ajustes'?mantemOLink:cleared)
  if (stage === 'aprovado') {
   patch.scheduled_at=null
   if (c.approved_revision !== c.revision || !c.approved_at || !c.approved_by) Object.assign(patch,{
@@ -104,7 +105,7 @@ export function socialPatch(c: SocialCard, body: Record<string, unknown>, now = 
   if(!client || !title) reject('Informe o cliente e o título da peça.')
   const changed = client !== c.client || title !== c.title || caption !== c.caption || JSON.stringify(selected) !== JSON.stringify(c.selected_assets)
   // Salvar é o gesto de revisão: a legenda deixa de ser rascunho da IA.
-  return { client, title, caption, caption_draft: false, selected_assets: selected, note: text(body.note), ...(changed ? { ...cleared, revision: c.revision + 1, stage: 'conferir' } : {}) }
+  return { client, title, caption, caption_draft: false, selected_assets: selected, note: text(body.note), ...(changed ? { ...cleared, revision: c.revision + 1, stage: 'interna' } : {}) }
  }
  if (action === 'solicitar' || action === 'enviar_cliente') { requireAssets(); if (c.stage === 'postado' || c.stage === 'arquivado') reject('Reabra a peça antes de solicitar aprovação.'); return { ...cleared, stage: 'aguardando' } }
  if (action === 'aprovar' || action === 'cliente_aprovar') {
@@ -144,6 +145,8 @@ export function socialPatch(c: SocialCard, body: Record<string, unknown>, now = 
  }
  if (action === 'arquivar') return { ...cleared, stage: 'arquivado' }
  if (action === 'conferir') { if (c.stage === 'postado') reject('Peça já postada; preserve o registro.'); return { ...cleared, stage: 'conferir' } }
+ // Volta a peça para o time olhar, sem nada ir ao cliente.
+ if (action === 'interna') { if (c.stage === 'postado') reject('Peça já postada; preserve o registro.'); return { ...cleared, stage: 'interna' } }
  reject('Ação inválida.')
 }
 // O título é escrito para a equipe dentro da tarefa do ClickUp. Tudo que sai daqui

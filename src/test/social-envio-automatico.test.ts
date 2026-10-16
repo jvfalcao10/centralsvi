@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { podeAutoEnviar, horaDeBrasilia, videoAindaComprimindo, vemDoClickUp, ORIGEM_MANUAL } from '../../api/_lib/social-envio-cliente'
+import { podeAutoEnviar, autoEnviarPecas, horaDeBrasilia, videoAindaComprimindo, vemDoClickUp, ORIGEM_MANUAL } from '../../api/_lib/social-envio-cliente'
 import type { SocialCard } from '../../api/_lib/social-domain'
 
 // João, 13/10/2026: "ela não enviou automaticamente". A peça do editor caía em
@@ -32,8 +32,8 @@ describe('trava do envio automático', () => {
   expect(podeAutoEnviar(card(), bsb('11:00'))).toBe('ok')
  })
 
- it('só mexe em peça que está em Conferir', () => {
-  for (const stage of ['aguardando', 'ajustes', 'aprovado', 'postado', 'arquivado'])
+ it('só mexe em peça que está em Enviar pra aprovação', () => {
+  for (const stage of ['interna', 'aguardando', 'ajustes', 'aprovado', 'postado', 'arquivado'])
    expect(podeAutoEnviar(card({ stage }), bsb('11:00'))).toBe('etapa nao e conferir')
  })
 
@@ -108,5 +108,39 @@ describe('a consulta e a trava olham o mesmo conjunto', () => {
    .toBe('peca do clickup passa por gente')
   for (const source_url of ['', 'https://drive.google.com/file/d/x1/view'])
    expect(podeAutoEnviar(card({ source_url }), bsb('11:00')), source_url || '(vazio)').toBe('ok')
+ })
+})
+
+// João, 15/10/2026: duas peças do Rafael foram sozinhas ao grupo sem ele ver.
+// Toda entrada nova cai em "Aprovação interna" e de lá NADA sai. Só quem o time
+// move para "Enviar pra aprovação" (conferir) entra na fila da Sofia.
+describe('aprovação interna nunca vai ao cliente', () => {
+ it('peça pronta em interna, no horário e com grupo, continua parada', () => {
+  const pronta = card({ stage: 'interna' })
+  expect(podeAutoEnviar(pronta, bsb('11:00'))).toBe('etapa nao e conferir')
+  expect(podeAutoEnviar({ ...pronta, stage: 'conferir' }, bsb('11:00'))).toBe('ok')
+ })
+
+ it('a volta do envio só busca conferir e não grava nada para peça em interna', async () => {
+  const filtros: [string, unknown][] = []
+  const escritas: string[] = []
+  const linhas = [card({ id: 'wa-interna-1', stage: 'interna' })]
+  const consulta: Record<string, unknown> = {}
+  const encadeia = (nome: string) => (...args: unknown[]) => { filtros.push([nome, args]); return consulta }
+  Object.assign(consulta, {
+   select: encadeia('select'), not: encadeia('not'), neq: encadeia('neq'), order: encadeia('order'),
+   // O banco devolve só o que bate no filtro de etapa, como o PostgREST faria.
+   eq: (col: string, val: unknown) => { filtros.push(['eq', [col, val]]); return consulta },
+   limit: async () => ({ data: linhas.filter(l => filtros.some(([n, a]) => n === 'eq' && (a as unknown[])[0] === 'stage' && (a as unknown[])[1] === l.stage)), error: null }),
+   insert: async () => { escritas.push('insert'); return { error: null } },
+  })
+  const db = {
+   from: (tabela: string) => { if (tabela !== 'central_social_cards') escritas.push(tabela); return consulta },
+   rpc: async (nome: string) => { escritas.push(nome); return { data: null, error: null } },
+  }
+  const r = await autoEnviarPecas(db as never, 5, bsb('11:00'))
+  expect(filtros).toContainEqual(['eq', ['stage', 'conferir']])
+  expect(r.enviadas).toBe(0)
+  expect(escritas).toEqual([])
  })
 })

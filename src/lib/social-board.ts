@@ -6,13 +6,18 @@ export type Card = {
  approved_by:string|null; approved_at:string|null; approval_evidence:string|null; scheduled_at:string|null; posted_at:string|null; posted_url:string|null; channel:string|null; preview?:string;
 }
 export const SOCIAL_STAGES = [
- {id:'conferir',label:'Conferir aprovação',color:'#c3a36b',hint:'Falta confirmar esta versão'},
- {id:'aguardando',label:'Aguardando cliente',color:'#80a8cf',hint:'Link de aprovação gerado'},
- {id:'ajustes',label:'Ajustes',color:'#df9279',hint:'Resolver antes de publicar'},
- {id:'aprovado',label:'Aprovado para postar',color:'#79b79b',hint:'Aprovação registrada'},
+ // Espelha as etapas das listas do ClickUp (José, Math, Laís). "Aprovação
+ // interna" vem na frente e NÃO manda nada ao cliente: toda peça nova entra
+ // nela. Decisão do João em 15/10/2026, depois de duas peças irem sozinhas ao
+ // grupo do Rafael sem ele ver. Só "Enviar pra aprovação" dispara a Sofia.
+ {id:'interna',label:'Aprovação interna',color:'#d4b483',hint:'O time confere; nada vai ao cliente'},
+ {id:'conferir',label:'Enviar pra aprovação',color:'#c3a36b',hint:'Ao mover pra cá, a Sofia manda o link no grupo do cliente'},
+ {id:'aguardando',label:'Com o cliente',color:'#80a8cf',hint:'Link de aprovação gerado'},
+ {id:'ajustes',label:'Alteração do cliente',color:'#df9279',hint:'Resolver antes de publicar'},
+ {id:'aprovado',label:'Aprovado pelo cliente',color:'#79b79b',hint:'Aprovação registrada'},
  {id:'para_anuncio',label:'Para anúncio',color:'#5ea9c9',hint:'Selecionado para tráfego pago'},
  {id:'agendado',label:'Agendado',color:'#ada0cf',hint:'Programado pela equipe'},
- {id:'postado',label:'Postado',color:'#a6b7b0',hint:'Publicação confirmada'},
+ {id:'postado',label:'Feito (postado)',color:'#a6b7b0',hint:'Publicação confirmada'},
  {id:'arquivado',label:'Arquivo',color:'#999999',hint:'Fora da fila de postagem'},
 ]
 export async function socialApi(query = '', body?:Record<string,unknown>) {
