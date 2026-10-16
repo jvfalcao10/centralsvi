@@ -2,10 +2,10 @@ import {CardActionsButton,StageSelect} from './CardActions'
 import TouchStageMove,{TouchMoveCard,TouchStageColumn} from './TouchStageMove'
 import CardSelection,{type CardSelectionProps} from './CardSelection'
 import {useEffect,useRef,useState,memo} from 'react'
-import {ArrowLeft,ArrowRight} from 'lucide-react'
+import {AlertTriangle,ArrowLeft,ArrowRight} from 'lucide-react'
 import {Button} from '@/components/ui/button'
 import {VideoCover} from '@/components/social/VideoPreview'
-import {SOCIAL_STAGES, socialDate, type Card,clientTone} from '@/lib/social-board'
+import {SOCIAL_STAGES, socialDate, semArquivoMarcado, type Card,clientTone} from '@/lib/social-board'
 
 /** Trello-style columns on phones and tablets; scrolling never starts a card drag. */
 function MobileSocialBoard({cards, columns, filterKey, busy, onOpen, onMove, onCopy,selectedIds,onSelect,onPublish,onEnviarCliente,onPedirAjuste}: CardSelectionProps&{
@@ -35,6 +35,7 @@ function MobileSocialBoard({cards, columns, filterKey, busy, onOpen, onMove, onC
       <h3 className="line-clamp-3 break-words text-sm font-semibold leading-snug">{card.title}</h3>
       <p className="text-sm text-muted-foreground">{card.author} · {card.assets.length} arquivo{card.assets.length===1?'':'s'} · v{card.revision}</p>
       {card.ingest_pending&&<p className="text-sm text-orange-400">Importação pendente</p>}
+      {semArquivoMarcado(card)&&<p className="flex items-start gap-1.5 text-sm font-medium text-amber-500"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0"/>Sem arquivo marcado. Abra e escolha o que vai pro cliente, senão ela não sai daqui.</p>}
       {card.stage==='ajustes'&&card.note&&<p className="line-clamp-3 text-sm text-orange-400">{card.note}</p>}
       {card.approved_by&&<p className="text-sm text-emerald-500">Aprovado por {card.approved_by}</p>}
       {card.stage==='agendado'&&card.scheduled_at&&<p className="text-sm text-primary">{socialDate(card.scheduled_at)} · {card.channel}</p>}

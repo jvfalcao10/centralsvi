@@ -26,6 +26,22 @@ export const socialDate=(date?:string|null)=>date?new Date(date).toLocaleString(
 export const localInput=(date=new Date())=>new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,16)
 
 // Stage changes never change the order in which deliveries appear.
+/**
+ * A peça tem arquivo, mas ninguém marcou qual vai para o cliente.
+ *
+ * É a falha mais silenciosa do quadro: a peça parece pronta, tem as artes
+ * anexadas e fica na coluna como qualquer outra, mas o envio recusa e ninguém
+ * descobre o motivo. Em 15/10/2026 pegou três de uma vez, entre elas a Dra.
+ * Érika, Dia do Médico, que estava com a arte CORRIGIDA parada desde o dia 14
+ * só porque nenhuma das duas versões estava marcada.
+ *
+ * Em Postado e Arquivo não avisa: lá a peça já cumpriu o caminho.
+ */
+export function semArquivoMarcado(card:Pick<Card,'assets'|'selected_assets'|'stage'>) {
+ if(card.stage==='postado'||card.stage==='arquivado')return false
+ return card.assets.length>0 && card.selected_assets.length===0
+}
+
 export function newestSocialFirst(a:Card,b:Card) {
  const time=(card:Card)=>Date.parse(card.source_updated)||Date.parse(card.created_at||'')||0
  return time(b)-time(a)||a.id.localeCompare(b.id)
