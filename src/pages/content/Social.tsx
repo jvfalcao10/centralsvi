@@ -109,6 +109,24 @@ export default function Social() {
  useEffect(()=>{setSelectedCards(new Set());setBatchErrors([])},[query,client,author,stage,archived,isMobile])
  const toggleSelected=useEvent((id:string)=>setSelectedCards(previous=>{const next=new Set(previous);next.has(id)?next.delete(id):next.add(id);return next}))
  const contentDirty=card&&(editClient!==card.client||editTitle!==card.title||caption!==card.caption||note!==card.note||JSON.stringify(selected)!==JSON.stringify(card.selected_assets))
+ /**
+  * Os arquivos na ordem em que o cliente vai ver, não na ordem em que o banco
+  * guardou.
+  *
+  * João, 16/10/2026, sobre o carrossel do Dr. Brenno: "você não arrumou". A
+  * ordem ESTAVA certa, e o link do cliente entregava 01, 02, 03, 04. Mas a
+  * grade daqui desenhava `card.assets` cru, e nesse card o cru é 02, 01, 04,
+  * 03 mais as quatro versões antigas, então a tela abria mostrando
+  * "4 · Arquivo final" no topo e "1" lá embaixo. Quem olha conclui, com razão,
+  * que o carrossel continua fora de ordem.
+  *
+  * Os não escolhidos vão para o fim, mantendo a ordem original entre eles.
+  */
+ const arquivosNaOrdem=useMemo(()=>{
+  if(!card)return []
+  const posicao=(id:string)=>{const i=selected.indexOf(id);return i<0?Number.MAX_SAFE_INTEGER:i}
+  return [...card.assets].sort((x,y)=>posicao(x.id)-posicao(y.id))
+ },[card,selected])
  const dirty=contentDirty||routeDirty
  const copy=useEvent(async(text:string)=>{try{await navigator.clipboard.writeText(text);notify('Copiado.')}catch{notify('Não foi possível copiar. Selecione o texto e copie.')}})
  const save=async()=>{
@@ -252,7 +270,7 @@ export default function Social() {
     <div className="mt-6 grid lg:grid-cols-[1.05fr_1fr] gap-7">
      <div className="min-w-0 space-y-5">
       <div><h3 className="font-semibold text-sm">Arquivos da peça</h3><p className="text-xs text-muted-foreground mt-1">Selecione os arquivos finais. As setas definem a ordem do carrossel.</p></div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{card.assets.map(a=>{const pos=selected.indexOf(a.id);return <div key={a.id} className={`border rounded-lg overflow-hidden ${pos>=0?'border-primary/70':'opacity-65'}`}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{arquivosNaOrdem.map(a=>{const pos=selected.indexOf(a.id);return <div key={a.id} className={`border rounded-lg overflow-hidden ${pos>=0?'border-primary/70':'opacity-65'}`}>
        {a.type.startsWith('video/')?<VideoPreview key={a.id} asset={a}/>:a.type.startsWith('image/')&&a.preview?<a href={a.url} target="_blank" rel="noreferrer"><img className="w-full h-44 object-contain bg-black/10" src={a.preview} alt={a.name}/></a>:<a href={a.url} target="_blank" rel="noreferrer" className="h-32 flex items-center justify-center text-sm">Abrir arquivo</a>}
        <div className="p-3 space-y-2"><p className="text-sm sm:text-xs break-words line-clamp-2" title={a.name}>{a.name}</p><label className="flex min-h-11 items-center gap-3 text-sm"><input className="h-5 w-5" disabled={busy||card.stage==='postado'} type="checkbox" checked={pos>=0} onChange={e=>setSelected(p=>e.target.checked?[...p,a.id]:p.filter(id=>id!==a.id))}/>{pos>=0?`${pos+1} · Arquivo final`:'Incluir na versão'}</label>
         <div className="flex items-center gap-1"><Button size="icon" variant="ghost" className="h-7 w-7" disabled={pos<=0||busy||card.stage==='postado'} aria-label={`Subir ${a.name}`} onClick={()=>reorder(a.id,-1)}><ArrowUp className="h-3 w-3"/></Button><Button size="icon" variant="ghost" className="h-7 w-7" disabled={pos<0||pos===selected.length-1||busy||card.stage==='postado'} aria-label={`Descer ${a.name}`} onClick={()=>reorder(a.id,1)}><ArrowDown className="h-3 w-3"/></Button><a href={a.url} target="_blank" rel="noreferrer" className="ml-auto min-h-11 px-2 text-sm text-primary flex items-center gap-2"><Download className="h-3 w-3"/>Original</a></div>
