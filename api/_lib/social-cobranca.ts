@@ -376,7 +376,8 @@ export async function rondaDiaria(
  const clientes = await cobrarClientes(db, enviar, agora).catch(e => ({ erro: String(e?.message || e) }))
  const datas = await lembrarDatas(db, enviar, agora).catch(e => ({ erro: String(e?.message || e) }))
  const programar = await cobrarProgramacao(db, enviar, agora).catch(e => ({ erro: String(e?.message || e) }))
- return { ajustes, clientes, datas, programar }
+ const interna = await cobrarInterna(db, enviar, agora).catch(e => ({ erro: String(e?.message || e) }))
+ return { ajustes, clientes, datas, programar, interna }
 }
 
 // ---------------------------------------------------------------------------
@@ -427,5 +428,63 @@ export async function cobrarProgramacao(
  // Só para o João: quem decide dia e hora de publicar é a casa, não o cliente
  // nem o designer.
  try { await enviar(JOAO, textoDasAprovadas(pecas, agora)) } catch { /* segue */ }
+ return { pecas: pecas.length }
+}
+
+// ---------------------------------------------------------------------------
+// Peça parada na Aprovação interna
+// ---------------------------------------------------------------------------
+/**
+ * João, 17/10/2026: "Sofia não tá enviando os posts pra aprovação. Vários que
+ * não foi, tipo Ésia os vídeos".
+ *
+ * A Sofia estava inteira: o último envio ao cliente tinha saído na noite
+ * anterior, entregue. O que mudou foi a etapa "Aprovação interna", criada em
+ * 16/10 na frente do quadro para que nada fosse ao cliente sem passar por
+ * gente. Ela cumpre o papel, mas o envio automático só olha "Conferir", então
+ * a peça nova para ali e NADA avisa. Seis peças ficaram presas, uma por 34
+ * horas, e a leitura de fora foi que o robô tinha quebrado.
+ *
+ * A trava continua. O que ela não pode mais é ser silenciosa.
+ */
+export type PecaNaInterna = { card_id: string; client: string; title: string; horas: number }
+
+/** A partir de quantas horas paradas vale incomodar. */
+const ESPERA_INTERNA = 6
+
+export function paradasNaInterna(cards: SocialCard[], agora = Date.now()): PecaNaInterna[] {
+ return cards
+  .filter(c => c.stage === 'interna')
+  .map(c => ({ c, horas: (agora - Date.parse(c.updated_at)) / 3600000 }))
+  .filter(x => Number.isFinite(x.horas) && x.horas >= ESPERA_INTERNA)
+  .sort((a, b) => b.horas - a.horas)
+  .map(x => ({ card_id: x.c.id, client: x.c.client, title: x.c.title, horas: Math.floor(x.horas) }))
+}
+
+export function textoDaInterna(pecas: PecaNaInterna[]) {
+ const tempo = (h: number) => h >= 24 ? `há ${Math.floor(h / 24)} dia${h >= 48 ? 's' : ''}` : `há ${h}h`
+ const mostrar = pecas.slice(0, TETO_NA_MENSAGEM)
+ const resto = pecas.length - mostrar.length
+ const linhas = [
+  pecas.length === 1
+   ? '1 peça esperando sua liberação na Aprovação interna:'
+   : `${pecas.length} peças esperando sua liberação na Aprovação interna:`,
+  '',
+  ...mostrar.map(p => `*${p.client}* · ${p.title} (${tempo(p.horas)})`),
+ ]
+ if (resto > 0) linhas.push('', `E mais ${resto} no quadro.`)
+ // O que fazer, não só o que está errado: elas não saem sozinhas de propósito.
+ linhas.push('', 'Enquanto ficam aí, não vão pro cliente. Libere na Central: https://central.svicompany.com.br/content/social?etapa=interna')
+ return linhas.join('\n')
+}
+
+export async function cobrarInterna(
+ db: DB, enviar: (jid: string, texto: string) => Promise<void>, agora = Date.now(),
+) {
+ const { data, error } = await db.from('central_social_cards').select('*').eq('stage', 'interna').limit(500)
+ if (error) throw new Error('interna_leitura_falhou')
+ const pecas = paradasNaInterna((data || []) as SocialCard[], agora)
+ if (!pecas.length) return { pecas: 0 }
+ try { await enviar(JOAO, textoDaInterna(pecas)) } catch { /* segue */ }
  return { pecas: pecas.length }
 }
