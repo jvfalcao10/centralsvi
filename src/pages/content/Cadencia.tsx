@@ -23,7 +23,7 @@ type Linha = {
   status: Status
   recentes: PostRecente[]
 }
-type Dados = { geradoEm: string; dia: number; diasNoMes: number; meta: { feedMin: number; feedMax: number; video: number }; clientes: Linha[] }
+type Dados = { geradoEm: string; dia: number; diasNoMes: number; meta: { feedMin: number; feedMax: number; video: number; videoMax: number }; clientes: Linha[] }
 
 const CORES: Record<Status, string> = {
   'em dia': 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
@@ -100,7 +100,7 @@ export default function Cadencia() {
           </h1>
           {dados && (
             <p className="mt-1 text-sm text-muted-foreground">
-              Dia {dados.dia} de {dados.diasNoMes}. A régua da casa é {dados.meta.feedMin} a {dados.meta.feedMax} posts de feed e {dados.meta.video} vídeos por mês, por cliente. Story não entra na conta.
+              Dia {dados.dia} de {dados.diasNoMes}. A régua da casa é <strong>1 a 2 flyers e 1 a 2 vídeos por semana</strong>, ou seja {dados.meta.feedMin} a {dados.meta.feedMax} de cada no mês. O segundo vídeo só sai quando tem caixinha ou POV da Sarah. Story não entra na conta.
             </p>
           )}
           <Link to="/content/social" className="mt-2 inline-flex text-sm text-primary underline underline-offset-4">Ir para o quadro de postagens →</Link>
@@ -170,7 +170,7 @@ export default function Cadencia() {
                         )}
                       </td>
                       <td className="px-4 py-3"><Barra feito={l.feed} meta={dados.meta.feedMin} cor={l.feed > dados.meta.feedMax ? 'bg-sky-500' : 'bg-primary'} /></td>
-                      <td className="px-4 py-3"><Barra feito={l.video} meta={dados.meta.video} cor="bg-primary" /></td>
+                      <td className="px-4 py-3"><Barra feito={l.video} meta={dados.meta.video} cor={l.video > dados.meta.videoMax ? 'bg-sky-500' : 'bg-primary'} /></td>
                       <td className="px-4 py-3">
                         {dias === null ? <span className="text-muted-foreground">nunca</span> : (
                           <a href={l.ultimoLink || '#'} target="_blank" rel="noreferrer"

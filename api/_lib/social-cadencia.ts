@@ -5,11 +5,21 @@ type DB = ReturnType<typeof createAdminClient>
 /**
  * Quanto cada cliente já postou no mês, contra a régua da casa.
  *
- * Regra do João, 11/10/2026: cada cliente da carteira recebe **4 a 6 posts de
- * feed e 4 vídeos por mês, somente**. Nem menos, nem mais. A auditoria daquele
- * dia achou contas de 2 a 25 posts por mês sem critério, e volume não trouxe
- * resultado: a Dra. Ênia postou o dobro e a mediana de engajamento caiu de 82
- * para 19.
+ * Regra do João, atualizada em 19/10/2026: cada cliente recebe **1 a 2 flyers
+ * e 1 a 2 vídeos por semana**, ou seja 4 a 8 de cada por mês. Story fora.
+ *
+ * O vídeo varia por um motivo concreto: sempre sai 1 produzido pelo Matheus, e
+ * vira 2 quando existe caixinha, POV ou algo do tipo da Sarah. Sem isso, não
+ * se inventa a segunda peça.
+ *
+ * A régua anterior, de 11/10, era 4 a 6 feed e **4 vídeos** por mês. Medido em
+ * setembro fechado, nas 18 contas: a casa entregou média de **1,2 flyer e 1,7
+ * vídeo por semana**, ou seja o vídeo já rodava a quase o dobro do alvo. A
+ * tela cobrava todo mundo contra um número que a casa não praticava mais.
+ *
+ * A origem continua valendo: a auditoria de 11/10 achou contas de 2 a 25 posts
+ * por mês sem critério, e volume não trouxe resultado, a Dra. Ênia postou o
+ * dobro e a mediana de engajamento caiu de 82 para 19. O teto existe para isso.
  *
  * Isso vivia num painel separado, cadencia.svicompany.com.br. João, 19/10:
  * "a cadência deve estar dentro da Central SVI, porque quero que a social
@@ -17,7 +27,7 @@ type DB = ReturnType<typeof createAdminClient>
  * `central_social_client_accounts`, que é a mesma que publica, então cliente
  * novo aparece sozinho.
  */
-export const META = { feedMin: 4, feedMax: 6, video: 4 }
+export const META = { feedMin: 4, feedMax: 8, video: 4, videoMax: 8 }
 
 /** Story não entra na conta: sai do ar em 24h e não é entrega de feed. */
 const CAMPOS = 'id,timestamp,media_type,media_product_type,permalink,like_count,comments_count,media_url,thumbnail_url'
@@ -93,7 +103,9 @@ export function statusDaConta(p: {
 }): StatusCadencia {
  const agora = p.agora ?? Date.now()
  if (p.ultimo && agora - Date.parse(p.ultimo) > 7 * 86400000) return 'parado'
- if (p.feed > META.feedMax) return 'acima'
+ // O teto agora vale nos dois: até 19/10 só o feed tinha limite, e conta com
+ // 16 vídeos no mês passava como "em dia".
+ if (p.feed > META.feedMax || p.video > META.videoMax) return 'acima'
  // Margem de uma peça: cobrar no dia exato do ritmo deixaria quase todo mundo
  // atrasado o tempo todo, e aviso que toca sempre ninguém escuta.
  const esperadoFeed = META.feedMin * p.fracao - 1

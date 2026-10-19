@@ -51,6 +51,19 @@ describe('situação de cada conta', () => {
   expect(statusDaConta({ feed: META.feedMax + 1, video: 4, ultimo: ontem(agora), fracao: 0.6, agora })).toBe('acima')
  })
 
+ // Até 19/10 só o feed tinha teto, e conta com 16 vídeos no mês passava como
+ // "em dia". Carlotinha fez 16 em setembro, Exatta 17.
+ it('vídeo em excesso também é acima', () => {
+  const agora = outubro(19)
+  expect(statusDaConta({ feed: 5, video: META.videoMax + 1, ultimo: ontem(agora), fracao: 0.6, agora })).toBe('acima')
+  expect(statusDaConta({ feed: 5, video: META.videoMax, ultimo: ontem(agora), fracao: 0.6, agora })).not.toBe('acima')
+ })
+
+ // A régua de 19/10: 1 a 2 de cada por semana, 4 a 8 de cada no mês.
+ it('a régua é a que o João descreveu, e o número de setembro confirma', () => {
+  expect(META).toEqual({ feedMin: 4, feedMax: 8, video: 4, videoMax: 8 })
+ })
+
  it('atraso compara com o ritmo do dia, não com a meta cheia', () => {
   const agora = outubro(10)
   // Dia 10 de 31 com 1 post não é atraso: o esperado ainda é baixo.
