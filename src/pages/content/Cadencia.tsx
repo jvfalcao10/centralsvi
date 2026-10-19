@@ -15,7 +15,7 @@ import { supabase } from '@/lib/supabase'
  * "a cadência deve estar dentro da Central SVI, porque quero que a social
  * media tenha acesso". Quem monta a pauta precisa ver o ritmo antes de montar.
  */
-type PostRecente = { timestamp: string; tipo: 'feed' | 'video'; permalink: string | null; curtidas: number | null; comentarios: number | null }
+type PostRecente = { timestamp: string; tipo: 'feed' | 'video'; permalink: string | null; curtidas: number | null; comentarios: number | null; capa: string | null }
 type Status = 'em dia' | 'atrasado' | 'parado' | 'acima' | 'sem acesso' | 'sem conta'
 type Linha = {
   client: string; username: string; feed: number; video: number
@@ -198,10 +198,21 @@ export default function Cadencia() {
                                 {l.recentes.map(post => (
                                   <li key={post.timestamp}>
                                     <a href={post.permalink || `https://instagram.com/${l.username}`} target="_blank" rel="noreferrer"
-                                      className="flex items-center gap-3 rounded-lg border bg-background px-3 py-2 transition hover:border-primary/60">
-                                      {post.tipo === 'video'
-                                        ? <Film className="h-4 w-4 shrink-0 text-primary" />
-                                        : <Imagem className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                                      className="flex items-center gap-3 rounded-lg border bg-background p-2 transition hover:border-primary/60">
+                                      {/* A capa que o Instagram serve. O endereço é assinado e
+                                          vence, então o ícone fica de reserva quando a imagem
+                                          não carrega, em vez de deixar um quadrado quebrado. */}
+                                      <span className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
+                                        {post.capa
+                                          ? <img src={post.capa} alt="" loading="lazy" className="h-full w-full object-cover"
+                                              onError={e => { e.currentTarget.style.display = 'none' }} />
+                                          : null}
+                                        <span className="absolute inset-0 -z-10 flex items-center justify-center">
+                                          {post.tipo === 'video'
+                                            ? <Film className="h-4 w-4 text-primary" />
+                                            : <Imagem className="h-4 w-4 text-muted-foreground" />}
+                                        </span>
+                                      </span>
                                       <span className="min-w-0 flex-1">
                                         <span className="block text-sm">
                                           {post.tipo === 'video' ? 'Reel' : 'Feed'} · {new Date(post.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}

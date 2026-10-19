@@ -20,12 +20,12 @@ type DB = ReturnType<typeof createAdminClient>
 export const META = { feedMin: 4, feedMax: 6, video: 4 }
 
 /** Story não entra na conta: sai do ar em 24h e não é entrega de feed. */
-const CAMPOS = 'id,timestamp,media_type,media_product_type,permalink,like_count,comments_count'
+const CAMPOS = 'id,timestamp,media_type,media_product_type,permalink,like_count,comments_count,media_url,thumbnail_url'
 
 export type ContaDaCadencia = { client: string; account_id: string; account_username: string }
-export type Publicacao = { timestamp: string; media_type?: string; media_product_type?: string; permalink?: string; like_count?: number; comments_count?: number }
+export type Publicacao = { timestamp: string; media_type?: string; media_product_type?: string; permalink?: string; like_count?: number; comments_count?: number; media_url?: string; thumbnail_url?: string }
 /** O que a tela mostra quando alguém abre um cliente. */
-export type PostRecente = { timestamp: string; tipo: 'feed' | 'video'; permalink: string | null; curtidas: number | null; comentarios: number | null }
+export type PostRecente = { timestamp: string; tipo: 'feed' | 'video'; permalink: string | null; curtidas: number | null; comentarios: number | null; capa: string | null }
 
 /** Quantas publicações aparecem ao abrir o cliente. Uma tela, sem rolagem. */
 const RECENTES = 8
@@ -48,6 +48,9 @@ export function ultimasPublicacoes(midias: Publicacao[]): PostRecente[] {
    permalink: m.permalink || null,
    curtidas: typeof m.like_count === 'number' ? m.like_count : null,
    comentarios: typeof m.comments_count === 'number' ? m.comments_count : null,
+   // Vídeo não tem media_url servível como imagem: a capa dele é o
+   // thumbnail_url. Em foto e carrossel, media_url já é a imagem.
+   capa: m.thumbnail_url || m.media_url || null,
   }))
 }
 
