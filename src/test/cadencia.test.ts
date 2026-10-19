@@ -117,3 +117,25 @@ describe('últimas publicações do cliente', () => {
   expect(ultimasPublicacoes([])).toEqual([])
  })
 })
+
+// João, 19/10/2026: "cadência com clientes que não tá ativo e faltando os
+// ativos, LIV e TE Mulher". A lista vinha das contas de publicação, não da
+// carteira: trazia quem já saiu e escondia nove clientes ativos sem conta
+// cadastrada, entre eles a Clínica LIV.
+describe('a cadência segue a carteira ativa', () => {
+ it('casa nome com grafia diferente', async () => {
+  const { mesmoCliente } = await import('../../api/_lib/social-cadencia')
+  // O caso real: "Figueiredo" na conta, "Figueredo" na carteira.
+  expect(mesmoCliente('DRA ERIKA FIGUEIREDO', 'Dra Erika Figueredo')).toBe(true)
+  expect(mesmoCliente('DRA. ÉSIA LOPES', 'Dra. Esia Lopes Xinguara')).toBe(true)
+  expect(mesmoCliente('TE Mulher', 'TE Mulher')).toBe(true)
+ })
+
+ it('não junta clientes diferentes por engano', async () => {
+  const { mesmoCliente } = await import('../../api/_lib/social-cadencia')
+  expect(mesmoCliente('Dra Erika Figueredo', 'Dra Enia Paula Aguiar')).toBe(false)
+  expect(mesmoCliente('Spa Nature', 'Espaço Soraia')).toBe(false)
+  expect(mesmoCliente('Dr. Brenno', 'Dr. Felipe Branco')).toBe(false)
+  expect(mesmoCliente('', 'Clínica LIV')).toBe(false)
+ })
+})

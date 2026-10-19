@@ -16,7 +16,7 @@ import { supabase } from '@/lib/supabase'
  * media tenha acesso". Quem monta a pauta precisa ver o ritmo antes de montar.
  */
 type PostRecente = { timestamp: string; tipo: 'feed' | 'video'; permalink: string | null; curtidas: number | null; comentarios: number | null }
-type Status = 'em dia' | 'atrasado' | 'parado' | 'acima' | 'sem acesso'
+type Status = 'em dia' | 'atrasado' | 'parado' | 'acima' | 'sem acesso' | 'sem conta'
 type Linha = {
   client: string; username: string; feed: number; video: number
   ultimo: string | null; ultimoLink: string | null
@@ -31,9 +31,12 @@ const CORES: Record<Status, string> = {
   parado: 'bg-rose-500/15 text-rose-400 border-rose-500/30',
   acima: 'bg-sky-500/15 text-sky-400 border-sky-500/30',
   'sem acesso': 'bg-muted text-muted-foreground border-border',
+  // Cliente ativo que ninguém ligou ao Instagram: some da conta do mês e
+  // some do radar. Fica visível, em cor de pendência.
+  'sem conta': 'bg-orange-500/15 text-orange-400 border-orange-500/30',
 }
 /** Ordem de quem precisa de atenção primeiro. */
-const PESO: Record<Status, number> = { parado: 0, atrasado: 1, acima: 2, 'em dia': 3, 'sem acesso': 4 }
+const PESO: Record<Status, number> = { 'sem conta': 0, parado: 1, atrasado: 2, acima: 3, 'em dia': 4, 'sem acesso': 5 }
 
 const diasAtras = (iso: string | null) => {
   if (!iso) return null
@@ -118,7 +121,7 @@ export default function Cadencia() {
               className={`rounded-full border px-3 py-1 text-sm font-medium transition ${filtro === 'todos' ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'}`}>
               {todas.length} no total
             </button>
-            {(['parado', 'atrasado', 'acima', 'em dia', 'sem acesso'] as const).map(st => contagem[st] ? (
+            {(['sem conta', 'parado', 'atrasado', 'acima', 'em dia', 'sem acesso'] as const).map(st => contagem[st] ? (
               <button key={st} type="button" aria-pressed={filtro === st}
                 onClick={() => setFiltro(f => f === st ? 'todos' : st)}
                 className={`rounded-full border px-3 py-1 text-sm font-medium capitalize transition ${CORES[st]} ${filtro === st ? 'ring-2 ring-offset-1 ring-offset-background ring-current' : 'opacity-80 hover:opacity-100'}`}>
@@ -156,11 +159,15 @@ export default function Cadencia() {
                           <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${abertoAqui ? '' : '-rotate-90'}`} />
                           {l.client}
                         </p>
-                        <a href={`https://instagram.com/${l.username}`} target="_blank" rel="noreferrer"
-                          onClick={e => e.stopPropagation()}
-                          className="ml-5 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary">
-                          @{l.username} <ExternalLink className="h-3 w-3" />
-                        </a>
+                        {l.username ? (
+                          <a href={`https://instagram.com/${l.username}`} target="_blank" rel="noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            className="ml-5 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary">
+                            @{l.username} <ExternalLink className="h-3 w-3" />
+                          </a>
+                        ) : (
+                          <span className="ml-5 text-xs text-orange-400">falta ligar a conta do Instagram na Central</span>
+                        )}
                       </td>
                       <td className="px-4 py-3"><Barra feito={l.feed} meta={dados.meta.feedMin} cor={l.feed > dados.meta.feedMax ? 'bg-sky-500' : 'bg-primary'} /></td>
                       <td className="px-4 py-3"><Barra feito={l.video} meta={dados.meta.video} cor="bg-primary" /></td>

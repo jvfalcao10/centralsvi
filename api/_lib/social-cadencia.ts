@@ -75,7 +75,7 @@ export function separarPorTipo(midias: Publicacao[], desde: number) {
  return { video: doMes.filter(ehVideo).length, feed: doMes.filter(m => !ehVideo(m)).length }
 }
 
-export type StatusCadencia = 'em dia' | 'atrasado' | 'parado' | 'acima' | 'sem acesso'
+export type StatusCadencia = 'em dia' | 'atrasado' | 'parado' | 'acima' | 'sem acesso' | 'sem conta'
 
 /**
  * O recado em uma palavra.
@@ -99,11 +99,46 @@ export function statusDaConta(p: {
  return 'em dia'
 }
 
+/** Sem acento, minúsculo: "DRA ERIKA FIGUEIREDO" e "Dra Erika Figueredo" precisam casar. */
+const chave = (v: string) =>
+ String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+
+/**
+ * Casa a conta de Instagram com o cliente da carteira.
+ *
+ * Os dois nomes são digitados por pessoas diferentes em telas diferentes, e
+ * divergem: a Dra. Erika está como "Figueiredo" na conta e "Figueredo" na
+ * carteira. Por isso o encontro é por pedaço de nome, não por igualdade.
+ */
+export function mesmoCliente(a: string, b: string) {
+ const x = chave(a), y = chave(b)
+ if (!x || !y) return false
+ if (x === y || x.includes(y) || y.includes(x)) return true
+ // Duas palavras de peso em comum bastam, comparadas pelo começo: "figueiredo"
+ // e "figueredo" são a mesma pessoa escrita por duas mãos. O título sai da
+ // conta, senão "dra" sozinha aproximaria todas as médicas.
+ const TITULOS = new Set(['dra', 'dr', 'sra', 'sr', 'clinica', 'espaco'])
+ const pesadas = (v: string) => v.split(' ').filter(p => p.length > 3 && !TITULOS.has(p)).map(p => p.slice(0, 5))
+ const px = pesadas(x), py = new Set(pesadas(y))
+ let juntas = 0
+ for (const p of px) if (py.has(p)) juntas++
+ return juntas >= 2
+}
+
 export async function cadenciaDoMes(db: DB, agora = Date.now()) {
- const { data, error } = await db.from('central_social_client_accounts')
-  .select('client,account_id,account_username').order('client')
+ // A fonte de quem DEVE aparecer é a carteira, não a lista de contas de
+ // publicação. João, 19/10/2026: "cadência com clientes que não tá ativo e
+ // faltando os ativos, LIV e TE Mulher". A lista de contas trazia quem já saiu
+ // (Vanessa Back) e escondia nove clientes ativos sem conta cadastrada.
+ const [{ data: contasRaw, error }, { data: carteiraRaw }] = await Promise.all([
+  db.from('central_social_client_accounts').select('client,account_id,account_username').order('client'),
+  db.from('clients').select('name,status').eq('status', 'ativo'),
+ ])
  if (error) throw new Error('cadencia_contas_leitura_falhou')
- const contas = (data || []) as ContaDaCadencia[]
+ const carteira = (carteiraRaw || []) as { name: string }[]
+ // Só conta de cliente que ainda está na casa.
+ const contas = ((contasRaw || []) as ContaDaCadencia[])
+  .filter(c => carteira.some(x => mesmoCliente(c.client, x.name)))
  const desde = inicioDoMes(agora)
  const { dia, diasNoMes, fracao } = fracaoDoMes(agora)
  const clientes = await Promise.all(contas.map(async c => {
@@ -124,5 +159,13 @@ export async function cadenciaDoMes(db: DB, agora = Date.now()) {
     ultimo: null, ultimoLink: null, status: 'sem acesso' as StatusCadencia, recentes: [] as PostRecente[] }
   }
  }))
- return { geradoEm: new Date().toISOString(), dia, diasNoMes, meta: META, clientes }
+ // Cliente ativo sem conta cadastrada aparece dizendo isso, em vez de sumir.
+ // Sumir calado foi justamente o que escondeu a Clínica LIV.
+ const semConta = carteira
+  .filter(x => !contas.some(c => mesmoCliente(c.client, x.name)))
+  .map(x => ({
+   client: x.name, username: '', feed: 0, video: 0, ultimo: null, ultimoLink: null,
+   status: 'sem conta' as StatusCadencia, recentes: [] as PostRecente[],
+  }))
+ return { geradoEm: new Date().toISOString(), dia, diasNoMes, meta: META, clientes: [...clientes, ...semConta] }
 }
