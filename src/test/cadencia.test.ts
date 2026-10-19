@@ -83,3 +83,37 @@ describe('quem enxerga a cadência', () => {
   expect(getVisibleNavigation({ can: () => true, isClient: true }).main).toEqual([])
  })
 })
+
+// João, 19/10/2026: "quero clicar no cliente e abrir o link das últimas
+// postagens, além disso quero filtro para classificar, tipo parado, e
+// etiquetas também para clicar e deixar só atrasado".
+describe('últimas publicações do cliente', () => {
+ const post = (dia: number, tipo: 'REELS' | 'FEED' | 'STORY') => ({
+  timestamp: `2026-10-${String(dia).padStart(2, '0')}T12:00:00+0000`,
+  media_type: tipo === 'REELS' ? 'VIDEO' : 'IMAGE', media_product_type: tipo,
+  permalink: `https://instagram.com/p/dia${dia}`, like_count: dia, comments_count: 1,
+ })
+
+ it('devolve da mais nova para a mais velha, com link', async () => {
+  const { ultimasPublicacoes } = await import('../../api/_lib/social-cadencia')
+  const r = ultimasPublicacoes([post(3, 'FEED'), post(9, 'REELS'), post(6, 'FEED')])
+  expect(r.map(p => p.timestamp.slice(8, 10))).toEqual(['09', '06', '03'])
+  expect(r[0]).toMatchObject({ tipo: 'video', permalink: 'https://instagram.com/p/dia9', curtidas: 9 })
+ })
+
+ it('story fica de fora também aqui', async () => {
+  const { ultimasPublicacoes } = await import('../../api/_lib/social-cadencia')
+  expect(ultimasPublicacoes([post(5, 'STORY'), post(4, 'FEED')]).map(p => p.tipo)).toEqual(['feed'])
+ })
+
+ it('corta em oito, para caber numa tela', async () => {
+  const { ultimasPublicacoes } = await import('../../api/_lib/social-cadencia')
+  const muitos = Array.from({ length: 14 }, (_, i) => post(i + 1, 'FEED'))
+  expect(ultimasPublicacoes(muitos)).toHaveLength(8)
+ })
+
+ it('conta sem publicação nenhuma devolve lista vazia, não quebra', async () => {
+  const { ultimasPublicacoes } = await import('../../api/_lib/social-cadencia')
+  expect(ultimasPublicacoes([])).toEqual([])
+ })
+})

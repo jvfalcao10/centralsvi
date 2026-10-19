@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Activity, AlertTriangle, ExternalLink, RefreshCw } from 'lucide-react'
+import { Activity, AlertTriangle, ChevronDown, ExternalLink, Film, Image as Imagem, RefreshCw } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 /**
@@ -15,14 +15,17 @@ import { supabase } from '@/lib/supabase'
  * "a cadência deve estar dentro da Central SVI, porque quero que a social
  * media tenha acesso". Quem monta a pauta precisa ver o ritmo antes de montar.
  */
+type PostRecente = { timestamp: string; tipo: 'feed' | 'video'; permalink: string | null; curtidas: number | null; comentarios: number | null }
+type Status = 'em dia' | 'atrasado' | 'parado' | 'acima' | 'sem acesso'
 type Linha = {
   client: string; username: string; feed: number; video: number
   ultimo: string | null; ultimoLink: string | null
-  status: 'em dia' | 'atrasado' | 'parado' | 'acima' | 'sem acesso'
+  status: Status
+  recentes: PostRecente[]
 }
 type Dados = { geradoEm: string; dia: number; diasNoMes: number; meta: { feedMin: number; feedMax: number; video: number }; clientes: Linha[] }
 
-const CORES: Record<Linha['status'], string> = {
+const CORES: Record<Status, string> = {
   'em dia': 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
   atrasado: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
   parado: 'bg-rose-500/15 text-rose-400 border-rose-500/30',
@@ -30,7 +33,7 @@ const CORES: Record<Linha['status'], string> = {
   'sem acesso': 'bg-muted text-muted-foreground border-border',
 }
 /** Ordem de quem precisa de atenção primeiro. */
-const PESO: Record<Linha['status'], number> = { parado: 0, atrasado: 1, acima: 2, 'em dia': 3, 'sem acesso': 4 }
+const PESO: Record<Status, number> = { parado: 0, atrasado: 1, acima: 2, 'em dia': 3, 'sem acesso': 4 }
 
 const diasAtras = (iso: string | null) => {
   if (!iso) return null
@@ -54,6 +57,10 @@ export default function Cadencia() {
   const [dados, setDados] = useState<Dados | null>(null)
   const [erro, setErro] = useState('')
   const [carregando, setCarregando] = useState(true)
+  // João, 19/10/2026: "filtro para que possamos classificar, tipo parado, e
+  // etiquetas também, para clicar e deixar só atrasado".
+  const [filtro, setFiltro] = useState<Status | 'todos'>('todos')
+  const [aberto, setAberto] = useState<string | null>(null)
 
   async function carregar() {
     setCarregando(true); setErro('')
@@ -68,15 +75,18 @@ export default function Cadencia() {
   }
   useEffect(() => { void carregar() }, [])
 
-  const linhas = useMemo(() => {
+  const todas = useMemo(() => {
     if (!dados) return []
     return [...dados.clientes].sort((a, b) => PESO[a.status] - PESO[b.status] || a.client.localeCompare(b.client, 'pt-BR'))
   }, [dados])
+  const linhas = useMemo(() => filtro === 'todos' ? todas : todas.filter(l => l.status === filtro), [todas, filtro])
+  // A contagem é sempre do total, não do que está filtrado: senão o selo
+  // escolhido vira o único com número e os outros somem.
   const contagem = useMemo(() => {
-    const c: Partial<Record<Linha['status'], number>> = {}
-    for (const l of linhas) c[l.status] = (c[l.status] || 0) + 1
+    const c: Partial<Record<Status, number>> = {}
+    for (const l of todas) c[l.status] = (c[l.status] || 0) + 1
     return c
-  }, [linhas])
+  }, [todas])
 
   return (
     <div className="space-y-5 p-4 md:p-6">
@@ -103,12 +113,23 @@ export default function Cadencia() {
 
       {dados && (
         <>
-          <div className="flex flex-wrap gap-2">
-            {(['parado', 'atrasado', 'acima', 'em dia', 'sem acesso'] as const).map(s => contagem[s] ? (
-              <span key={s} className={`rounded-full border px-3 py-1 text-sm font-medium capitalize ${CORES[s]}`}>
-                {contagem[s]} {s}
-              </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => setFiltro('todos')} aria-pressed={filtro === 'todos'}
+              className={`rounded-full border px-3 py-1 text-sm font-medium transition ${filtro === 'todos' ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'}`}>
+              {todas.length} no total
+            </button>
+            {(['parado', 'atrasado', 'acima', 'em dia', 'sem acesso'] as const).map(st => contagem[st] ? (
+              <button key={st} type="button" aria-pressed={filtro === st}
+                onClick={() => setFiltro(f => f === st ? 'todos' : st)}
+                className={`rounded-full border px-3 py-1 text-sm font-medium capitalize transition ${CORES[st]} ${filtro === st ? 'ring-2 ring-offset-1 ring-offset-background ring-current' : 'opacity-80 hover:opacity-100'}`}>
+                {contagem[st]} {st}
+              </button>
             ) : null)}
+            {filtro !== 'todos' && (
+              <button type="button" onClick={() => setFiltro('todos')} className="text-sm text-muted-foreground underline underline-offset-4">
+                limpar filtro
+              </button>
+            )}
           </div>
 
           <div className="overflow-x-auto rounded-xl border">
@@ -125,12 +146,19 @@ export default function Cadencia() {
               <tbody className="divide-y">
                 {linhas.map(l => {
                   const dias = diasAtras(l.ultimo)
+                  const abertoAqui = aberto === l.client
                   return (
-                    <tr key={l.client} className="hover:bg-muted/30">
+                    <Fragment key={l.client}>
+                    <tr className={`cursor-pointer hover:bg-muted/30 ${abertoAqui ? 'bg-muted/40' : ''}`}
+                      onClick={() => setAberto(a => a === l.client ? null : l.client)}>
                       <td className="px-4 py-3">
-                        <p className="font-medium leading-snug">{l.client}</p>
+                        <p className="flex items-center gap-1.5 font-medium leading-snug">
+                          <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${abertoAqui ? '' : '-rotate-90'}`} />
+                          {l.client}
+                        </p>
                         <a href={`https://instagram.com/${l.username}`} target="_blank" rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary">
+                          onClick={e => e.stopPropagation()}
+                          className="ml-5 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary">
                           @{l.username} <ExternalLink className="h-3 w-3" />
                         </a>
                       </td>
@@ -151,6 +179,43 @@ export default function Cadencia() {
                         </span>
                       </td>
                     </tr>
+                    {abertoAqui && (
+                      <tr className="bg-muted/20">
+                        <td colSpan={5} className="px-4 py-3">
+                          {!l.recentes.length ? (
+                            <p className="text-sm text-muted-foreground">Nenhuma publicação para mostrar nesta conta.</p>
+                          ) : (
+                            <>
+                              <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">Últimas publicações</p>
+                              <ul className="grid gap-2 sm:grid-cols-2">
+                                {l.recentes.map(post => (
+                                  <li key={post.timestamp}>
+                                    <a href={post.permalink || `https://instagram.com/${l.username}`} target="_blank" rel="noreferrer"
+                                      className="flex items-center gap-3 rounded-lg border bg-background px-3 py-2 transition hover:border-primary/60">
+                                      {post.tipo === 'video'
+                                        ? <Film className="h-4 w-4 shrink-0 text-primary" />
+                                        : <Imagem className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                                      <span className="min-w-0 flex-1">
+                                        <span className="block text-sm">
+                                          {post.tipo === 'video' ? 'Reel' : 'Feed'} · {new Date(post.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                        </span>
+                                        {(post.curtidas !== null || post.comentarios !== null) && (
+                                          <span className="block text-xs text-muted-foreground">
+                                            {post.curtidas ?? 0} curtidas · {post.comentarios ?? 0} comentários
+                                          </span>
+                                        )}
+                                      </span>
+                                      <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                    </a>
+                                  </li>
+                                ))}
+                              </ul>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   )
                 })}
               </tbody>

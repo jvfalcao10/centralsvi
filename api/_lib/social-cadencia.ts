@@ -23,7 +23,33 @@ export const META = { feedMin: 4, feedMax: 6, video: 4 }
 const CAMPOS = 'id,timestamp,media_type,media_product_type,permalink,like_count,comments_count'
 
 export type ContaDaCadencia = { client: string; account_id: string; account_username: string }
-export type Publicacao = { timestamp: string; media_type?: string; media_product_type?: string; permalink?: string }
+export type Publicacao = { timestamp: string; media_type?: string; media_product_type?: string; permalink?: string; like_count?: number; comments_count?: number }
+/** O que a tela mostra quando alguém abre um cliente. */
+export type PostRecente = { timestamp: string; tipo: 'feed' | 'video'; permalink: string | null; curtidas: number | null; comentarios: number | null }
+
+/** Quantas publicações aparecem ao abrir o cliente. Uma tela, sem rolagem. */
+const RECENTES = 8
+
+/**
+ * As últimas publicações, da mais nova para a mais velha.
+ *
+ * João, 19/10/2026: "quero clicar no cliente e abrir o link das últimas
+ * postagens". Ver o número do mês não diz o que foi publicado; o link diz.
+ */
+export function ultimasPublicacoes(midias: Publicacao[]): PostRecente[] {
+ return midias
+  .filter(m => m.media_product_type !== 'STORY')
+  .slice()
+  .sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1))
+  .slice(0, RECENTES)
+  .map(m => ({
+   timestamp: m.timestamp,
+   tipo: m.media_product_type === 'REELS' || m.media_type === 'VIDEO' ? 'video' : 'feed',
+   permalink: m.permalink || null,
+   curtidas: typeof m.like_count === 'number' ? m.like_count : null,
+   comentarios: typeof m.comments_count === 'number' ? m.comments_count : null,
+  }))
+}
 
 /** Começo do mês corrente em Brasília, como instante UTC. */
 export function inicioDoMes(agora = Date.now()) {
@@ -90,11 +116,12 @@ export async function cadenciaDoMes(db: DB, agora = Date.now()) {
     client: c.client, username: c.account_username, feed, video,
     ultimo: ultimo?.timestamp || null, ultimoLink: ultimo?.permalink || null,
     status: statusDaConta({ feed, video, ultimo: ultimo?.timestamp || null, fracao, agora }),
+    recentes: ultimasPublicacoes(midias),
    }
   } catch {
    // Uma conta sem acesso não pode derrubar o painel das outras dezessete.
    return { client: c.client, username: c.account_username, feed: 0, video: 0,
-    ultimo: null, ultimoLink: null, status: 'sem acesso' as StatusCadencia }
+    ultimo: null, ultimoLink: null, status: 'sem acesso' as StatusCadencia, recentes: [] as PostRecente[] }
   }
  }))
  return { geradoEm: new Date().toISOString(), dia, diasNoMes, meta: META, clientes }
