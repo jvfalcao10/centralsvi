@@ -132,7 +132,11 @@ export async function cadenciaDoMes(db: DB, agora = Date.now()) {
  // (Vanessa Back) e escondia nove clientes ativos sem conta cadastrada.
  const [{ data: contasRaw, error }, { data: carteiraRaw }] = await Promise.all([
   db.from('central_social_client_accounts').select('client,account_id,account_username').order('client'),
-  db.from('clients').select('name,status').eq('status', 'ativo'),
+  // `social_ativo` é o liga-desliga da cadência, separado do status do
+  // contrato. João, 19/10/2026: "tirar Essenc, Fórmula, Médic, MJC, Números".
+  // São clientes ativos da casa que não têm carteira de social media, e por
+  // isso apareciam eternamente como 0/4 cobrando uma entrega que não existe.
+  db.from('clients').select('name,status').eq('status', 'ativo').eq('social_ativo', true),
  ])
  if (error) throw new Error('cadencia_contas_leitura_falhou')
  const carteira = (carteiraRaw || []) as { name: string }[]
