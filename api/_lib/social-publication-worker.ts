@@ -1,9 +1,8 @@
 import sharp from 'sharp'
-import {Readable} from 'node:stream'
 import type {SupabaseClient} from '@supabase/supabase-js'
 import type {SocialAsset} from './social-domain.js'
 import type {PublicationJob} from './social-publication-domain.js'
-import {publicationGraph,publicationToken,friendlyPublicationError} from './social-publication-meta.js'
+import {publicationGraph,publicationToken,friendlyPublicationError,MetaPublicationError} from './social-publication-meta.js'
 import {driveVideoRange} from './social-drive.js'
 class LostLease extends Error {}
 export function allowedUploadURI(raw:string,id:string){try{const u=new URL(raw);return u.protocol==='https:'&&u.hostname==='rupload.facebook.com'&&new RegExp(`^/ig-api-upload/v[0-9]{1,2}\\.[0-9]{1,2}/${id}$`).test(u.pathname)&&!u.username&&!u.password}catch{return false}}
@@ -20,12 +19,69 @@ async function imageURL(db:SupabaseClient,j:PublicationJob,a:SocialAsset,index:n
  const {error:uploadError}=await db.storage.from('central-social').upload(path,new Uint8Array(bytes),{contentType:'image/jpeg',upsert:true});if(uploadError)throw uploadError
  return signed(db,path)
 }
+/**
+ * Quanto do arquivo o Instagram já tem.
+ *
+ * O endereço de upload é resumível: ele responde o offset atual, então uma
+ * tentativa nova continua de onde a anterior parou em vez de recomeçar.
+ * Se a consulta falhar, começa do zero, que é o comportamento antigo.
+ */
+async function offsetNoInstagram(uri:string){
+ try{
+  const r=await fetch(uri,{method:'GET',headers:{Authorization:`OAuth ${publicationToken()}`},signal:AbortSignal.timeout(30000)})
+  if(!r.ok)return 0
+  const d=await r.json() as {offset?:number|string}
+  const n=Number(d?.offset)
+  return Number.isFinite(n)&&n>=0?n:0
+ }catch{return 0}
+}
+
+/** Pedaço de envio. Grande o bastante para ser rápido, pequeno o bastante para caber no tempo. */
+const PEDACO=8*1024*1024
+
+/**
+ * Manda o vídeo do Drive para o Instagram em pedaços, retomando de onde parou.
+ *
+ * João, 19/10/2026: "qualidade péssima, todos os vídeos estão com qualidade
+ * baixa". A causa não era o vídeo: em 17/10 publicações grandes falhavam com
+ * "o Instagram não recebeu o vídeo completo", e a saída foi comprimir os
+ * arquivos antes de publicar, de ~20 Mbps para 4,4. A compressão resolveu o
+ * sintoma e estragou a imagem.
+ *
+ * A falha vinha daqui: o arquivo inteiro ia num POST só, com 210 segundos para
+ * terminar. Um vídeo de 120 MB precisa de upload sustentado o caminho todo, e
+ * qualquer soluço derrubava tudo, do primeiro byte ao último. Por isso o
+ * tamanho não explicava nada: 85 MB falhava e 151 MB passava.
+ *
+ * Agora cada pedaço é uma requisição com o seu offset. Um soluço custa 8 MB,
+ * não o arquivo inteiro, e a tentativa seguinte pergunta ao Instagram onde
+ * parou.
+ */
 async function uploadDrive(a:SocialAsset,uri:string,id:string){
  if(!allowedUploadURI(uri,id)||!a.drive_id||!a.bytes||a.bytes>500*1024*1024)throw new Error('Mídia: vídeo do Drive inválido para publicação.')
  const total=a.bytes,driveId=a.drive_id
- async function* chunks(){for(let start=0;start<total;start+=4*1024*1024){const end=Math.min(total-1,start+4*1024*1024-1),r=await driveVideoRange(driveId,start,end);if(r.status!==206||r.headers.get('content-range')!==`bytes ${start}-${end}/${total}`){await r.body?.cancel();throw new Error('Mídia: o download do vídeo foi interrompido.')}const bytes=new Uint8Array(await r.arrayBuffer());if(bytes.length!==end-start+1)throw new Error('Mídia: vídeo incompleto.');yield bytes}}
- const response=await fetch(uri,{method:'POST',headers:{Authorization:`OAuth ${publicationToken()}`,offset:'0',file_size:String(total),'Content-Type':'application/octet-stream','Content-Length':String(total)},body:Readable.from(chunks()) as any,duplex:'half',signal:AbortSignal.timeout(210000)} as RequestInit)
- const result=await response.json();if(!response.ok||result.success!==true)throw new Error('Mídia: o Instagram não recebeu o vídeo completo. Tente novamente.')
+ let enviado=await offsetNoInstagram(uri)
+ if(enviado>=total)return
+ while(enviado<total){
+  const fim=Math.min(total-1,enviado+PEDACO-1)
+  const r=await driveVideoRange(driveId,enviado,fim)
+  if(r.status!==206||r.headers.get('content-range')!==`bytes ${enviado}-${fim}/${total}`){await r.body?.cancel();throw new Error('Mídia: o download do vídeo foi interrompido.')}
+  const bytes=new Uint8Array(await r.arrayBuffer())
+  if(bytes.length!==fim-enviado+1)throw new Error('Mídia: vídeo incompleto.')
+  const resposta=await fetch(uri,{method:'POST',headers:{
+   Authorization:`OAuth ${publicationToken()}`,offset:String(enviado),file_size:String(total),
+   'Content-Type':'application/octet-stream','Content-Length':String(bytes.length),
+  },body:bytes,signal:AbortSignal.timeout(120000)})
+  if(!resposta.ok)throw new Error('Mídia: o Instagram não recebeu o vídeo completo. Tente novamente.')
+  // A resposta só traz success quando o último pedaço fecha o arquivo.
+  const d=await resposta.json().catch(()=>({})) as {success?:boolean;offset?:number|string}
+  const confirmado=Number(d?.offset)
+  enviado=Number.isFinite(confirmado)&&confirmado>enviado?confirmado:fim+1
+  if(d?.success===true)return
+ }
+ // Fechou o arquivo sem o Instagram dizer success: confere o offset antes de
+ // dar por bom, para não seguir com um vídeo pela metade.
+ if(await offsetNoInstagram(uri)<total)throw new Error('Mídia: o Instagram não recebeu o vídeo completo. Tente novamente.')
 }
 async function container(db:SupabaseClient,j:PublicationJob,a:SocialAsset,index:number,child:boolean){
  const video=a.type.startsWith('video/'),drive=video&&a.storage==='drive'
@@ -65,6 +121,28 @@ export async function publishReady(db:SupabaseClient,j:PublicationJob,graph=publ
   await persist(db,j,{status:'uncertain',error:'Aguardando confirmação do Instagram. Não envie a peça novamente.',...later(60)})
  }
 }
+/**
+ * Vale tentar de novo, ou o Instagram já disse não?
+ *
+ * Até 19/10/2026 qualquer erro de envio marcava a publicação como `failed`
+ * para sempre, e nenhuma das quatro falhas medidas passou de uma tentativa.
+ * Um soluço de rede no meio de um vídeo de 120 MB matava o post, e a saída
+ * encontrada na mão foi comprimir o arquivo, o que estragou a qualidade.
+ *
+ * Arquivo recusado, conta sem permissão e token vencido continuam parando de
+ * primeira: repetir não muda o resultado e só enche o Instagram de tentativa.
+ */
+export function valeTentarDeNovo(e:unknown){
+ if(e instanceof MetaPublicationError)return false
+ const m=e instanceof Error?e.message:''
+ if(/recusou|recusado|expirou|inválido para publicação|demorou para processar/i.test(m))return false
+ // Transporte: download do Drive cortado, upload incompleto, tempo esgotado.
+ return true
+}
+
+/** Tentativas de transporte antes de desistir e chamar gente. */
+const TENTATIVAS_DE_ENVIO=6
+
 export async function processPublications(db:SupabaseClient){
  const {data,error}=await db.rpc('central_social_publication_claim');if(error)throw error;if(!data)return {processed:0}
  const j=data as PublicationJob
@@ -99,6 +177,12 @@ export async function processPublications(db:SupabaseClient){
  }catch(e){
   if(e instanceof LostLease)return {processed:1,status:'canceled_or_changed'}
   if(['publishing','uncertain'].includes(j.status)){await persist(db,j,{status:'uncertain',error:'O envio precisa ser conferido no Instagram. Não repita a publicação.',...later(300)})}
+  else if(valeTentarDeNovo(e)&&j.attempts<TENTATIVAS_DE_ENVIO){
+   // O progresso já gravado fica: o upload retoma do offset que o Instagram
+   // confirmou, então repetir não recomeça o arquivo do zero.
+   await persist(db,j,{status:'queued',error:`${friendlyPublicationError(e)} Tentando de novo.`,...later(60*(j.attempts+1))})
+   return {processed:1,status:'retry'}
+  }
   else await persist(db,j,{status:'failed',error:friendlyPublicationError(e),lease_id:null,lease_until:null})
   return {processed:1,status:j.status}
  }
