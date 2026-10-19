@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ExternalLink, Palette, Sparkles } from 'lucide-react'
+import { Check, Copy, ExternalLink, Palette, Sparkles, Wand2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { BANCO, type FormatoBanco } from '@/data/banco-carrosseis'
 import { VisorLaminas, type Laminas } from '@/components/content/VisorLaminas'
@@ -92,6 +92,54 @@ function CartaoExemplo({ formato, exemplo, onAbrir }: {
   )
 }
 
+/**
+ * Molde pronto da SVI (18/10/2026). O desenho do curso refeito no motor da casa
+ * (skill design-carrossel-svi), com as medidas tiradas dos templates do Canva.
+ * A Central mostra a amostra e o pedido; quem gera a peça é o motor, que já aplica
+ * a identidade do cliente e tira o texto de cima de rosto sozinho.
+ */
+function MoldePronto({ formato, onAbrir }: { formato: FormatoBanco; onAbrir: (l: Laminas) => void }) {
+  const [copiado, setCopiado] = useState(false)
+  const svi = formato.svi
+  if (!svi) return null
+  const pedido = `Carrossel ${formato.nome} pro cliente [nome], sobre [tema]`
+  async function copiar() {
+    try { await navigator.clipboard.writeText(pedido); setCopiado(true); setTimeout(() => setCopiado(false), 1800) } catch { /* sem área de transferência */ }
+  }
+  return (
+    <section className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+        <h3 className="inline-flex items-center gap-1.5 text-sm font-semibold"><Wand2 className="h-4 w-4 text-primary" /> Molde pronto da SVI</h3>
+        <span className="text-xs text-muted-foreground">base do Canva: {svi.molde}</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,18rem)]">
+        <button type="button"
+          onClick={() => onAbrir({ titulo: `${formato.nome} · molde SVI`, subtitulo: `Amostra no molde ${svi.molde}`, laminas: svi.laminas })}
+          className="flex gap-2 overflow-x-auto pb-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg">
+          {svi.laminas.map((l, i) => (
+            <img key={l} src={l} alt={`${formato.nome}, amostra lâmina ${i + 1}`} loading="lazy"
+              className="aspect-[4/5] w-28 shrink-0 rounded-md border object-cover sm:w-32" />
+          ))}
+        </button>
+        <div className="space-y-2 text-sm">
+          <p className="font-medium">Como pedir</p>
+          <div className="flex items-start gap-2 rounded-lg border bg-background p-2">
+            <code className="flex-1 text-xs leading-snug break-words">{pedido}</code>
+            <button type="button" onClick={copiar} aria-label="Copiar pedido"
+              className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+              {copiado ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground leading-snug">
+            A peça sai na fonte e na cor do cliente, com o texto fora de rosto, e cai no quadro de Postagens pra aprovação interna.
+            Texto entre colchetes na amostra é dado real a trocar.
+          </p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export function BancoCarrosseis({ busca }: { busca: string }) {
   const [intencao, setIntencao] = useState('todas')
   const [escolhido, setEscolhido] = useState(BANCO[0]?.id ?? '')
@@ -119,7 +167,7 @@ export function BancoCarrosseis({ busca }: { busca: string }) {
           o template no Canva e {BANCO.reduce((n, f) => n + f.exemplos.length, 0)} carrosséis reais de exemplo.
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Aqui é o roteiro da peça, não a arte: escolha o formato pela intenção, siga a estrutura e monte no molde da casa.
+          Escolha o formato pela intenção. Cada um traz o roteiro do curso e o molde pronto da SVI, igual ao template original, já com amostra.
         </p>
       </div>
 
@@ -210,6 +258,8 @@ export function BancoCarrosseis({ busca }: { busca: string }) {
               </div>
             )}
           </section>
+
+          <MoldePronto formato={formato} onAbrir={setAberto} />
 
           <section className="space-y-2">
             <h3 className="text-sm font-semibold text-muted-foreground">Carrosséis reais neste formato</h3>

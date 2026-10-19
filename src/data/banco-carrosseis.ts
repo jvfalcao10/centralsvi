@@ -15,7 +15,10 @@ export interface FormatoBanco {
   porqueFunciona: string
   prancha: string
   exemplos: ExemploBanco[]
+  /** Molde pronto da SVI: o desenho do curso refeito no motor da casa, com amostra. */
+  svi: MoldeSvi | null
 }
+export interface MoldeSvi { molde: string; slug: string; estrutura: string[]; laminas: string[] }
 
 export const BANCO: FormatoBanco[] = [
   {
@@ -82,7 +85,23 @@ export const BANCO: FormatoBanco[] = [
           "/banco/analise-opiniao-pessoal/DYPNkRHlsgy-08.webp"
         ]
       }
-    ]
+    ],
+    "svi": {
+      "molde": "Mosaico + Conteúdo",
+      "slug": "analise-opiniao",
+      "estrutura": [
+        "Gancho cultural",
+        "Desenvolvimento analítico",
+        "Opinião + expertise",
+        "Fechamento com CTA"
+      ],
+      "laminas": [
+        "/banco/molde/analise-opiniao-pessoal-01.webp",
+        "/banco/molde/analise-opiniao-pessoal-02.webp",
+        "/banco/molde/analise-opiniao-pessoal-03.webp",
+        "/banco/molde/analise-opiniao-pessoal-04.webp"
+      ]
+    }
   },
   {
     "id": "antes-de-depois",
@@ -140,7 +159,22 @@ export const BANCO: FormatoBanco[] = [
           "/banco/antes-de-depois/DWbrdjXDf7v-08.webp"
         ]
       }
-    ]
+    ],
+    "svi": {
+      "molde": "Metadinha Vertical",
+      "slug": "antes-de-depois",
+      "estrutura": [
+        "Pares antes/depois",
+        "Síntese",
+        "CTA opcional"
+      ],
+      "laminas": [
+        "/banco/molde/antes-de-depois-01.webp",
+        "/banco/molde/antes-de-depois-02.webp",
+        "/banco/molde/antes-de-depois-03.webp",
+        "/banco/molde/antes-de-depois-04.webp"
+      ]
+    }
   },
   {
     "id": "atendimento-como-diferencial",
@@ -201,7 +235,23 @@ export const BANCO: FormatoBanco[] = [
           "/banco/atendimento-como-diferencial/DYfl4IpoJTS-05.webp"
         ]
       }
-    ]
+    ],
+    "svi": {
+      "molde": "TikTok",
+      "slug": "atendimento-diferencial",
+      "estrutura": [
+        "Gancho de atendimento",
+        "Diferenciais com evidência",
+        "CTA"
+      ],
+      "laminas": [
+        "/banco/molde/atendimento-como-diferencial-01.webp",
+        "/banco/molde/atendimento-como-diferencial-02.webp",
+        "/banco/molde/atendimento-como-diferencial-03.webp",
+        "/banco/molde/atendimento-como-diferencial-04.webp",
+        "/banco/molde/atendimento-como-diferencial-05.webp"
+      ]
+    }
   },
   {
     "id": "comparacao-licao",
@@ -254,7 +304,24 @@ export const BANCO: FormatoBanco[] = [
           "/banco/comparacao-licao/DGB4HfPvLTp-08.webp"
         ]
       }
-    ]
+    ],
+    "svi": {
+      "molde": "Metadinha Vertical",
+      "slug": "comparacao-licao",
+      "estrutura": [
+        "Rounds de comparação",
+        "Pivot de honestidade",
+        "Lição",
+        "Posicionamento"
+      ],
+      "laminas": [
+        "/banco/molde/comparacao-licao-01.webp",
+        "/banco/molde/comparacao-licao-02.webp",
+        "/banco/molde/comparacao-licao-03.webp",
+        "/banco/molde/comparacao-licao-04.webp",
+        "/banco/molde/comparacao-licao-05.webp"
+      ]
+    }
   },
   {
     "id": "daqui-a-10-anos",
@@ -321,7 +388,22 @@ export const BANCO: FormatoBanco[] = [
           "/banco/daqui-a-10-anos/DJJmBalOznu-10.webp"
         ]
       }
-    ]
+    ],
+    "svi": {
+      "molde": "Quadrinhos",
+      "slug": "daqui-a-10-anos",
+      "estrutura": [
+        "Gancho temporal",
+        "Conquistas futuras (do mais distante ao mais próximo)",
+        "CTA"
+      ],
+      "laminas": [
+        "/banco/molde/daqui-a-10-anos-01.webp",
+        "/banco/molde/daqui-a-10-anos-02.webp",
+        "/banco/molde/daqui-a-10-anos-03.webp",
+        "/banco/molde/daqui-a-10-anos-04.webp"
+      ]
+    }
   },
   {
     "id": "dualidade",
@@ -378,7 +460,22 @@ export const BANCO: FormatoBanco[] = [
           "/banco/dualidade/DWHEltgFKV9-07.webp"
         ]
       }
-    ]
+    ],
+    "svi": {
+      "molde": "Metadinha Horizontal",
+      "slug": "dualidade",
+      "estrutura": [
+        "Slides de dualidade A vs B",
+        "Síntese",
+        "CTA"
+      ],
+      "laminas": [
+        "/banco/molde/dualidade-01.webp",
+        "/banco/molde/dualidade-02.webp",
+        "/banco/molde/dualidade-03.webp",
+        "/banco/molde/dualidade-04.webp"
+      ]
+    }
   },
   {
     "id": "fofoquinha",
@@ -442,7 +539,23 @@ export const BANCO: FormatoBanco[] = [
           "/banco/fofoquinha/DR7UTTSDcYJ-06.webp"
         ]
       }
-    ]
+    ],
+    "svi": {
+      "molde": "Texto + foto",
+      "slug": "fofoquinha",
+      "estrutura": [
+        "Hook de fofoca",
+        "Credenciais do sujeito",
+        "Lições extraídas",
+        "Síntese"
+      ],
+      "laminas": [
+        "/banco/molde/fofoquinha-01.webp",
+        "/banco/molde/fofoquinha-02.webp",
+        "/banco/molde/fofoquinha-03.webp",
+        "/banco/molde/fofoquinha-04.webp"
+      ]
+    }
   },
   {
     "id": "frase-de-posicionamento",
@@ -494,7 +607,22 @@ export const BANCO: FormatoBanco[] = [
           "/banco/frase-de-posicionamento/DJsR9awAIj6-01.webp"
         ]
       }
-    ]
+    ],
+    "svi": {
+      "molde": "Frases",
+      "slug": "frase-de-posicionamento",
+      "estrutura": [
+        "Frases de posicionamento",
+        "Empatia/transição",
+        "CTA ou encerramento"
+      ],
+      "laminas": [
+        "/banco/molde/frase-de-posicionamento-01.webp",
+        "/banco/molde/frase-de-posicionamento-02.webp",
+        "/banco/molde/frase-de-posicionamento-03.webp",
+        "/banco/molde/frase-de-posicionamento-04.webp"
+      ]
+    }
   },
   {
     "id": "frases-compartilhaveis",
@@ -558,7 +686,21 @@ export const BANCO: FormatoBanco[] = [
           "/banco/frases-compartilhaveis/DWz5YffDMTB-16.webp"
         ]
       }
-    ]
+    ],
+    "svi": {
+      "molde": "Frases",
+      "slug": "frases-compartilhaveis",
+      "estrutura": [
+        "Capa",
+        "Frases independentes"
+      ],
+      "laminas": [
+        "/banco/molde/frases-compartilhaveis-01.webp",
+        "/banco/molde/frases-compartilhaveis-02.webp",
+        "/banco/molde/frases-compartilhaveis-03.webp",
+        "/banco/molde/frases-compartilhaveis-04.webp"
+      ]
+    }
   },
   {
     "id": "humor-relacionavel",
@@ -618,7 +760,22 @@ export const BANCO: FormatoBanco[] = [
           "/banco/humor-relacionavel/DSFsNAUjQq0-06.webp"
         ]
       }
-    ]
+    ],
+    "svi": {
+      "molde": "TikTok",
+      "slug": "humor-relacionavel",
+      "estrutura": [
+        "Slide de tema",
+        "Memes individuais",
+        "Encerramento"
+      ],
+      "laminas": [
+        "/banco/molde/humor-relacionavel-01.webp",
+        "/banco/molde/humor-relacionavel-02.webp",
+        "/banco/molde/humor-relacionavel-03.webp",
+        "/banco/molde/humor-relacionavel-04.webp"
+      ]
+    }
   },
   {
     "id": "linha-do-tempo",
@@ -693,7 +850,23 @@ export const BANCO: FormatoBanco[] = [
           "/banco/linha-do-tempo/DX6qabBlvmD-09.webp"
         ]
       }
-    ]
+    ],
+    "svi": {
+      "molde": "TikTok",
+      "slug": "linha-do-tempo",
+      "estrutura": [
+        "Slides de época",
+        "Virada (ano atual)",
+        "Fechamento"
+      ],
+      "laminas": [
+        "/banco/molde/linha-do-tempo-01.webp",
+        "/banco/molde/linha-do-tempo-02.webp",
+        "/banco/molde/linha-do-tempo-03.webp",
+        "/banco/molde/linha-do-tempo-04.webp",
+        "/banco/molde/linha-do-tempo-05.webp"
+      ]
+    }
   },
   {
     "id": "lista",
@@ -808,7 +981,23 @@ export const BANCO: FormatoBanco[] = [
           "/banco/lista/DWXKmeqlhEk-07.webp"
         ]
       }
-    ]
+    ],
+    "svi": {
+      "molde": "Mosaico + Conteúdo",
+      "slug": "lista",
+      "estrutura": [
+        "Hook numérico",
+        "Itens",
+        "Fechamento"
+      ],
+      "laminas": [
+        "/banco/molde/lista-01.webp",
+        "/banco/molde/lista-02.webp",
+        "/banco/molde/lista-03.webp",
+        "/banco/molde/lista-04.webp",
+        "/banco/molde/lista-05.webp"
+      ]
+    }
   },
   {
     "id": "manchete",
@@ -886,7 +1075,23 @@ export const BANCO: FormatoBanco[] = [
           "/banco/manchete/DUoZBi_DRPo-06.webp"
         ]
       }
-    ]
+    ],
+    "svi": {
+      "molde": "Twitter",
+      "slug": "manchete",
+      "estrutura": [
+        "Manchete",
+        "O que aconteceu",
+        "Análise do especialista",
+        "CTA"
+      ],
+      "laminas": [
+        "/banco/molde/manchete-01.webp",
+        "/banco/molde/manchete-02.webp",
+        "/banco/molde/manchete-03.webp",
+        "/banco/molde/manchete-04.webp"
+      ]
+    }
   },
   {
     "id": "mudanca-de-perspectiva",
@@ -960,7 +1165,25 @@ export const BANCO: FormatoBanco[] = [
           "/banco/mudanca-de-perspectiva/DKQRlfJvgzQ-05.webp"
         ]
       }
-    ]
+    ],
+    "svi": {
+      "molde": "Metadinha Horizontal + Fundo Branco",
+      "slug": "mudanca-de-perspectiva",
+      "estrutura": [
+        "Crença limitante",
+        "Reposicionamento",
+        "Mais viradas",
+        "Provocação ou alerta",
+        "Tese de fechamento"
+      ],
+      "laminas": [
+        "/banco/molde/mudanca-de-perspectiva-01.webp",
+        "/banco/molde/mudanca-de-perspectiva-02.webp",
+        "/banco/molde/mudanca-de-perspectiva-03.webp",
+        "/banco/molde/mudanca-de-perspectiva-04.webp",
+        "/banco/molde/mudanca-de-perspectiva-05.webp"
+      ]
+    }
   },
   {
     "id": "opiniao-sincera",
@@ -1021,7 +1244,23 @@ export const BANCO: FormatoBanco[] = [
           "/banco/opiniao-sincera/DObQy7QDdk_-06.webp"
         ]
       }
-    ]
+    ],
+    "svi": {
+      "molde": "TikTok",
+      "slug": "opiniao-sincera",
+      "estrutura": [
+        "Gancho: convite a falar mal",
+        "Opiniões individuais",
+        "CTA que retoma o gancho"
+      ],
+      "laminas": [
+        "/banco/molde/opiniao-sincera-01.webp",
+        "/banco/molde/opiniao-sincera-02.webp",
+        "/banco/molde/opiniao-sincera-03.webp",
+        "/banco/molde/opiniao-sincera-04.webp",
+        "/banco/molde/opiniao-sincera-05.webp"
+      ]
+    }
   },
   {
     "id": "pov",
@@ -1083,7 +1322,22 @@ export const BANCO: FormatoBanco[] = [
           "/banco/pov/DX_uxAMln2b-07.webp"
         ]
       }
-    ]
+    ],
+    "svi": {
+      "molde": "Texto + foto",
+      "slug": "pov",
+      "estrutura": [
+        "Gancho POV",
+        "Benefício revelado",
+        "CTA"
+      ],
+      "laminas": [
+        "/banco/molde/pov-01.webp",
+        "/banco/molde/pov-02.webp",
+        "/banco/molde/pov-03.webp",
+        "/banco/molde/pov-04.webp"
+      ]
+    }
   },
   {
     "id": "se-ela-fez-voce-tambem-pode",
@@ -1149,7 +1403,24 @@ export const BANCO: FormatoBanco[] = [
           "/banco/se-ela-fez-voce-tambem-pode/DLM2bHiMNNq-06.webp"
         ]
       }
-    ]
+    ],
+    "svi": {
+      "molde": "Metadinha Horizontal",
+      "slug": "se-ela-fez",
+      "estrutura": [
+        "Objeção do público",
+        "Case que superou",
+        "Repete objeção + case",
+        "Virada: verdade universal",
+        "Fechamento"
+      ],
+      "laminas": [
+        "/banco/molde/se-ela-fez-voce-tambem-pode-01.webp",
+        "/banco/molde/se-ela-fez-voce-tambem-pode-02.webp",
+        "/banco/molde/se-ela-fez-voce-tambem-pode-03.webp",
+        "/banco/molde/se-ela-fez-voce-tambem-pode-04.webp"
+      ]
+    }
   },
   {
     "id": "se-x-faca-y",
@@ -1226,7 +1497,21 @@ export const BANCO: FormatoBanco[] = [
           "/banco/se-x-faca-y/DXy5TOmFgQ1-06.webp"
         ]
       }
-    ]
+    ],
+    "svi": {
+      "molde": "Metadinha Horizontal (ou Vertical)",
+      "slug": "se-x-faca-y",
+      "estrutura": [
+        "Pares condição/recomendação",
+        "Fechamento"
+      ],
+      "laminas": [
+        "/banco/molde/se-x-faca-y-01.webp",
+        "/banco/molde/se-x-faca-y-02.webp",
+        "/banco/molde/se-x-faca-y-03.webp",
+        "/banco/molde/se-x-faca-y-04.webp"
+      ]
+    }
   },
   {
     "id": "situacao-comum",
@@ -1301,7 +1586,27 @@ export const BANCO: FormatoBanco[] = [
           "/banco/situacao-comum/DIgUwJfAsAN-07.webp"
         ]
       }
-    ]
+    ],
+    "svi": {
+      "molde": "Quadrinhos",
+      "slug": "situacao-comum",
+      "estrutura": [
+        "Cena de abertura",
+        "Resposta evasiva",
+        "Confissão silenciosa",
+        "Quebra da quarta parede",
+        "Cena de virada",
+        "Tese de fechamento"
+      ],
+      "laminas": [
+        "/banco/molde/situacao-comum-01.webp",
+        "/banco/molde/situacao-comum-02.webp",
+        "/banco/molde/situacao-comum-03.webp",
+        "/banco/molde/situacao-comum-04.webp",
+        "/banco/molde/situacao-comum-05.webp",
+        "/banco/molde/situacao-comum-06.webp"
+      ]
+    }
   },
   {
     "id": "tapa-na-cara",
@@ -1376,7 +1681,27 @@ export const BANCO: FormatoBanco[] = [
           "/banco/tapa-na-cara/DXPHOXtjlNn-06.webp"
         ]
       }
-    ]
+    ],
+    "svi": {
+      "molde": "Fundo Branco",
+      "slug": "tapa-na-cara",
+      "estrutura": [
+        "Afirmação de impacto",
+        "Desconstrução da crença",
+        "Custos ocultos",
+        "Diagnóstico da raiz",
+        "Reenquadramento",
+        "CTA"
+      ],
+      "laminas": [
+        "/banco/molde/tapa-na-cara-01.webp",
+        "/banco/molde/tapa-na-cara-02.webp",
+        "/banco/molde/tapa-na-cara-03.webp",
+        "/banco/molde/tapa-na-cara-04.webp",
+        "/banco/molde/tapa-na-cara-05.webp",
+        "/banco/molde/tapa-na-cara-06.webp"
+      ]
+    }
   },
   {
     "id": "trajetoria",
@@ -1419,7 +1744,21 @@ export const BANCO: FormatoBanco[] = [
           "/banco/trajetoria/DXzTiJcjXJC-03.webp"
         ]
       }
-    ]
+    ],
+    "svi": {
+      "molde": "Mosaico + Conteúdo",
+      "slug": "trajetoria",
+      "estrutura": [
+        "Dia um",
+        "Um dia (conquistas)",
+        "Encerramento com ensinamento"
+      ],
+      "laminas": [
+        "/banco/molde/trajetoria-01.webp",
+        "/banco/molde/trajetoria-02.webp",
+        "/banco/molde/trajetoria-03.webp"
+      ]
+    }
   },
   {
     "id": "tutorial",
@@ -1484,6 +1823,23 @@ export const BANCO: FormatoBanco[] = [
           "/banco/tutorial/DUa-sMgEePX-06.webp"
         ]
       }
-    ]
+    ],
+    "svi": {
+      "molde": "Mosaico + Conteúdo",
+      "slug": "tutorial",
+      "estrutura": [
+        "Capa",
+        "Premissa",
+        "Passos numerados",
+        "Fechamento"
+      ],
+      "laminas": [
+        "/banco/molde/tutorial-01.webp",
+        "/banco/molde/tutorial-02.webp",
+        "/banco/molde/tutorial-03.webp",
+        "/banco/molde/tutorial-04.webp",
+        "/banco/molde/tutorial-05.webp"
+      ]
+    }
   }
 ]

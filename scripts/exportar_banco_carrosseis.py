@@ -120,6 +120,29 @@ def exemplos_de(nome, formato_slug, ordem):
     return saida
 
 
+# Molde pronto da SVI (18/10/2026): João pediu "puxe todos os moldes best seller e faça o template de cada um
+# igual igual igual". O motor fica na skill design-carrossel-svi; a amostra de cada formato vem do indice.json dele.
+MOTOR = os.path.expanduser('~/.claude/skills/design-carrossel-svi/motor/bs')
+_INDICE = os.path.join(MOTOR, 'amostras', 'indice.json')
+MOTOR_IDX = {f['slug']: f for f in json.load(open(_INDICE, encoding='utf-8'))} if os.path.isfile(_INDICE) else {}
+# slug do curso (nome do .md) -> slug do motor, quando diferem
+SLUG_MOTOR = {'analise-opiniao-pessoal': 'analise-opiniao', 'atendimento-como-diferencial': 'atendimento-diferencial',
+              'se-ela-fez-voce-tambem-pode': 'se-ela-fez'}
+
+
+def molde_svi(curso_slug):
+    m = MOTOR_IDX.get(SLUG_MOTOR.get(curso_slug, curso_slug))
+    if not m:
+        return None
+    os.makedirs(os.path.join(OUT, 'molde'), exist_ok=True)
+    laminas = []
+    for i, rel in enumerate(m['laminas'], 1):
+        arq = 'molde/%s-%02d.webp' % (curso_slug, i)
+        lamina(os.path.join(MOTOR, 'amostras', rel), os.path.join(OUT, arq))
+        laminas.append('/banco/' + arq)
+    return {'molde': m['molde'], 'slug': m['slug'], 'estrutura': m['estrutura'], 'laminas': laminas}
+
+
 def ler(nome):
     texto = open(os.path.join(CURSO, 'modelos', nome + '.md'), encoding='utf-8').read()
     bruta = (re.search(r'INTENÇÃO:\s*(.+)', texto) or [None, ''])[1]
@@ -141,6 +164,7 @@ def ler(nome):
         'porqueFunciona': porque,
         'prancha': prancha(nome),
         'exemplos': exemplos_de(nome, s, codigos),
+        'svi': molde_svi(s),
     }
 
 
@@ -164,13 +188,16 @@ ts = (
     '  id: string\n  nome: string\n'
     "  /** CONEXÃO, CONVERSÃO ou CRESCIMENTO: para que serve a peça. */\n"
     '  intencoes: string[]\n  canva: string[]\n  estrutura: string[]\n'
-    '  detalhamento: PassoBanco[]\n  porqueFunciona: string\n  prancha: string\n  exemplos: ExemploBanco[]\n}\n\n'
+    '  detalhamento: PassoBanco[]\n  porqueFunciona: string\n  prancha: string\n  exemplos: ExemploBanco[]\n'
+    '  /** Molde pronto da SVI: o desenho do curso refeito no motor da casa, com amostra. */\n'
+    '  svi: MoldeSvi | null\n}\n'
+    'export interface MoldeSvi { molde: string; slug: string; estrutura: string[]; laminas: string[] }\n\n'
     'export const BANCO: FormatoBanco[] = ' + json.dumps(formatos, ensure_ascii=False, indent=2) + '\n'
 )
 open(os.path.join(CENTRAL, 'src', 'data', 'banco-carrosseis.ts'), 'w', encoding='utf-8').write(ts)
 
 print('formatos: %d' % len(formatos))
-for chave in ('intencoes', 'canva', 'estrutura', 'detalhamento', 'porqueFunciona', 'prancha', 'exemplos'):
+for chave in ('intencoes', 'canva', 'estrutura', 'detalhamento', 'porqueFunciona', 'prancha', 'exemplos', 'svi'):
     print('  com %s: %d/%d' % (chave, sum(1 for f in formatos if f[chave]), len(formatos)))
 print('exemplos: %d | lâminas: %d' % (sum(len(f['exemplos']) for f in formatos),
                                       sum(len(e['laminas']) for f in formatos for e in f['exemplos'])))
