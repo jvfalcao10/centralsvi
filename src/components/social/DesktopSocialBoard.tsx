@@ -5,7 +5,7 @@ import {Button} from '@/components/ui/button'
 import {CardActionsButton,CardContextMenu,StageSelect} from './CardActions'
 import CardSelection,{type CardSelectionProps} from './CardSelection'
 import {VideoCover} from './VideoPreview'
-import {SOCIAL_STAGES,socialDate,clientTone,semArquivoMarcado,type Card} from '@/lib/social-board'
+import {SOCIAL_STAGES,socialDate,clientTone,semArquivoMarcado,videoAbaixoDoPadrao,type Card} from '@/lib/social-board'
 
 
 /**
@@ -27,6 +27,7 @@ const PecaDoQuadro=memo(function PecaDoQuadro({card,busy,selecionada,onOpen,onMo
     <div className="p-3 space-y-2"><span className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide" style={{color:clientTone(card.client),backgroundColor:clientTone(card.client)+'1f'}}><span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{backgroundColor:clientTone(card.client)}}/><span className="truncate">{card.client}</span></span><h3 className="text-sm leading-snug line-clamp-3 font-medium">{card.title}</h3>
      {card.ingest_pending&&<p className="text-xs text-orange-400">Importação pendente</p>}
      {semArquivoMarcado(card)&&<p className="flex items-start gap-1.5 text-xs font-medium text-amber-500"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0"/>Sem arquivo marcado. Abra e escolha o que vai pro cliente, senão ela não sai daqui.</p>}
+     {(() => {const mbps=videoAbaixoDoPadrao(card);return mbps===null?null:<p className="flex items-start gap-1.5 text-xs font-medium text-rose-400"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0"/>Vídeo em {mbps} Mbps, abaixo do nosso padrão. Confira antes de publicar.</p>})()}
      {card.stage==='ajustes'&&card.note&&<p className="text-xs line-clamp-2 text-orange-400">{card.note}</p>}
      {card.approved_by&&<p className="text-xs text-emerald-500">Aprovado por {card.approved_by}</p>}
      {card.scheduled_at&&card.stage==='agendado'&&<p className="text-xs text-primary">{socialDate(card.scheduled_at)} · {card.channel}</p>}

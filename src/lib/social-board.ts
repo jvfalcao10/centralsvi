@@ -47,6 +47,41 @@ export function semArquivoMarcado(card:Pick<Card,'assets'|'selected_assets'|'sta
  return card.assets.length>0 && card.selected_assets.length===0
 }
 
+/**
+ * O vídeo desta peça sai abaixo do padrão da casa?
+ *
+ * João, 19/10/2026, depois de uma semana caçando qualidade ruim: "entregue o
+ * nosso melhor sempre". A régua não é opinião, é o que o Matheus entrega: os
+ * vídeos dele saem entre 19 e 27 Mbps. Tudo que chegou ao Instagram abaixo de
+ * 8 Mbps nesta semana foi defeito, não escolha:
+ *
+ * - os dois do Norte Capital e os da TE Mulher, comprimidos na mão para
+ *   contornar uma falha de upload que já está consertada;
+ * - os reels da Dra. Erika, montados sobre material baixado do próprio
+ *   Instagram em 720p e esticado para 1080.
+ *
+ * Nenhum desses casos foi percebido na hora. O aviso existe para que a próxima
+ * peça ruim apareça ANTES de ir ao ar, e não depois, no feed do cliente.
+ */
+export const MBPS_MINIMO = 8
+
+export function bitrateDoVideo(asset: Asset) {
+ const seg = (asset.duration_ms || 0) / 1000
+ const mb = (asset.bytes || 0) / 1048576
+ if (!seg || !mb) return null
+ return (mb * 8) / seg
+}
+
+export function videoAbaixoDoPadrao(card: Pick<Card,'assets'|'selected_assets'|'stage'>) {
+ if (card.stage === 'postado' || card.stage === 'arquivado') return null
+ for (const a of card.assets) {
+  if (!card.selected_assets.includes(a.id) || !a.type.startsWith('video/')) continue
+  const mbps = bitrateDoVideo(a)
+  if (mbps !== null && mbps < MBPS_MINIMO) return Math.round(mbps * 10) / 10
+ }
+ return null
+}
+
 export function newestSocialFirst(a:Card,b:Card) {
  const time=(card:Card)=>Date.parse(card.source_updated)||Date.parse(card.created_at||'')||0
  return time(b)-time(a)||a.id.localeCompare(b.id)
