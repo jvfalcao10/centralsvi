@@ -22,7 +22,11 @@ export function saudacao(agora: number = Date.now()) {
 
 const NUMERO = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove', 'dez']
 const ORDEM = ['', 'o primeiro', 'o segundo', 'o terceiro', 'o quarto', 'o quinto', 'o sexto', 'o sétimo', 'o oitavo', 'o nono', 'o décimo']
-const porExtenso = (n: number) => NUMERO[n] || String(n)
+const FEMININO: Record<string, string> = { um: 'uma', dois: 'duas' }
+const porExtenso = (n: number, feminino = false) => {
+ const palavra = NUMERO[n] || String(n)
+ return feminino ? (FEMININO[palavra] || palavra) : palavra
+}
 const naOrdem = (n: number) => ORDEM[n] || `o ${n}º`
 
 /** Como chamar a peça na conversa, pelo que o cliente vai abrir. */
@@ -69,6 +73,50 @@ export function mensagemDeAprovacao(p: {
  // O link de alta qualidade entra só quando existe de verdade. Prometer
  // download e mandar endereço que pede acesso é pior que não mandar nada.
  if (p.altaUrl) linhas.push('', posicao === 1 ? 'Se quiser o arquivo em alta qualidade:' : 'Arquivo em alta:', p.altaUrl)
+ return linhas.join('\n').trim()
+}
+
+/**
+ * Uma mensagem só para o lote inteiro, com um link que abre todas.
+ *
+ * João, 18/10/2026: "se tiver mais de 1 peça que ela mande uma mensagem
+ * somente com todos já de uma vez, que o cliente já aprova de uma vez,
+ * melhor né".
+ *
+ * Antes, cinco peças viravam cinco mensagens no grupo, cada uma com seu link.
+ * O cliente abria cinco páginas, respondia em cinco lugares e no meio do
+ * caminho perdia uma. A página do link do cliente já mostrava todas as
+ * pendentes empilhadas ("Publicação 1 de 5"), então o que faltava era a
+ * mensagem parar de picar o lote.
+ *
+ * A lista de títulos vai no corpo para o cliente saber o que vai encontrar
+ * antes de abrir. Sem link por peça: o link é um só.
+ */
+export function mensagemDeLote(p: {
+ client: string
+ /** As peças do lote, na ordem em que aparecem na página. */
+ pecas: { title: string; video?: boolean; arquivos?: number }[]
+ url: string
+ agora?: number
+}) {
+ const total = p.pecas.length
+ // Com uma peça só não existe lote: quem chama usa mensagemDeAprovacao.
+ if (total < 2) throw new Error('mensagemDeLote exige duas peças ou mais')
+ // O nome só é específico quando todas são do mesmo tipo; misturado vira
+ // "peças". O gênero acompanha, senão sai "dois peças novas".
+ const soVideo = p.pecas.every(x => x.video)
+ const soCarrossel = p.pecas.every(x => !x.video && (x.arquivos || 1) > 1)
+ const nome = soVideo ? 'vídeos novos' : soCarrossel ? 'carrosséis novos' : 'peças novas'
+ const feminino = !soVideo && !soCarrossel
+ const linhas = [
+  `${saudacao(p.agora)}, pessoal!`, '',
+  `Separei ${porExtenso(total, feminino)} ${nome} pra vocês:`, '',
+  ...p.pecas.map((x, i) => `${i + 1}. *${clientFacingTitle(p.client, x.title, !!x.video, x.arquivos || 1)}*`),
+  '',
+  // O cliente responde uma por uma na mesma página, sem trocar de link.
+  'Está tudo no mesmo link. Dá uma olhada e me diz, em cada uma, se pode ir ou se quer ajustar:',
+  p.url,
+ ]
  return linhas.join('\n').trim()
 }
 

@@ -1,7 +1,8 @@
 import type { createAdminClient } from './supabase.js'
 import { socialPatch, type SocialCard } from './social-domain.js'
 import { grupoDoCliente } from './social-client-approval.js'
-import { mensagemDeAprovacao, mensagemNoAr } from './social-client-message.js'
+import { getClientLink } from './social-client.js'
+import { mensagemDeAprovacao, mensagemDeLote, mensagemNoAr } from './social-client-message.js'
 import { newApprovalLink } from './social-approval-link.js'
 import { linkDeDownload } from './social-drive.js'
 type DB = ReturnType<typeof createAdminClient>
@@ -75,6 +76,47 @@ export async function filaDoEnvioAoCliente(
  })
  if (error) return { enviado: false, motivo: 'A peça foi para Aguardando cliente, mas o envio não entrou na fila. Copie o link e mande você mesmo.' }
  return { enviado: true, grupo: grupo.nome, aguardando_video: esperandoVideo }
+}
+
+/**
+ * Põe na fila UMA mensagem para o lote inteiro.
+ *
+ * João, 18/10/2026: "se tiver mais de 1 peça que ela mande uma mensagem
+ * somente com todos já de uma vez, que o cliente já aprova de uma vez".
+ *
+ * O link é o do cliente, que abre a página com todas as pendentes empilhadas.
+ * A mídia não vai junto: cinco vídeos no WhatsApp seriam cinco mensagens, que
+ * é exatamente o que ele pediu para acabar. O cliente assiste na página.
+ */
+async function filaDoLote(db: DB, cards: SocialCard[], url: string, actor: string) {
+ const cliente = cards[0].client
+ const grupo = grupoDoCliente(cliente)
+ if (!grupo) return { enviado: false, motivo: 'cliente sem grupo unico no whatsapp' }
+ const texto = mensagemDeLote({
+  client: cliente, url,
+  pecas: cards.map(c => {
+   const sel = c.assets.filter(a => c.selected_assets.includes(a.id))
+   return { title: c.title, video: sel.some(a => a.type.startsWith('video/')), arquivos: sel.length }
+  }),
+ })
+ // A fila exige o evento que originou o envio. Vale o da última peça movida:
+ // é o registro mais novo e é nela que a mensagem fica ancorada no histórico.
+ const ancora = cards[cards.length - 1]
+ const { data: evento } = await db.from('central_social_events').select('id')
+  .eq('card_id', ancora.id).order('id', { ascending: false }).limit(1).maybeSingle()
+ if (!evento?.id) return { enviado: false, motivo: 'o lote nao entrou na fila. Copie o link e mande voce mesmo.' }
+ const { error } = await db.from('central_social_feedback_outbox').insert({
+  event_id: evento.id, card_id: ancora.id, channel: 'whatsapp', destination: grupo.jid,
+  payload: {
+   client: cliente, title: `${cards.length} peças`, revision: ancora.revision, actor,
+   action: 'enviar_cliente', comment: '', created_at: new Date().toISOString(), files: [],
+   task_id: null, group_label: grupo.nome, texto_pronto: texto,
+   lote: cards.map(c => c.id),
+  },
+  status: 'pending',
+ })
+ if (error) return { enviado: false, motivo: 'o lote nao entrou na fila. Copie o link e mande voce mesmo.' }
+ return { enviado: true, grupo: grupo.nome }
 }
 
 // ---------------------------------------------------------------------------
@@ -168,6 +210,13 @@ export async function autoEnviarPecas(db: DB, limite = LOTE_MAXIMO, agora = Date
  // cliente entra na volta seguinte.
  const lote = prontas.filter(c => c.client === prontas[0].client).slice(0, limite)
  let enviadas = 0
+ // Com duas ou mais, o grupo recebe UMA mensagem com todas e um link só.
+ // Move primeiro, porque o link do cliente só existe depois que há peça em
+ // Aguardando, e manda depois, quando o lote inteiro já está de pé.
+ const emLote = lote.length > 1
+ // Guarda o link JUNTO: o token já foi gravado no card, e gerar outro depois
+ // daria um endereço que não abre.
+ const movidas: { card: SocialCard; url: string }[] = []
  for (const [i, card] of lote.entries()) {
   try {
    const link = newApprovalLink(card.id)
@@ -180,10 +229,29 @@ export async function autoEnviarPecas(db: DB, limite = LOTE_MAXIMO, agora = Date
     p_actor: 'Sofia', p_actor_id: null, p_action: 'enviar_cliente',
    })
    if (erroRpc || !aplicado) { motivos.nao_foi_possivel_mover = (motivos.nao_foi_possivel_mover || 0) + 1; continue }
+   if (emLote) { movidas.push({ card: aplicado as SocialCard, url: link.url }); continue }
    const r = await filaDoEnvioAoCliente(db, aplicado as SocialCard, link.url, 'Sofia', { posicao: i + 1, total: lote.length })
    if (r.enviado) enviadas++
    else motivos[r.motivo || 'fila_recusou'] = (motivos[r.motivo || 'fila_recusou'] || 0) + 1
   } catch { motivos.falha_inesperada = (motivos.falha_inesperada || 0) + 1 }
+ }
+ // O lote inteiro de pé: uma mensagem, um link, todas as peças na mesma
+ // página. Se o link do cliente falhar, cai para uma mensagem por peça, que
+ // é pior de ler mas não deixa o cliente sem receber nada.
+ if (emLote && movidas.length) {
+  let url: string | null = null
+  try { url = await getClientLink(db, movidas[0].card.client, true) } catch { url = null }
+  if (url) {
+   const r = await filaDoLote(db, movidas.map(m => m.card), url, 'Sofia')
+   if (r.enviado) enviadas = movidas.length
+   else motivos[r.motivo || 'fila_recusou'] = (motivos[r.motivo || 'fila_recusou'] || 0) + 1
+  } else {
+   motivos.lote_sem_link_do_cliente = 1
+   for (const [i, m] of movidas.entries()) {
+    const r = await filaDoEnvioAoCliente(db, m.card, m.url, 'Sofia', { posicao: i + 1, total: movidas.length })
+    if (r.enviado) enviadas++
+   }
+  }
  }
  return { enviadas, cliente: lote[0].client, motivos }
 }
