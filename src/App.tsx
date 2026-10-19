@@ -94,6 +94,7 @@ import AgendaEquipe from './pages/AgendaEquipe';
 const CriadorCarrossel = lazy(() => import("@/pages/content/CriadorCarrossel"));
 // Moldes de post: vitrine com as lâminas, carrega sob demanda
 const Moldes = lazy(() => import("@/pages/content/Moldes"));
+const Cadencia = lazy(() => import("@/pages/content/Cadencia"));
 // Mapas mentais: a lista é leve, o editor carrega markmap e d3 sob demanda
 const Mapas = lazy(() => import("@/pages/Mapas"));
 const MapaEditor = lazy(() => import("@/pages/MapaEditor"));
@@ -291,6 +292,9 @@ const App = () => (
                 <ProtectedRoute requiredRole="admin"><AppLayout><Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando o Criador de carrossel…</div>}><CriadorCarrossel /></Suspense></AppLayout></ProtectedRoute>
               } />
               <Route path="/content/social" element={<ProtectedRoute requiredRole="executor" allowTraffic allowSocial allowDesign><AppLayout><Social /></AppLayout></ProtectedRoute>} />
+              <Route path="/content/cadencia" element={
+                <ProtectedRoute requiredRole="executor" allowSocial allowDesign><AppLayout><Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Lendo a cadência…</div>}><Cadencia /></Suspense></AppLayout></ProtectedRoute>
+              } />
               <Route path="/content/moldes" element={
                 <ProtectedRoute requiredRole="executor" allowSocial allowDesign><AppLayout><Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando os moldes…</div>}><Moldes /></Suspense></AppLayout></ProtectedRoute>
               } />

@@ -12,9 +12,10 @@ const urls = (areas: ReturnType<typeof getVisibleNavigation>['main']) =>
   areas.flatMap(a => a.items.map(i => i.url))
 
 describe('papel design', () => {
- it('vê postagens, moldes, acessos e mapas', () => {
+ it('vê postagens, moldes, cadência, acessos e mapas', () => {
   const nav = getVisibleNavigation({ can: () => false, isDesign: true })
-  expect(urls(nav.main).sort()).toEqual(['/acessos', '/content/moldes', '/content/social', '/mapas'])
+  // O designer monta a arte do que está atrasado, então vê a cadência também.
+  expect(urls(nav.main).sort()).toEqual(['/acessos', '/content/cadencia', '/content/moldes', '/content/social', '/mapas'])
   expect(nav.footer).toEqual([])
  })
 

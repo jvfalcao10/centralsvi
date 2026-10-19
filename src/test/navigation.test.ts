@@ -84,9 +84,10 @@ describe('Áreas de navegação', () => {
 describe('papel social media', () => {
   const nav = getVisibleNavigation({ can: () => false, isSocial: true })
 
-  it('vê Postagens, Moldes, Datas, Mapas, Senhas e Acessos', () => {
+  it('vê Postagens, Moldes, Cadência, Datas, Mapas, Senhas e Acessos', () => {
     const urls = nav.main.flatMap(a => a.items.map(i => i.url))
-    expect(urls).toEqual(['/content/social', '/content/moldes', '/content/datas', '/content/radar', '/mapas', '/senhas', '/acessos'])
+    // A cadência entrou em 19/10: "quero que a social media tenha acesso".
+    expect(urls).toEqual(['/content/social', '/content/moldes', '/content/cadencia', '/content/datas', '/content/radar', '/mapas', '/senhas', '/acessos'])
   })
 
   it('não vê financeiro, resultados, comercial nem administração', () => {

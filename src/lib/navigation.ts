@@ -31,6 +31,7 @@ export const NAV_AREAS: NavigationArea[] = [
     { title: 'Carga de demandas', url: '/operacional/carga', minRole: 'manager', section: 'Demandas' },
     { title: 'Social media · Postagens', url: '/content/social', minRole: 'executor', section: 'Conteúdo' },
     { title: 'Moldes de post', url: '/content/moldes', minRole: 'executor', section: 'Conteúdo' },
+    { title: 'Cadência do mês', url: '/content/cadencia', minRole: 'executor', section: 'Conteúdo' },
     { title: 'Datas estratégicas', url: '/content/datas', minRole: 'executor', section: 'Conteúdo' },
     { title: 'Criador de carrossel', url: '/conteudo/criador-carrossel', minRole: 'admin', section: 'Conteúdo' },
   ] },
@@ -99,6 +100,9 @@ export const SOCIAL_AREAS: NavigationArea[] = [
   { id: 'moldes', title: 'Moldes', icon: 'carousel', direct: true, items: [
     { title: 'Moldes de post', url: '/content/moldes', minRole: 'social' },
   ] },
+  { id: 'cadencia', title: 'Cadência', icon: 'results', direct: true, items: [
+    { title: 'Cadência do mês', url: '/content/cadencia', minRole: 'social' },
+  ] },
   { id: 'datas', title: 'Datas', icon: 'resources', direct: true, items: [
     { title: 'Datas estratégicas', url: '/content/datas', minRole: 'social' },
   ] },
@@ -137,6 +141,9 @@ export const DESIGN_AREAS: NavigationArea[] = [
   ] },
   { id: 'moldes', title: 'Moldes', icon: 'carousel', direct: true, items: [
     { title: 'Moldes de post', url: '/content/moldes', minRole: 'design' },
+  ] },
+  { id: 'cadencia', title: 'Cadência', icon: 'results', direct: true, items: [
+    { title: 'Cadência do mês', url: '/content/cadencia', minRole: 'design' },
   ] },
   { id: 'acessos', title: 'Acessos', icon: 'resources', direct: true, items: [
     { title: 'Acessos e ferramentas', url: '/acessos', minRole: 'design' },
@@ -198,6 +205,7 @@ const CONTEXTUAL_BREADCRUMBS: { path: string; breadcrumb: string[] }[] = [
   { path: '/operacional/trafego', breadcrumb: ['Operação', 'Tráfego'] },
   { path: '/operacional/feedback', breadcrumb: ['Operação', 'Feedback do dia'] },
   { path: '/reports/overview', breadcrumb: ['Resultados', 'Visão geral'] },
+  { path: '/content/cadencia', breadcrumb: ['Operação', 'Cadência do mês'] },
   { path: '/content/radar', breadcrumb: ['Operação', 'Radar'] },
   { path: '/content/reels', breadcrumb: ['Operação', 'Reels em alta'] },
   { path: '/activity', breadcrumb: ['Recursos', 'Histórico de atividades'] },

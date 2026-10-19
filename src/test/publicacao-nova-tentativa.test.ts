@@ -32,7 +32,7 @@ describe('o que merece outra tentativa', () => {
 
  it('erro de conta ou permissão não insiste', () => {
   // Token vencido e conta sem permissão não melhoram repetindo.
-  expect(valeTentarDeNovo(new MetaPublicationError('Token vencido', 190))).toBe(false)
-  expect(valeTentarDeNovo(new MetaPublicationError('Sem permissão', 200))).toBe(false)
+  expect(valeTentarDeNovo(new MetaPublicationError(190, 'Token vencido'))).toBe(false)
+  expect(valeTentarDeNovo(new MetaPublicationError(200, 'Sem permissão'))).toBe(false)
  })
 })

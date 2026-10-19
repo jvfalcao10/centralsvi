@@ -1,4 +1,5 @@
 import { handleSocial } from './_lib/social.js';
+import { handleCadencia } from './_lib/social-cadencia-rota.js';
 import { handleSocialShare } from './_lib/social-share.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createAdminClient } from './_lib/supabase.js';
@@ -99,6 +100,7 @@ function deltaHtml(pct: any): string {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.query.__rota === 'social-share') return handleSocialShare(req, res);
   if (req.query.__rota === 'social') return handleSocial(req, res);
+  if (req.query.__rota === 'cadencia') return handleCadencia(req, res);
   if (req.query.__rota === 'agenda') return handleAgenda(req, res);
   if (req.query.__rota === 'agenda-share') return handleAgendaShare(req, res);
   // Aprovacao de conteudo entra por aqui: o plano Hobby limita as functions.
