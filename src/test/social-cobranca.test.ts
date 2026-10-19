@@ -273,10 +273,13 @@ describe('peça aprovada que ninguém programou', () => {
   expect(t.split('\n').filter(l => l.startsWith('*'))).toHaveLength(10)
  })
 
+ // Em 18/10/2026 o destinatário mudou: a cobrança saiu do privado do João e
+ // foi para o grupo da social media, porque quem programa é a Rayana.
  it('diz a régua e leva para o quadro', () => {
   const t = textoDasAprovadas(aprovadasSemData([aprovada(0)], AGORA), AGORA)
   expect(t).toContain('aprovada hoje')
-  expect(t).toContain('Aprovada não é publicada')
+  expect(t).toContain('Rayana')
+  expect(t).toContain('O cliente já aprovou, falta só a data')
   expect(t).toContain('central.svicompany.com.br/content/social')
  })
 })

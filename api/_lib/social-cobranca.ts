@@ -157,9 +157,35 @@ const ESPERA_CLIENTE = 24 * 3600000
  */
 const VELHA_DEMAIS = 10
 
+/**
+ * Clientes que a Sofia não cobra, por decisão do João.
+ *
+ * João, 18/10/2026, 23h: "não enviar nada Ésia, já tá tudo aprovado". A peça
+ * dela em Aguardando estava parada havia 62 horas e a ronda de segunda ia
+ * cobrar resposta de algo que a cliente já tinha aprovado na conversa. O
+ * quadro não sabia, e ele pediu para não mexer na etapa.
+ *
+ * Silêncio é decisão de pessoa, não de código: cada nome aqui entra com data
+ * e motivo, e sai quando o motivo acabar. Não vale para o aviso de peça no ar,
+ * que é entrega, nem para a cobrança da social media, que é interna.
+ */
+export const CLIENTES_SEM_COBRANCA: { cliente: string; desde: string; porque: string }[] = [
+ { cliente: 'Dra. Ésia', desde: '2026-10-18', porque: 'João: já aprovou tudo na conversa, falta só programar' },
+]
+
+/** Sem acento, minúsculo: "DRA. ÉSIA LOPES" e "Dra. Ésia" têm que casar. */
+const normalizado = (v: string) =>
+ String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+
+/** O nome do cliente bate com algum silêncio pedido? */
+export function clienteEmSilencio(client: string) {
+ const alvo = normalizado(client)
+ return CLIENTES_SEM_COBRANCA.some(x => alvo.includes(normalizado(x.cliente)) || normalizado(x.cliente).includes(alvo))
+}
+
 export function pecasComOCliente(cards: SocialCard[], agora = Date.now()): PecaNoCliente[] {
  return cards
-  .filter(c => c.stage === 'aguardando')
+  .filter(c => c.stage === 'aguardando' && !clienteEmSilencio(c.client))
   .map(c => ({ c, enviado_ms: Date.parse(c.updated_at) }))
   .filter(({ enviado_ms }) => Number.isFinite(enviado_ms) && agora - enviado_ms >= ESPERA_CLIENTE)
   .map(({ c, enviado_ms }) => ({
@@ -295,6 +321,16 @@ export function textoDasDatas(pecas: PecaComData[], agora = Date.now()) {
 // As três rondas
 // ---------------------------------------------------------------------------
 const JOAO = '559492404033'
+/**
+ * O grupo onde a social media trabalha, com a Sofia dentro.
+ *
+ * João, 18/10/2026, sobre as peças da Dra. Ésia: "a Ésia já foi aprovado e aí
+ * é só programar, aí isso você deve cobrar a Rayana no grupo de social media,
+ * Sofia tá lá". Quem programa é a social, então a cobrança de peça aprovada
+ * sem data ia para o lugar errado: ficava no privado do João, que não é quem
+ * executa.
+ */
+const SOCIAL_MEDIA = '120363431737365497@g.us'
 
 export async function cobrarClientes(
  db: DB, enviar: (jid: string, texto: string) => Promise<void>, agora = Date.now(),
@@ -410,11 +446,12 @@ export function aprovadasSemData(cards: SocialCard[], agora = Date.now()): PecaA
 export function textoDasAprovadas(pecas: PecaAprovada[], agora = Date.now()) {
  const mostrar = pecas.slice(0, TETO_NA_MENSAGEM)
  const resto = pecas.length - mostrar.length
- const linhas = [`${saudacao(agora)}! ${pecas.length} peças aprovadas e sem data de publicação:`, '',
+ const uma = pecas.length === 1
+ const linhas = [`${saudacao(agora)}, Rayana! ${uma ? '1 peça aprovada e sem data de publicação' : `${pecas.length} peças aprovadas e sem data de publicação`}:`, '',
   ...mostrar.map(p => `*${p.client}* · ${p.title} (aprovada ${p.dias <= 0 ? 'hoje' : p.dias === 1 ? 'ontem' : `há ${p.dias} dias`})`)]
  // Lista longa demais vira parede de texto e ninguém lê. O resto fica no quadro.
  if (resto > 0) linhas.push('', `E mais ${resto} de antes, no quadro.`)
- linhas.push('', 'Aprovada não é publicada. Programa na Central: https://central.svicompany.com.br/content/social?etapa=aprovado')
+ linhas.push('', 'O cliente já aprovou, falta só a data. Programa na Central: https://central.svicompany.com.br/content/social?etapa=aprovado')
  return linhas.join('\n')
 }
 
@@ -425,9 +462,10 @@ export async function cobrarProgramacao(
  if (error) throw new Error('aprovadas_leitura_falhou')
  const pecas = aprovadasSemData((data || []) as SocialCard[], agora)
  if (!pecas.length) return { pecas: 0 }
- // Só para o João: quem decide dia e hora de publicar é a casa, não o cliente
- // nem o designer.
- try { await enviar(JOAO, textoDasAprovadas(pecas, agora)) } catch { /* segue */ }
+ // Para o grupo da social media, que é quem programa. Antes ia para o privado
+ // do João, que acompanha mas não executa, então a peça aprovada ficava
+ // esperando alguém reencaminhar o recado.
+ try { await enviar(SOCIAL_MEDIA, textoDasAprovadas(pecas, agora)) } catch { /* segue */ }
  return { pecas: pecas.length }
 }
 
