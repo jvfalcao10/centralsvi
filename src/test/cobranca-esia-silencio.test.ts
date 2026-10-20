@@ -4,7 +4,7 @@ import type { SocialCard } from '../../api/_lib/social-domain'
 
 // João, 18/10/2026, 23h: "não enviar nada Ésia, já tá tudo aprovado" e
 // "a Ésia já foi aprovado e aí é só programar, aí isso você deve cobrar a
-// Rayana no grupo de social media, Sofia tá lá".
+// Rayana no grupo de social media, Sofia tá lá". A Rayana saiu em 20/10/2026.
 const agora = Date.parse('2026-10-19T11:30:00-03:00')
 const H = 3600000
 const card = (extra: Partial<SocialCard>, horas = 62): SocialCard => ({
@@ -31,13 +31,15 @@ describe('silêncio da Ésia', () => {
  })
 })
 
-describe('cobrança de programar fala com a Rayana', () => {
- it('a mensagem chama a Rayana pelo nome e diz que o cliente já aprovou', () => {
+describe('cobrança de programar fala com o grupo da social media', () => {
+ it('a mensagem não chama ninguém pelo nome e diz que o cliente já aprovou', () => {
   const pecas = aprovadasSemData([card({
    stage: 'aprovado', approved_at: new Date(agora - 48 * H).toISOString(),
   })], agora)
   const texto = textoDasAprovadas(pecas, agora)
-  expect(texto).toContain('Rayana')
+  // A Rayana saiu em 20/10/2026. Mensagem da casa não chama ex-colaborador.
+  expect(texto).not.toContain('Rayana')
+  expect(texto).toContain('pessoal')
   expect(texto).toContain('O cliente já aprovou, falta só a data')
   expect(texto).toContain('etapa=aprovado')
  })

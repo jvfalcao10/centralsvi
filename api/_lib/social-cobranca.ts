@@ -327,6 +327,10 @@ const JOAO = '559492404033'
  *
  * João, 18/10/2026, sobre as peças da Dra. Ésia: "a Ésia já foi aprovado e aí
  * é só programar, aí isso você deve cobrar a Rayana no grupo de social media,
+ * Sofia tá lá". ⚠️ 20/10/2026: a Rayana saiu da SVI e já não está no grupo, que
+ * hoje tem o João, a Letícia, o Arthur e a Sofia. A mensagem deixou de chamar
+ * alguém pelo nome: chamar quem não trabalha mais aqui é pior que não chamar
+ * ninguém. Quando o João disser quem assume a programação, volta o nome.
  * Sofia tá lá". Quem programa é a social, então a cobrança de peça aprovada
  * sem data ia para o lugar errado: ficava no privado do João, que não é quem
  * executa.
@@ -465,7 +469,7 @@ export function textoDasAprovadas(pecas: PecaAprovada[], agora = Date.now()) {
  const mostrar = pecas.slice(0, TETO_NA_MENSAGEM)
  const resto = pecas.length - mostrar.length
  const uma = pecas.length === 1
- const linhas = [`${saudacao(agora)}, Rayana! ${uma ? '1 peça aprovada e sem data de publicação' : `${pecas.length} peças aprovadas e sem data de publicação`}:`, '',
+ const linhas = [`${saudacao(agora)}, pessoal! ${uma ? '1 peça aprovada e sem data de publicação' : `${pecas.length} peças aprovadas e sem data de publicação`}:`, '',
   ...mostrar.map(p => `*${p.client}* · ${p.title} (aprovada ${p.dias <= 0 ? 'hoje' : p.dias === 1 ? 'ontem' : `há ${p.dias} dias`})`)]
  // Lista longa demais vira parede de texto e ninguém lê. O resto fica no quadro.
  if (resto > 0) linhas.push('', `E mais ${resto} de antes, no quadro.`)
