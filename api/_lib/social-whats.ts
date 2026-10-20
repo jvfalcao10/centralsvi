@@ -54,3 +54,44 @@ export async function jaFalamosHoje(jid: string, agora = Date.now(), prazo = 100
   })
  } catch { return false }
 }
+
+/**
+ * O cliente falou no grupo depois que a peça foi enviada?
+ *
+ * João, 20/10/2026: "ontem o Dr. Geraldo disse que precisava alterar a copy de
+ * um carrossel que enviamos, e não mudou a etapa, e hoje a Sofia enviou
+ * novamente o ajuste sendo que já tinha sido falado por ele".
+ *
+ * A sequência: a peça foi ao grupo 18/10 18h50; no dia seguinte às 08h59 ele
+ * respondeu ali mesmo, em três mensagens ("o sangue quase nunca mostra?",
+ * "nunca mostra"), e avisou que não sabe mexer no link. Nada disso virou
+ * estado, porque o quadro só entende resposta dada PELO LINK. Às 08h30 do dia
+ * seguinte a ronda cobrou, e ele respondeu "já falei aí o que mudar".
+ *
+ * Entender a frase dele é difícil e arriscado. Saber que ele FALOU é fácil e
+ * basta: quem respondeu não leva cobrança automática, vai para o João olhar.
+ *
+ * Falha de leitura devolve `true` (não cobra): calar de menos é pior que calar
+ * demais quando o risco é irritar o cliente.
+ */
+export async function clienteRespondeuDepois(jid: string, desdeMs: number, prazo = 12000) {
+ const token = process.env.SOCIAL_UAZ_TOKEN || ''
+ if (!token || !jid || !Number.isFinite(desdeMs)) return true
+ try {
+  const r = await fetch(UAZ + '/message/find', {
+   method: 'POST', headers: { token, 'Content-Type': 'application/json' },
+   body: JSON.stringify({ chatid: jid, limit: 40, offset: 0 }),
+   signal: AbortSignal.timeout(prazo),
+  })
+  if (!r.ok) return true
+  const d = await r.json() as { messages?: Record<string, unknown>[] }
+  if (!Array.isArray(d.messages)) return true
+  return d.messages.some(m => {
+   // Mensagem nossa não conta como resposta do cliente.
+   if (m.fromMe) return false
+   const bruto = Number(m.messageTimestamp)
+   if (!Number.isFinite(bruto) || bruto <= 0) return false
+   return (bruto < 1e12 ? bruto * 1000 : bruto) > desdeMs
+  })
+ } catch { return true }
+}

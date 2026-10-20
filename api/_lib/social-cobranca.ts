@@ -1,3 +1,4 @@
+import { clienteRespondeuDepois } from './social-whats.js'
 import type { createAdminClient } from './supabase.js'
 import type { SocialAsset, SocialCard } from './social-domain.js'
 import { clientFacingTitle } from './social-client-title.js'
@@ -354,6 +355,7 @@ export async function cobrarClientes(
  for (const p of paradas) porCliente.set(p.client, [...(porCliente.get(p.client) || []), p])
  let clientes = 0, pecas = 0
  const semLink: PecaNoCliente[] = []
+ const responderam: PecaNoCliente[] = []
  for (const [cliente, lista] of porCliente) {
   const grupo = grupoDoCliente(cliente)
   // Cliente sem grupo único não é cobrado: mandar peça no grupo errado é pior
@@ -371,7 +373,23 @@ export async function cobrarClientes(
   const comLink = lista.filter(p => p.url)
   semLink.push(...lista.filter(p => !p.url))
   if (!comLink.length) continue
+  // Quem já respondeu no grupo não leva cobrança. João, 20/10/2026: o Dr.
+  // Geraldo pediu a alteração por escrito ali mesmo, no dia seguinte ao envio,
+  // e ainda avisou que não sabe mexer no link. Como nada daquilo virou estado,
+  // a ronda cobrou e ele respondeu "já falei aí o que mudar".
+  const maisAntiga = Math.min(...comLink.map(p => p.enviado_ms))
+  if (await clienteRespondeuDepois(grupo.jid, maisAntiga)) {
+   responderam.push(...comLink)
+   continue
+  }
   try { await enviar(grupo.jid, textoDoCliente(comLink, agora)); clientes++; pecas += comLink.length } catch { /* segue */ }
+ }
+ // O cliente falou e ninguém tratou: isso é trabalho da casa, não dele.
+ if (responderam.length) {
+  const texto = [`${saudacao(agora)}! Estes clientes *já responderam no grupo* e a peça continua esperando. Não cobrei, porque a resposta deles está lá:`,
+   ...responderam.map(p => `*${p.client}* · ${p.title} (${mandei(p.dias)})`),
+   'Abre a conversa, aplica o que pediram e move a peça.'].join('\n\n')
+  try { await enviar(JOAO, texto) } catch { /* segue */ }
  }
  // O que não deu para cobrar vira tarefa do João, com o motivo na cara.
  if (semLink.length) {
@@ -380,7 +398,7 @@ export async function cobrarClientes(
    'Ou o cliente nunca recebeu o link, ou ele venceu. Reenvia pela Central que eu volto a cobrar sozinha.'].join('\n\n')
   try { await enviar(JOAO, texto) } catch { /* segue */ }
  }
- return { clientes, pecas, velhas: velhas.length, sem_link: semLink.length }
+ return { clientes, pecas, velhas: velhas.length, sem_link: semLink.length, responderam: responderam.length }
 }
 
 export async function lembrarDatas(
