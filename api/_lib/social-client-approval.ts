@@ -47,6 +47,15 @@ export function isTeamSender(m:Record<string,any>) {
  return ids.some(id=>TEAM_IDS.has(id)) || ids.some(id=>{const d=id.split('@')[0].replace(/\D/g,'');return id.includes('@lid')?false:TEAM_SUFFIX.some(s=>d.endsWith(s))})
 }
 
+/**
+ * A fala é sobre o LINK, não sobre a peça.
+ *
+ * O Spa Nature escreveu "o link não está abrindo" em 15/10/2026, e o Dr. Geraldo
+ * escreveu "sei mexer co / isso não" em 19/10. As duas batem no CHANGE por causa
+ * do "não", e as duas pedem gente, não retrabalho de designer. Mandar isso pro
+ * grupo do José como alteração pedida seria inventar serviço.
+ */
+const SOBRE_O_LINK=/\b(link|abrir|abre|abriu|abrindo|acess\w*|senha|carreg\w*|pagina|site)\b/
 const CHANGE=/\b(nao|ainda|ajust\w*|mud\w*|troc\w*|alter\w*|corrig\w*|refaz\w*|tira|tirar|falt\w*|errad\w*|errou|menor|maior|coloc\w*|aument\w*|diminu\w*|deix\w*|tir\w*)\b/
 export function clientVerdict(raw:string):'explicit'|'praise'|'change'|'' {
  const t=normalized(raw)
@@ -84,6 +93,7 @@ export type Store={
  lastApproval(chat:string,before:number):Promise<number>
  changes(chat:string,since:number):Promise<number>
  cardByFile(name:string,aliases:string[]):Promise<SocialCard|null>
+ waiting(aliases:string[]):Promise<SocialCard[]>
  card(id:string):Promise<SocialCard|null>
  approve(c:SocialCard,patch:Record<string,unknown>):Promise<string>
  markSent(c:SocialCard):Promise<string>
@@ -145,6 +155,12 @@ export function receiptStore(db:ReturnType<typeof createAdminClient>):Store {
    const {data:recent}=await db.from('central_social_cards').select('*').not('stage','in','(postado,arquivado)').order('source_updated',{ascending:false}).limit(300)
    const hit=((recent||[]) as SocialCard[]).filter(c=>normalized(c.title)===base&&aliases.some(a=>(' '+normalized(c.client)+' ').includes(' '+normalized(a)+' ')))
    return hit.length===1?hit[0]:null
+  },
+  // As peças que ESTE cliente deve responder. É o que permite entender um pedido
+  // de alteração escrito solto no grupo, sem citar arquivo nenhum.
+  async waiting(aliases){
+   const {data}=await db.from('central_social_cards').select('*').eq('stage','aguardando').limit(200)
+   return ((data||[]) as SocialCard[]).filter(c=>aliases.some(a=>(' '+normalized(c.client)+' ').includes(' '+normalized(a)+' ')))
   },
   async card(id){const {data}=await db.from('central_social_cards').select('*').eq('id',id).maybeSingle();return (data as SocialCard)||null},
   async approve(c,patch){const {error}=await db.rpc('central_social_apply',{p_id:c.id,p_expected:c.version,p_patch:patch,p_action:'aprovar',p_actor:'Sofia · grupo do cliente',p_actor_id:null});return error?(error.message.includes('version_conflict')?'central_conflito':'central_erro'):''},
@@ -211,31 +227,43 @@ export async function clientGroupApproval(db:ReturnType<typeof createAdminClient
  const verdict=clientVerdict(text)
  if(verdict==='change'){
   await store.claim(`cg-change:${own}`,chat,{media:quoted,at,text})
-  // Só move a peça quando o cliente RESPONDE em cima de um arquivo. "Muda a cor" solto,
-  // depois de três vídeos, não diz qual. Na dúvida não mexe, igual à regra da aprovação.
-  if(quoted){
-   const mudanca:Record<string,unknown>={}
-   try{
-    const alvo=(await store.media(chat,at-EXPLICIT_WINDOW)).find(r=>r.id===quoted)
-    if(alvo?.name){
-     const c=await store.cardByFile(alvo.name,group.aliases)
-     if(c){
-      const quem=`${group.client} · WhatsApp ${String(m.sender_pn||m.sender||'').split('@')[0].replace(/\D/g,'')||'sem número'}`
-      const fail=await store.askChanges(c,`Pedido do cliente no grupo em ${brasilia(at)} (Brasília), sobre ${alvo.name}: "${text}"`,quem)
-      if(fail)mudanca.skipped=fail
-      else{
-       mudanca.card=c.id
-       if(!c.id.startsWith('wa-'))try{
-        await clickup(`/task/${c.id}`,{method:'PUT',body:{status:CHANGES}})
-        await clickup(`/task/${c.id}/comment`,{method:'POST',body:{comment_text:`[svi-ajuste] ${quem} pediu em ${brasilia(at)} (Brasília), respondendo ao arquivo ${alvo.name}: "${text}"`,notify_all:false}})
-        mudanca.clickup=c.id
-       }catch{mudanca.clickup_falhou=c.id}
-      }
-     }else mudanca.skipped='sem_card_na_central'
+  const mudanca:Record<string,unknown>={}
+  try{
+   // Primeiro o caminho certo: o cliente respondeu EM CIMA do arquivo.
+   const alvo=quoted?(await store.media(chat,at-EXPLICIT_WINDOW)).find(r=>r.id===quoted):undefined
+   let c=alvo?.name?await store.cardByFile(alvo.name,group.aliases):null
+   let sobre=alvo?.name?`, sobre ${alvo.name}`:''
+   if(!c){
+    // João, 20/10/2026: "a Sofia não é inteligente o bastante pra identificar isso?".
+    // O Dr. Geraldo pediu a alteração escrevendo no grupo, sem citar nada, e a peça
+    // tinha ido como LINK de aprovação, não como arquivo: não havia o que citar. Ela
+    // entendeu as três mensagens como pedido de mudança e não agiu, porque o código
+    // só sabia andar a partir de um arquivo citado.
+    // Quando o cliente deve resposta de UMA peça só, não há o que adivinhar: é dela
+    // que ele está falando. Com duas ou mais, continua sem mexer, que é a regra da
+    // aprovação: na dúvida não toca na peça de ninguém.
+    const esperando=SOBRE_O_LINK.test(normalized(text))?[]:await store.waiting(group.aliases)
+    if(esperando.length===1){c=esperando[0];sobre=', a única peça esperando resposta dele'}
+    else if(SOBRE_O_LINK.test(normalized(text)))mudanca.skipped='fala_do_link'
+    else mudanca.skipped=esperando.length?`${esperando.length}_pecas_esperando`:(quoted?'sem_card_na_central':'nenhuma_peca_esperando')
+   }
+   if(c){
+    const quem=`${group.client} · WhatsApp ${String(m.sender_pn||m.sender||'').split('@')[0].replace(/\D/g,'')||'sem número'}`
+    const fail=await store.askChanges(c,`Pedido do cliente no grupo em ${brasilia(at)} (Brasília)${sobre}: "${text}"`,quem)
+    if(fail)mudanca.skipped=fail
+    else{
+     mudanca.card=c.id
+     if(!c.id.startsWith('wa-'))try{
+      await clickup(`/task/${c.id}`,{method:'PUT',body:{status:CHANGES}})
+      await clickup(`/task/${c.id}/comment`,{method:'POST',body:{comment_text:`[svi-ajuste] ${quem} pediu em ${brasilia(at)} (Brasília)${sobre}: "${text}"`,notify_all:false}})
+      mudanca.clickup=c.id
+     }catch{mudanca.clickup_falhou=c.id}
     }
-   }catch(e:any){mudanca.skipped=String(e?.message||'central_recusou').slice(0,120)}
-   if(Object.keys(mudanca).length)await store.save(`cg-change:${own}`,{media:quoted,at,text,change:mudanca})
-  }
+   }
+  }catch(e:any){mudanca.skipped=String(e?.message||'central_recusou').slice(0,120)}
+  // O rastro é útil, mas não manda na mensagem: se a peça já andou, falhar aqui
+  // só desfaria o recibo e faria o webhook voltar pra ser processado de novo.
+  if(Object.keys(mudanca).length)try{await store.save(`cg-change:${own}`,{media:quoted,at,text,change:mudanca})}catch{/* o recibo do claim já registrou a fala */}
   return {route:'pass'}
  }
  if(verdict!=='explicit'&&verdict!=='praise')return {route:'pass'}

@@ -33,6 +33,7 @@ function world(cards:any[],tasks:any[]=[]){
   async lastApproval(chat,before){return Math.max(0,...Object.entries(receipts).filter(([k,r])=>k.startsWith('client-approval:')&&r.chat===chat&&r.at<before).map(([,r])=>r.at))},
   async changes(chat,since){return Object.entries(receipts).filter(([k,r])=>k.startsWith('cg-change:')&&r.chat===chat&&r.at>=since).length},
   async cardByFile(name){return cards.find(c=>c.assets.some((a:any)=>a.name===name))||null},
+  async waiting(aliases){return cards.filter(c=>c.stage==='aguardando'&&aliases.some(a=>(' '+String(c.client).toLowerCase()+' ').includes(' '+a+' ')))},
   async card(id){return cards.find(c=>c.id===id)||null},
   async approve(c,patch){approved.push(c.id);Object.assign(c,patch);return ''},
   async markSent(c){if(c.stage!=='conferir'||c.ingest_pending||!c.selected_assets.length)return '';sent.push(c.id);c.stage='aguardando';return ''},
@@ -296,4 +297,66 @@ describe('peça entregue na mão nasce com link', () => {
     await receiptStore(db as never).markSent({ ...card, selected_assets: [] })
     expect(chamadas).toHaveLength(0)
   })
+})
+
+// João, 20/10/2026: "a Sofia não é inteligente o bastante pra identificar isso?".
+// Os recibos do grupo do Dr. Geraldo mostram que ela ENTENDEU as três mensagens
+// como pedido de mudança (cg-change em 19/10 08h59, 09h01 e 20/10 08h55) e não
+// agiu em nenhuma: a peça tinha ido como LINK de aprovação, não como arquivo no
+// grupo, então não havia arquivo pra ele citar nem pra ela casar.
+describe('pedido de alteração escrito solto no grupo',()=>{
+ const esperando=(id:string,extra:any={})=>card(id,[id+'.jpg'],[id+'.jpg'],{stage:'aguardando',...extra})
+
+ it('com UMA peça esperando, ela entende de qual peça ele fala',async()=>{
+  const cards=[esperando('p13')]
+  const w=world(cards)
+  const r:any=await w.client('O exame de sangue não mostra e tal …',10)
+  expect(r.route).toBe('pass')
+  expect(cards[0].stage).toBe('ajustes')
+  expect(w.changed).toHaveLength(1)
+  // A fala do cliente vai inteira pro card, que é o que o designer precisa ler.
+  expect(cards[0].note).toContain('O exame de sangue não mostra e tal')
+  expect(cards[0].note).toContain('a única peça esperando resposta dele')
+ })
+
+ it('com DUAS esperando, não adivinha e não mexe em nenhuma',async()=>{
+  const cards=[esperando('p13'),esperando('p14')]
+  const w=world(cards)
+  await w.client('muda essa parte',10)
+  expect(cards.map(c=>c.stage)).toEqual(['aguardando','aguardando'])
+  expect(w.changed).toHaveLength(0)
+  expect(Object.values(w.receipts).at(-1)!.result.change).toMatchObject({skipped:'2_pecas_esperando'})
+ })
+
+ it('sem nenhuma esperando, não inventa peça',async()=>{
+  const cards=[card('p13',['p13.jpg'],['p13.jpg'])]
+  const w=world(cards)
+  await w.client('troca a cor',10)
+  expect(cards[0].stage).toBe('conferir')
+  expect(w.changed).toHaveLength(0)
+ })
+
+ // 15/10/2026, Spa Nature: "o link não está abrindo". Bate no CHANGE por causa do
+ // "não", e não é pedido de alteração nenhum. Isso pede gente, não retrabalho.
+ it('fala sobre o link não vira pedido de alteração',async()=>{
+  for(const texto of ['O link não está abrindo','não consigo abrir aqui','a página não carrega']){
+   const cards=[esperando('p13')]
+   const w=world(cards)
+   await w.client(texto,10)
+   expect(cards[0].stage,texto).toBe('aguardando')
+   expect(w.changed,texto).toHaveLength(0)
+   expect(Object.values(w.receipts).at(-1)!.result.change).toMatchObject({skipped:'fala_do_link'})
+  }
+ })
+
+ // O caminho antigo continua valendo, e é o preferido: resposta em cima do arquivo.
+ it('arquivo citado continua mandando mais que a única esperando',async()=>{
+  const cards=[card('v1',['soraia 1.mov'],['soraia 1.mov']),esperando('p13')]
+  const w=world(cards)
+  const m1=await w.team('soraia 1.mov',0)
+  await w.client('troca a música',10,m1)
+  expect(cards[0].stage).toBe('ajustes')
+  expect(cards[1].stage).toBe('aguardando')
+  expect(cards[0].note).toContain('sobre soraia 1.mov')
+ })
 })
