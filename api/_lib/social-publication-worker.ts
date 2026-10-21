@@ -2,6 +2,7 @@ import sharp from 'sharp'
 import type {SupabaseClient} from '@supabase/supabase-js'
 import type {SocialAsset} from './social-domain.js'
 import type {PublicationJob} from './social-publication-domain.js'
+import {ordemDasLaminas} from './social-publication-domain.js'
 import {publicationGraph,publicationToken,friendlyPublicationError,MetaPublicationError} from './social-publication-meta.js'
 import {driveVideoRange} from './social-drive.js'
 class LostLease extends Error {}
@@ -157,6 +158,11 @@ export async function processPublications(db:SupabaseClient){
   if(j.attempts>90)throw new Error('Mídia: o Instagram demorou para processar. Confira o arquivo antes de tentar novamente.')
   const progress={...j.progress}
   if(j.format==='carousel'){
+   // A trava da tela não alcança peça enfileirada por script, e carrossel fora
+   // de ordem não tem conserto depois de publicado: só apagando. Aqui é o
+   // último ponto antes de o Instagram receber qualquer coisa.
+   const foraDeOrdem=ordemDasLaminas(j.assets)
+   if(foraDeOrdem)throw new MetaPublicationError(0,foraDeOrdem)
    const children=[...(progress.children||[])]
    const start=Date.now();let created=0
    while(children.length<j.assets.length&&created<3&&Date.now()-start<90000){children.push(await container(db,j,j.assets[children.length],children.length,true));await persist(db,j,{progress:{...progress,children}});created++}
