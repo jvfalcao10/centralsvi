@@ -36,6 +36,19 @@ export function ordemDasLaminas(media:{name:string}[]){
  }
  return ''
 }
+/**
+ * Story do Instagram aceita vídeo de até 60 segundos, e quem passa disso não
+ * recebe recusa na hora: o container vai para ERROR e a peça morre calada.
+ *
+ * Aconteceu duas vezes, e as duas com prova no mesmo minuto: em 19/10 o reel
+ * de "Dra Esia - xixi na cama" (69,1 s) publicou e o story do mesmo arquivo
+ * falhou; em 20/10 o reel do "GM gás - vídeo 05" (62,2 s) publicou e o story
+ * do mesmo arquivo falhou. Não é upload, não é tamanho, é duração.
+ *
+ * O teto aqui é 61 s porque um story de 60,4 s publicou sem erro em 17/10, o
+ * que mostra que o Instagram arredonda. Acima disso, segura antes.
+ */
+const LIMITE_STORY_MS=61000
 export function publicationInput(card:SocialCard,body:Record<string,any>,accounts:PublicationAccount[],actorId:string,now=Date.now()) {
  if(body.confirmed!==true)fail('Confira a publicação antes de enviar.')
  if(card.ingest_pending||!card.selected_assets.length||card.client==='Identificar cliente')fail('Confira o cliente e os arquivos finais da peça.')
@@ -56,6 +69,7 @@ export function publicationInput(card:SocialCard,body:Record<string,any>,account
  if(format==='carousel'&&videos.some(a=>a.storage==='drive'))fail('Para este vídeo do Drive, escolha Reels. Carrossel com vídeo do Drive ainda não está disponível.')
  if(videos.some(a=>a.bytes&&a.bytes>500*1024*1024))fail('Use um vídeo de até 500 MB.')
  if(format==='story'&&videos.some(a=>a.bytes&&a.bytes>100*1024*1024))fail('O vídeo do Story precisa ter até 100 MB.')
+ if(format==='story'){const longo=videos.find(a=>a.duration_ms&&a.duration_ms>LIMITE_STORY_MS);if(longo)fail(`O Story aceita vídeo de até 60 segundos, e este tem ${(longo.duration_ms!/1000).toFixed(0)} segundos. Corte o arquivo antes de publicar, ou publique só como Reels.`)}
  const caption=typeof body.caption==='string'?body.caption.trim():card.caption
  if(caption.length>2200)fail('A legenda precisa ter até 2.200 caracteres.')
  const scheduled=body.when==='now'?now:Date.parse(body.scheduled_at)
