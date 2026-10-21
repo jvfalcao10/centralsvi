@@ -56,11 +56,33 @@ export function corta(valor: string, max: number) {
  return (espaco > max * 0.6 ? pedaco.slice(0, espaco) : pedaco).replace(/[,;:.]$/, '') + '…'
 }
 
-export function pecasParadas(cards: SocialCard[], agora = Date.now()): PecaParada[] {
+/**
+ * Quando a alteração foi PEDIDA.
+ *
+ * Era `card.updated_at`, e isso estava errado de um jeito caro: a chegada do
+ * arquivo novo também mexe no `updated_at`. Medido em 21/10/2026 na peça da
+ * caderneta da Dra. Ésia: o Matheus entregou o corte às 11h29, o card foi
+ * atualizado às 11h31 pela própria entrega, e na manhã seguinte a Sofia cobrou
+ * dele a mesma peça. Dois minutos de diferença bastavam para o arquivo parecer
+ * velho. João: "ele já fez isso e mandou ontem no grupo, não viu?".
+ *
+ * O pedido de verdade é o evento que MOVEU a peça para Ajustes. A entrega
+ * também gera evento, com a nota "Nova entrega recebida", e essa não conta.
+ */
+export function pedidoDeAjuste(card: SocialCard, eventos: { card_id: string; created_at: string; details: Record<string, unknown> }[]) {
+ const meus = eventos
+  .filter(e => e.card_id === card.id && (e.details?.to as string) === 'ajustes'
+   && !String((e.details?.note as string) || '').startsWith('Nova entrega recebida'))
+  .map(e => Date.parse(e.created_at))
+  .filter(t => Number.isFinite(t))
+ return meus.length ? Math.max(...meus) : Date.parse(card.updated_at)
+}
+
+export function pecasParadas(cards: SocialCard[], agora = Date.now(), eventos: { card_id: string; created_at: string; details: Record<string, unknown> }[] = []): PecaParada[] {
  const paradas: PecaParada[] = []
  for (const card of cards) {
   if (card.stage !== 'ajustes') continue
-  const pedido_ms = Date.parse(card.updated_at)
+  const pedido_ms = pedidoDeAjuste(card, eventos)
   if (!Number.isFinite(pedido_ms)) continue
   const datas = card.assets.map(dataDoArquivo).filter((t): t is number => t !== null)
   const arquivo_ms = datas.length ? Math.max(...datas) : null
@@ -75,6 +97,34 @@ export function pecasParadas(cards: SocialCard[], agora = Date.now()): PecaParad
   })
  }
  return paradas.sort((a, b) => a.pedido_ms - b.pedido_ms)
+}
+
+/**
+ * A peça já voltou corrigida e ninguém moveu.
+ *
+ * O outro lado da mesma moeda: enquanto a Sofia cobrava o designer por engano,
+ * o arquivo novo estava no card desde ontem e a peça não andava. Isso é aviso
+ * para a casa, não cobrança para quem entregou.
+ */
+export type PecaQueVoltou = { card_id: string; author: string; client: string; title: string; arquivo_ms: number }
+
+export function pecasQueVoltaram(cards: SocialCard[], eventos: { card_id: string; created_at: string; details: Record<string, unknown> }[]): PecaQueVoltou[] {
+ const prontas: PecaQueVoltou[] = []
+ for (const card of cards) {
+  if (card.stage !== 'ajustes' || !card.selected_assets.length) continue
+  const pedido = pedidoDeAjuste(card, eventos)
+  const datas = card.assets.map(dataDoArquivo).filter((t): t is number => t !== null)
+  const arquivo_ms = datas.length ? Math.max(...datas) : null
+  if (arquivo_ms === null || arquivo_ms <= pedido) continue
+  prontas.push({ card_id: card.id, author: String(card.author || '').trim() || 'sem autor',
+   client: card.client, title: clientFacingTitle(card.client, card.title), arquivo_ms })
+ }
+ return prontas.sort((a, b) => a.arquivo_ms - b.arquivo_ms)
+}
+
+const quando = (ms: number, agora: number) => {
+ const dias = Math.floor((agora - ms) / DIA)
+ return dias <= 0 ? 'chegou hoje' : dias === 1 ? 'chegou ontem' : `chegou há ${dias} dias`
 }
 
 const quanto = (dias: number) => dias <= 0 ? 'pedida hoje' : dias === 1 ? 'pedida ontem' : `pedida há ${dias} dias`
@@ -120,8 +170,21 @@ export async function cobrarAjustes(
   db.from('central_social_feedback_groups').select('author,jid,enabled').eq('enabled', true),
  ])
  if (error) throw new Error('cobranca_leitura_falhou')
- const paradas = pecasParadas((cards || []) as SocialCard[], agora)
- if (!paradas.length) return { paradas: 0, grupos: 0, orfas: 0 }
+ const emAjuste = (cards || []) as SocialCard[]
+ const { data: eventos } = await db.from('central_social_events')
+  .select('card_id,created_at,details').in('card_id', emAjuste.map(c => c.id)).limit(1000)
+ const historico = (eventos || []) as { card_id: string; created_at: string; details: Record<string, unknown> }[]
+ // Peça que JÁ voltou com arquivo novo não é cobrança de designer, é peça
+ // pronta parada: quem precisa saber é a casa, não quem já entregou.
+ const voltaram = pecasQueVoltaram(emAjuste, historico)
+ if (voltaram.length) {
+  const texto = [`${saudacao(agora)}! Peça corrigida que já voltou e está parada em Ajustes:`,
+   ...voltaram.map(p => `*${p.client}* · ${p.title}\n   arquivo novo ${quando(p.arquivo_ms, agora)}, de ${p.author}`),
+   'Confere e move para Conferir, que daí ela segue sozinha.'].join('\n\n')
+  try { await enviar(JOAO, texto) } catch { /* segue */ }
+ }
+ const paradas = pecasParadas(emAjuste, agora, historico)
+ if (!paradas.length) return { paradas: 0, grupos: 0, orfas: 0, voltaram: voltaram.length }
  const porJid = new Map<string, string>()
  for (const g of (grupos || []) as { author: string; jid: string }[]) porJid.set(g.author, g.jid)
  const orfas = paradas.filter(p => !porJid.has(p.author))

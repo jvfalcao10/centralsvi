@@ -97,11 +97,16 @@ describe('texto da cobrança', () => {
 })
 
 describe('cobrança diária', () => {
- const banco = (cards: SocialCard[], grupos: { author: string; jid: string }[]) => ({
+ // A cobrança de ajustes lê também o histórico do card, para saber QUANDO a
+ // alteração foi pedida. Sem isso a entrega do designer parece velha.
+ const banco = (cards: SocialCard[], grupos: { author: string; jid: string }[],
+  eventos: { card_id: string; created_at: string; details: Record<string, unknown> }[] = []) => ({
   from: (tabela: string) => ({
    select: () => tabela === 'central_social_cards'
     ? { eq: () => ({ limit: async () => ({ data: cards, error: null }) }) }
-    : { eq: async () => ({ data: grupos, error: null }) },
+    : tabela === 'central_social_events'
+     ? { in: () => ({ limit: async () => ({ data: eventos, error: null }) }) }
+     : { eq: async () => ({ data: grupos, error: null }) },
   }),
  })
 
