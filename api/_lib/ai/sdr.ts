@@ -29,7 +29,7 @@ export async function generateSdrReply(opts: {
   incoming: string;
   triggers?: string[];
 }): Promise<SdrResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.ANTHROPIC_SVI_KEY || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return { ok: false, error: 'anthropic_not_configured' };
 
   // Detecção de handoff acontece SOBRE a mensagem que chegou (antes de gerar)

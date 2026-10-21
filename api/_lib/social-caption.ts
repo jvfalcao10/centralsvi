@@ -25,7 +25,10 @@ export function formatCaption(value:any):{caption?:string;needs_context?:string}
  return {caption}
 }
 export async function generateSocialCaption(db:SupabaseClient,card:SocialCard,body:Record<string,unknown>,actorId:string,options:{transcript?:string;automatic?:boolean}={}){
- const key=process.env.OPENAI_API_KEY;if(!key)throw new SocialError(503,'A geração de legendas está indisponível. Tente novamente mais tarde.')
+ // Com ANTHROPIC_SVI_KEY a legenda sai do Claude, na conta da SVI. Sem ela, segue na
+ // OpenAI como antes. ANTHROPIC_API_KEY não serve aqui: é de outra conta (Exatta).
+ const claude=process.env.ANTHROPIC_SVI_KEY,key=process.env.OPENAI_API_KEY
+ if(!claude&&!key)throw new SocialError(503,'A geração de legendas está indisponível. Tente novamente mais tarde.')
  const brief=typeof body.brief==='string'?body.brief.trim().slice(0,5000):''
  // A esteira automática não disputa o limite de uso da pessoa que está no quadro.
  if(!options.automatic){
@@ -50,9 +53,45 @@ export async function generateSocialCaption(db:SupabaseClient,card:SocialCard,bo
  }
  const schema={type:'object',additionalProperties:false,properties:{sentences:{type:'array',items:{type:'string'}},hashtags:{type:'array',items:{type:'string'}},needs_context:{type:['string','null']}},required:['sentences','hashtags','needs_context']}
  try{
+  if(claude)return {...formatCaption(lerJson(await legendaClaude(claude,content))),method:'Copy Bárbara · revisão SVI'}
   const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.SOCIAL_CAPTION_MODEL||'gpt-5.4-mini',store:false,instructions:CAPTION_INSTRUCTIONS,input:[{role:'user',content}],reasoning:{effort:'low'},max_output_tokens:2500,text:{format:{type:'json_schema',name:'svi_caption',strict:true,schema}}}),signal:AbortSignal.timeout(75000)})
   const data=await r.json();if(!r.ok||data.status==='incomplete'||data.error)throw new Error('openai_failed')
   const output=(data.output||[]).flatMap((o:any)=>o.type==='message'?o.content||[]:[]).filter((c:any)=>c.type==='output_text').map((c:any)=>c.text).join('')
   return {...formatCaption(JSON.parse(output)),method:'Copy Bárbara · revisão SVI'}
  }catch{throw new SocialError(502,'Não foi possível gerar uma legenda válida. Confira o resumo da peça e tente novamente.')}
+}
+
+/** Modelo do Claude: SOCIAL_CAPTION_MODEL só vale se já for Claude; o nome da OpenAI vira o equivalente. */
+export function modeloClaude(nome=process.env.SOCIAL_CAPTION_MODEL||''):string {
+ if(/^claude/i.test(nome))return nome
+ return !nome||/mini|nano/i.test(nome)?'claude-haiku-5-5':'claude-sonnet-5-5'
+}
+/** O Claude não tem json_schema: o JSON é pedido no texto, então tira cercas e pega do primeiro { ao último }. */
+export function lerJson(texto:string):unknown {
+ const s=String(texto||'').replace(/```(?:json)?/gi,'')
+ const a=s.indexOf('{'),b=s.lastIndexOf('}');if(a<0||b<=a)throw new Error('caption_sem_json')
+ return JSON.parse(s.slice(a,b+1))
+}
+/** Converte o conteúdo do formato da OpenAI (input_text/input_image) para o da Anthropic. */
+type Parte={type:string;text?:string;image_url?:string;detail?:string}
+export function paraClaude(content:Parte[]):Record<string,unknown>[] {
+ return content.map(c=>{
+  if(c.type==='input_text')return {type:'text',text:c.text}
+  const url=String(c.image_url||'')
+  const b64=url.match(/^data:([^;,]+);base64,(.*)$/s)
+  return b64?{type:'image',source:{type:'base64',media_type:b64[1],data:b64[2]}}:{type:'image',source:{type:'url',url}}
+ })
+}
+const FORMATO_JSON='\nResponda só com um objeto JSON, sem cerca de código e sem texto fora dele, neste formato: {"sentences":["frase"],"hashtags":["tag"],"needs_context":null}.'
+async function legendaClaude(key:string,content:Parte[]):Promise<string> {
+ // Imagem primeiro e texto depois é a ordem que a Anthropic recomenda para visão.
+ const blocos=paraClaude(content);blocos.push(blocos.shift())
+ const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+  headers:{'x-api-key':key,'anthropic-version':'2023-06-01','content-type':'application/json'},
+  // Sem temperature: os modelos Claude 5 recusam o campo.
+  body:JSON.stringify({model:modeloClaude(),max_tokens:2500,system:CAPTION_INSTRUCTIONS+FORMATO_JSON,messages:[{role:'user',content:blocos}]}),
+  signal:AbortSignal.timeout(75000)})
+ const data=await r.json() as {stop_reason?:string;error?:unknown;content?:{type:string;text?:string}[]}
+ if(!r.ok||data.error||data.stop_reason==='max_tokens')throw new Error('claude_failed')
+ return (data.content||[]).filter(c=>c.type==='text').map(c=>c.text||'').join('')
 }

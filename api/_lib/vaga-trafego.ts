@@ -61,7 +61,7 @@ export async function handleVagaTrafego(req: VercelRequest, res: VercelResponse)
   let notasDim: Record<string, number> = {};
   let erroCorrecao: string | null = null;
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.ANTHROPIC_SVI_KEY || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     erroCorrecao = 'ANTHROPIC_API_KEY ausente: abertas não corrigidas.';
   } else {

@@ -144,7 +144,7 @@ export async function lerVideo(db:SupabaseClient,asset:SocialAsset,prazo?:number
  // do mesmo passe da cópia leve, e o que se OUVE sai da transcrição da cópia,
  // que agora cabe no limite de 25 MB. Nenhum dos dois depende de fila de cota,
  // que é o que derrubava Dr. Felipe, Christo Rei e Dr. Daniel.
- const comClaude=!!(process.env.SOCIAL_VISION_KEY||process.env.ANTHROPIC_API_KEY)
+ const comClaude=!!(process.env.SOCIAL_VISION_KEY||process.env.ANTHROPIC_SVI_KEY||process.env.ANTHROPIC_API_KEY)
  // Vídeo do Drive ainda sem quadros, com o Claude ligado: o passe que gera os
  // quadros roda de 2 em 2 minutos, então vale esperar. Tentar pelo Gemini aqui
  // gastaria uma das três tentativas num caminho que já sabemos que falha, que

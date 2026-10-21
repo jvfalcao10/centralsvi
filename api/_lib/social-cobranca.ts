@@ -1,4 +1,5 @@
 import { clienteRespondeuDepois } from './social-whats.js'
+import { oferecerNoticiaNorte } from './social-noticia-norte.js'
 import type { createAdminClient } from './supabase.js'
 import type { SocialAsset, SocialCard } from './social-domain.js'
 import { clientFacingTitle } from './social-client-title.js'
@@ -501,7 +502,12 @@ export async function rondaDiaria(
  const programar = await cobrarProgramacao(db, enviar, agora).catch(e => ({ erro: String(e?.message || e) }))
  const interna = await cobrarInterna(db, enviar, agora).catch(e => ({ erro: String(e?.message || e) }))
  const falhadas = await avisarFalhadas(db, enviar, agora).catch(e => ({ erro: String(e?.message || e) }))
- return { ajustes, clientes, datas, programar, interna, falhadas }
+ // Segunda de manhã, e só segunda: a notícia da semana da Norte vai para o
+ // Elpídio escolher, com três dias de folga para produzir a peça da quinta.
+ const noticia = new Date(agora - 3 * 3600000).getUTCDay() === 1
+  ? await oferecerNoticiaNorte(db, enviar, agora).catch(e => ({ erro: String(e?.message || e) }))
+  : { oferecidas: 0 }
+ return { ajustes, clientes, datas, programar, interna, falhadas, noticia }
 }
 
 // ---------------------------------------------------------------------------

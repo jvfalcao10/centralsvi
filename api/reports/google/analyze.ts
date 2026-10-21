@@ -109,7 +109,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).end();
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.ANTHROPIC_SVI_KEY || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(503).json({ error: 'anthropic_not_configured' });
 
   const parsed = schema.safeParse(req.body);
