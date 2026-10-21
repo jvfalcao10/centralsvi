@@ -5,12 +5,14 @@ type DB = ReturnType<typeof createAdminClient>
 /**
  * Quanto cada cliente já postou no mês, contra a régua da casa.
  *
- * Regra do João, atualizada em 19/10/2026: cada cliente recebe **1 a 2 flyers
- * e 1 a 2 vídeos por semana**, ou seja 4 a 8 de cada por mês. Story fora.
+ * Regra do João, apertada em 21/10/2026: **1 flyer e 1 vídeo por semana** para
+ * cada cliente, ou seja 4 a 5 de cada por mês, dependendo de quantas semanas o
+ * mês tem. Story fora.
  *
- * O vídeo varia por um motivo concreto: sempre sai 1 produzido pelo Matheus, e
- * vira 2 quando existe caixinha, POV ou algo do tipo da Sarah. Sem isso, não
- * se inventa a segunda peça.
+ * Em 19/10 a régua era 1 a 2 de cada, e o segundo vídeo entrava quando existia
+ * caixinha ou POV da Sarah. Em 21/10, olhando a agenda da Dra. Ésia com dois
+ * carrosséis no mesmo dia, o João fechou em um de cada: "1 flyer e 1 vídeo por
+ * semana". O que passa disso é excesso, não bônus.
  *
  * A régua anterior, de 11/10, era 4 a 6 feed e **4 vídeos** por mês. Medido em
  * setembro fechado, nas 18 contas: a casa entregou média de **1,2 flyer e 1,7
@@ -27,7 +29,7 @@ type DB = ReturnType<typeof createAdminClient>
  * `central_social_client_accounts`, que é a mesma que publica, então cliente
  * novo aparece sozinho.
  */
-export const META = { feedMin: 4, feedMax: 8, video: 4, videoMax: 8 }
+export const META = { feedMin: 4, feedMax: 5, video: 4, videoMax: 5 }
 
 /** Story não entra na conta: sai do ar em 24h e não é entrega de feed. */
 const CAMPOS = 'id,timestamp,media_type,media_product_type,permalink,like_count,comments_count,media_url,thumbnail_url'

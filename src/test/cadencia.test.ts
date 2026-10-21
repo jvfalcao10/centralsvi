@@ -59,9 +59,17 @@ describe('situação de cada conta', () => {
   expect(statusDaConta({ feed: 5, video: META.videoMax, ultimo: ontem(agora), fracao: 0.6, agora })).not.toBe('acima')
  })
 
- // A régua de 19/10: 1 a 2 de cada por semana, 4 a 8 de cada no mês.
- it('a régua é a que o João descreveu, e o número de setembro confirma', () => {
-  expect(META).toEqual({ feedMin: 4, feedMax: 8, video: 4, videoMax: 8 })
+ // A régua de 21/10: UM flyer e UM vídeo por semana, 4 a 5 de cada no mês,
+ // conforme o mês tenha 4 ou 5 semanas. Apertou a de 19/10, que era 1 a 2.
+ it('a régua é a que o João fixou: um de cada por semana', () => {
+  expect(META).toEqual({ feedMin: 4, feedMax: 5, video: 4, videoMax: 5 })
+ })
+
+ // Com um de cada por semana, 8 vídeos no mês é o dobro do combinado.
+ it('o que antes passava como teto agora é excesso', () => {
+  const agora = outubro(19)
+  expect(statusDaConta({ feed: 4, video: 8, ultimo: ontem(agora), fracao: 0.6, agora })).toBe('acima')
+  expect(statusDaConta({ feed: 8, video: 4, ultimo: ontem(agora), fracao: 0.6, agora })).toBe('acima')
  })
 
  it('atraso compara com o ritmo do dia, não com a meta cheia', () => {

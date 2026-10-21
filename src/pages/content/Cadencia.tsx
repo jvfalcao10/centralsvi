@@ -100,7 +100,7 @@ export default function Cadencia() {
           </h1>
           {dados && (
             <p className="mt-1 text-sm text-muted-foreground">
-              Dia {dados.dia} de {dados.diasNoMes}. A régua da casa é <strong>1 a 2 flyers e 1 a 2 vídeos por semana</strong>, ou seja {dados.meta.feedMin} a {dados.meta.feedMax} de cada no mês. O segundo vídeo só sai quando tem caixinha ou POV da Sarah. Story não entra na conta.
+              Dia {dados.dia} de {dados.diasNoMes}. A régua da casa é <strong>1 flyer e 1 vídeo por semana</strong>, ou seja {dados.meta.feedMin} a {dados.meta.feedMax} de cada no mês, conforme o mês tenha 4 ou 5 semanas. O que passa disso é excesso. Story não entra na conta.
             </p>
           )}
           <Link to="/content/social" className="mt-2 inline-flex text-sm text-primary underline underline-offset-4">Ir para o quadro de postagens →</Link>
