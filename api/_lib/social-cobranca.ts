@@ -426,6 +426,71 @@ export async function lembrarDatas(
  return { pecas: chegando.length, grupos: avisados }
 }
 
+// ---------------------------------------------------------------------------
+// Publicação que falhou e ninguém viu
+// ---------------------------------------------------------------------------
+/**
+ * João, 20/10/2026, olhando o quadro: "4 peças mentem no quadro, estão em
+ * agendado e nunca vão sair". Eram publicações que falharam com o bug de vídeo
+ * grande, consertado em 19/10. O card continuou dizendo "agendado" e nada
+ * avisou ninguém, em alguns casos por quatro dias.
+ *
+ * Publicação falhada é trabalho perdido com data marcada: tem que gritar no
+ * mesmo dia, igual à etapa que segura peça.
+ */
+export type PublicacaoFalhada = { card_id: string; client: string; title: string; quando_ms: number; motivo: string }
+
+/** Falha de ontem ainda é notícia. Mais velha que isso já virou decisão. */
+const JANELA_FALHA = 3 * DIA
+
+export function publicacoesFalhadas(
+ jobs: { card_id: string; status: string; scheduled_at: string; error: string | null; account_username: string }[],
+ cards: SocialCard[], agora = Date.now(),
+): PublicacaoFalhada[] {
+ const porId = new Map(cards.map(c => [c.id, c]))
+ return jobs
+  .filter(j => j.status === 'failed')
+  .map(j => ({ j, quando_ms: Date.parse(j.scheduled_at) }))
+  .filter(({ j, quando_ms }) => Number.isFinite(quando_ms) && agora - quando_ms <= JANELA_FALHA && agora >= quando_ms
+   // Peça que já saiu por outro caminho não é cobrança: o card manda.
+   && porId.get(j.card_id)?.stage !== 'postado')
+  .map(({ j, quando_ms }) => {
+   const c = porId.get(j.card_id)
+   return { card_id: j.card_id, client: c?.client || j.account_username,
+    title: c ? clientFacingTitle(c.client, c.title) : j.card_id,
+    quando_ms, motivo: corta(String(j.error || 'sem motivo registrado'), 120) }
+  })
+  .sort((a, b) => a.quando_ms - b.quando_ms)
+}
+
+export function textoDasFalhadas(pecas: PublicacaoFalhada[], agora = Date.now()) {
+ const uma = pecas.length === 1
+ return [`${saudacao(agora)}! ${uma ? 'Uma peça não foi ao ar' : `${pecas.length} peças não foram ao ar`} e a data já passou:`,
+  ...pecas.map(p => `*${p.client}* · ${p.title}\n   era ${quandoDaFalha(p.quando_ms, agora)}, ${p.motivo}`),
+  'Nada foi publicado nesses casos. Reenvia pela Central com data nova.'].join('\n\n')
+}
+
+const quandoDaFalha = (ms: number, agora: number) => {
+ const dias = Math.floor((agora - ms) / DIA)
+ return dias <= 0 ? 'para hoje' : dias === 1 ? 'para ontem' : `para ${dias} dias atrás`
+}
+
+export async function avisarFalhadas(
+ db: DB, enviar: (jid: string, texto: string) => Promise<void>, agora = Date.now(),
+) {
+ const { data, error } = await db.from('central_social_publications')
+  .select('card_id,status,scheduled_at,error,account_username').eq('status', 'failed')
+  .gte('scheduled_at', new Date(agora - JANELA_FALHA).toISOString()).limit(200)
+ if (error) throw new Error('falhadas_leitura_falhou')
+ const jobs = (data || []) as { card_id: string; status: string; scheduled_at: string; error: string | null; account_username: string }[]
+ if (!jobs.length) return { pecas: 0 }
+ const { data: cards } = await db.from('central_social_cards').select('*').in('id', [...new Set(jobs.map(j => j.card_id))])
+ const pecas = publicacoesFalhadas(jobs, (cards || []) as SocialCard[], agora)
+ if (!pecas.length) return { pecas: 0 }
+ try { await enviar(JOAO, textoDasFalhadas(pecas, agora)) } catch { /* segue */ }
+ return { pecas: pecas.length }
+}
+
 export async function rondaDiaria(
  db: DB, enviar: (jid: string, texto: string) => Promise<void>, agora = Date.now(),
 ) {
@@ -435,7 +500,8 @@ export async function rondaDiaria(
  const datas = await lembrarDatas(db, enviar, agora).catch(e => ({ erro: String(e?.message || e) }))
  const programar = await cobrarProgramacao(db, enviar, agora).catch(e => ({ erro: String(e?.message || e) }))
  const interna = await cobrarInterna(db, enviar, agora).catch(e => ({ erro: String(e?.message || e) }))
- return { ajustes, clientes, datas, programar, interna }
+ const falhadas = await avisarFalhadas(db, enviar, agora).catch(e => ({ erro: String(e?.message || e) }))
+ return { ajustes, clientes, datas, programar, interna, falhadas }
 }
 
 // ---------------------------------------------------------------------------

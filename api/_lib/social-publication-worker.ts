@@ -143,6 +143,8 @@ export function valeTentarDeNovo(e:unknown){
 
 /** Tentativas de transporte antes de desistir e chamar gente. */
 const TENTATIVAS_DE_ENVIO=6
+/** Três horas perguntando ao Instagram, de 5 em 5 minutos, já é resposta. */
+const TENTATIVAS_INCERTAS=36
 
 export async function processPublications(db:SupabaseClient){
  const {data,error}=await db.rpc('central_social_publication_claim');if(error)throw error;if(!data)return {processed:0}
@@ -152,6 +154,22 @@ export async function processPublications(db:SupabaseClient){
    if(j.media_id){await finish(db,j,j.media_id);return {processed:1,status:'published'}}
    const check=await publicationGraph('GET',j.progress.container.id,{fields:'status_code'})
    if(check.status_code==='PUBLISHED'){await finish(db,j,null);return {processed:1,status:'published'}}
+   // O Instagram dizendo ERROR ou EXPIRED encerra a dúvida: não publicou nada.
+   // Sem isto a peça fica em `uncertain` perguntando de 5 em 5 minutos para
+   // sempre. Medido em 21/10/2026: o story do vídeo 05 da GM Gás, com o
+   // container em ERROR desde 20/10 12h, estava na **261ª tentativa**, e no
+   // quadro a peça aparecia como postada porque o reel do mesmo card saiu.
+   if(['ERROR','EXPIRED'].includes(check.status_code)){
+    await persist(db,j,{status:'failed',error:'O Instagram recusou o arquivo e nada foi publicado. Dá para reenviar a peça.',lease_id:null,lease_until:null})
+    return {processed:1,status:'failed'}
+   }
+   // Dúvida de verdade também não dura para sempre: depois de três horas
+   // perguntando, quem decide é gente. Aqui a mensagem NÃO diz que nada foi
+   // publicado, porque ninguém sabe, e reenviar sem olhar pode duplicar.
+   if(j.attempts>TENTATIVAS_INCERTAS){
+    await persist(db,j,{status:'failed',error:'Não deu para confirmar esta publicação no Instagram. Confira a conta ANTES de reenviar.',lease_id:null,lease_until:null})
+    return {processed:1,status:'failed'}
+   }
    await persist(db,j,{status:'uncertain',error:'O envio precisa ser conferido no Instagram. Não repita a publicação.',...later(300)})
    return {processed:1,status:'uncertain'}
   }
