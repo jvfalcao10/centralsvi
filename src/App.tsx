@@ -291,6 +291,9 @@ const App = () => (
               <Route path="/conteudo/criador-carrossel" element={
                 <ProtectedRoute requiredRole="admin"><AppLayout><Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando o Criador de carrossel…</div>}><CriadorCarrossel /></Suspense></AppLayout></ProtectedRoute>
               } />
+              {/* /content sozinho nunca foi página: o João cortou a URL em 22/10/2026 e
+                  caiu no 404. Manda para o quadro de postagens, que é o que ele procura. */}
+              <Route path="/content" element={<Navigate to="/content/social" replace />} />
               <Route path="/content/social" element={<ProtectedRoute requiredRole="executor" allowTraffic allowSocial allowDesign><AppLayout><Social /></AppLayout></ProtectedRoute>} />
               <Route path="/content/cadencia" element={
                 <ProtectedRoute requiredRole="executor" allowSocial allowDesign><AppLayout><Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Lendo a cadência…</div>}><Cadencia /></Suspense></AppLayout></ProtectedRoute>
