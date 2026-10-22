@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { guardarRota, ultimaRota } from "@/lib/ultima-rota";
+import { vigiarVersao } from "@/lib/versao-no-ar";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -126,6 +127,9 @@ const ParaOSite = () => {
 function GuardaOndeParou() {
   const location = useLocation();
   useEffect(() => { guardarRota(location.pathname); }, [location.pathname]);
+  // Voltou pro app: se saiu versão nova, recarrega. É o único momento em que
+  // recarregar não atrapalha, porque ninguém está digitando.
+  useEffect(() => vigiarVersao(), []);
   return null;
 }
 
