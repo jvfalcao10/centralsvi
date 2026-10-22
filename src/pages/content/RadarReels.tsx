@@ -193,10 +193,14 @@ export default function RadarReels() {
     setNovoPerfil('')
     toast({
       title: `Guardado de @${corpo.handle}`,
-      description: corpo.views
-        ? `${formatarNumero(corpo.views)} visualizações, ${formatarNumero(corpo.likes)} curtidas`
-        : `${formatarNumero(corpo.likes)} curtidas, ${formatarNumero(corpo.comments)} comentários`,
+      description: corpo.leitura?.o_que_fazer
+        || (corpo.views
+          ? `${formatarNumero(corpo.views)} visualizações, ${formatarNumero(corpo.likes)} curtidas`
+          : `${formatarNumero(corpo.likes)} curtidas, ${formatarNumero(corpo.comments)} comentários`),
     })
+    // O card nasce no quadro, não na lista de garimpo: a lista só mostra post de
+    // perfil vigiado, e referência colada por link quase nunca é de perfil vigiado.
+    if (isStaff) setAba('quadro')
     carregar()
   }
 

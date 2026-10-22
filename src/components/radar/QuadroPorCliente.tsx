@@ -31,6 +31,14 @@ interface PostDoRadar {
   profile_id: string
 }
 
+/** O que o Claude leu da referência na hora em que ela foi guardada. */
+interface Leitura {
+  gancho: string | null
+  porque: string | null
+  o_que_fazer: string | null
+  formato: string | null
+}
+
 interface SaveRow {
   id: string
   client_id: string
@@ -40,6 +48,7 @@ interface SaveRow {
   tags: string[] | null
   created_at: string
   saved_by: string | null
+  leitura: Leitura | null
   radar_posts: PostDoRadar | null
 }
 
@@ -82,7 +91,7 @@ export default function QuadroPorCliente() {
     const [marcados, carteira, vigia, catalogo, time] = await Promise.all([
       supabase
         .from('radar_saves')
-        .select('id, client_id, post_id, status, note, tags, created_at, saved_by, radar_posts(url, caption, views, likes, comments, thumb_url, published_at, times_median, is_highlight, profile_id)')
+        .select('id, client_id, post_id, status, note, tags, created_at, saved_by, leitura, radar_posts(url, caption, views, likes, comments, thumb_url, published_at, times_median, is_highlight, profile_id)')
         .order('created_at', { ascending: false }),
       supabase.from('clientes_operacional').select('id, name').order('name'),
       supabase.from('radar_watchlist').select('client_id, profile_id'),
@@ -264,12 +273,31 @@ export default function QuadroPorCliente() {
                         <span className="text-xs font-medium truncate">
                           @{(post && handlePorPerfil.get(post.profile_id)) || 'perfil'}
                         </span>
-                        {post?.is_highlight && <Badge className="text-[10px]">acima da média</Badge>}
+                        <span className="flex items-center gap-1">
+                          {save.leitura?.formato && (
+                            <Badge variant="outline" className="text-[10px]">{save.leitura.formato}</Badge>
+                          )}
+                          {post?.is_highlight && <Badge className="text-[10px]">acima da média</Badge>}
+                        </span>
                       </div>
 
-                      <p className="text-xs text-muted-foreground line-clamp-2">
-                        {post?.caption || 'sem legenda'}
-                      </p>
+                      {save.leitura?.gancho && (
+                        <p className="text-xs font-medium leading-snug">{save.leitura.gancho}</p>
+                      )}
+
+                      {save.leitura?.o_que_fazer ? (
+                        <div className="rounded-md bg-muted/60 p-2 space-y-1">
+                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">o que fazer</p>
+                          <p className="text-xs leading-snug">{save.leitura.o_que_fazer}</p>
+                          {save.leitura.porque && (
+                            <p className="text-[11px] text-muted-foreground leading-snug">{save.leitura.porque}</p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground line-clamp-2">
+                          {post?.caption || 'sem legenda'}
+                        </p>
+                      )}
 
                       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
                         <span title="visualizações">{formatarNumero(post?.views ?? null)} views</span>

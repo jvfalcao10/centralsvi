@@ -36,11 +36,18 @@ function montarBanco() {
   fake.tabelas = {
     radar_saves: [
       { id: 's1', client_id: 'c1', post_id: 'p1', status: 'salvo', note: null, tags: ['dor'],
-        created_at: new Date().toISOString(), saved_by: 'u-arthur', radar_posts: post() },
+        created_at: new Date().toISOString(), saved_by: 'u-arthur',
+        leitura: { gancho: 'Paciente: fisio, tá doendo aqui, que músculo é esse?',
+                   porque: 'Usa a pergunta do paciente como abertura, então quem tem a dor se reconhece antes do conteúdo.',
+                   o_que_fazer: 'Gravar o Dr. Brenno respondendo a pergunta mais repetida no consultório, com a mão no ponto da dor.',
+                   formato: 'reel' },
+        radar_posts: post() },
       { id: 's2', client_id: 'c1', post_id: 'p2', status: 'salvo', note: null, tags: [],
-        created_at: new Date().toISOString(), saved_by: 'u-arthur', radar_posts: post({ views: 9000, is_highlight: false, times_median: null }) },
+        created_at: new Date().toISOString(), saved_by: 'u-arthur', leitura: null,
+        radar_posts: post({ views: 9000, is_highlight: false, times_median: null }) },
       { id: 's3', client_id: 'c2', post_id: 'p3', status: 'salvo', note: null, tags: ['dor', 'prova'],
-        created_at: new Date(Date.now() - 20 * 86400000).toISOString(), saved_by: null, radar_posts: post() },
+        created_at: new Date(Date.now() - 20 * 86400000).toISOString(), saved_by: null, leitura: null,
+        radar_posts: post() },
     ],
     clientes_operacional: [{ id: 'c1', name: 'Dr. Brenno' }, { id: 'c2', name: 'Exatta Solar' }, { id: 'c3', name: 'Números' }],
     radar_watchlist: [
@@ -84,6 +91,19 @@ describe('Quadro do radar por cliente', () => {
     expect(screen.getAllByText('4 mil curt.').length).toBeGreaterThan(0)
     expect(screen.getAllByText('2,4x a mediana').length).toBeGreaterThan(0)
     expect(screen.getAllByRole('img').some(img => img.getAttribute('src') === 'https://cdn/thumb.jpg')).toBe(true)
+  })
+
+  // João, 22/10/2026: "quero jogar o link e já aparecer preview, estilo Trello,
+  // o que fazer e etc já". Sem a leitura, o card cai na legenda do post.
+  it('mostra o gancho e o que fazer quando o Claude leu a referência', async () => {
+    montarBanco()
+    render(<QuadroPorCliente />)
+    await waitFor(() => expect(screen.getByText('o que fazer')).toBeInTheDocument())
+    expect(screen.getByText(/Gravar o Dr. Brenno respondendo/)).toBeInTheDocument()
+    expect(screen.getByText(/Paciente: fisio, tá doendo aqui/)).toBeInTheDocument()
+    expect(screen.getByText('reel')).toBeInTheDocument()
+    // O que não foi lido cai na legenda, em vez de ficar com o espaço vazio.
+    expect(screen.getAllByText('gancho da peça').length).toBeGreaterThan(0)
   })
 
   it('filtra por tag e some com quem não tem a tag', async () => {
