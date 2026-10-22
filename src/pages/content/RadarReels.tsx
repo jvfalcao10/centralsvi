@@ -151,6 +151,13 @@ export default function RadarReels() {
 
   useEffect(() => { carregar() }, [carregar])
 
+  // De dez em dez minutos, como o João pediu: quem colar um link em outra
+  // máquina aparece aqui sem ninguém apertar nada.
+  useEffect(() => {
+    const relogio = setInterval(() => { carregar() }, 10 * 60 * 1000)
+    return () => clearInterval(relogio)
+  }, [carregar])
+
   const perfilPorId = useMemo(() => {
     const mapa = new Map<string, RadarProfile>()
     watch.forEach(item => { if (item.radar_profiles) mapa.set(item.profile_id, item.radar_profiles) })
@@ -159,11 +166,54 @@ export default function RadarReels() {
 
   const idsSalvos = useMemo(() => new Set(saves.map(item => item.post_id)), [saves])
 
+  /**
+   * O que "deu certo" para aquele perfil.
+   *
+   * João, 22/10/2026: "só é pra puxar os posts que deu certo e não todos.
+   * Muitas curtidas, views, compartilhamento, salvamentos". Compartilhamento e
+   * salvamento o Instagram só mostra para o dono do perfil, então a régua
+   * possível tem duas pernas, e basta uma delas:
+   *  1. visualização acima do dobro da mediana do próprio perfil, que é o que
+   *     a coleta já marca;
+   *  2. reação acima do dobro da mediana do perfil, contando curtida mais
+   *     comentário por mil visualizações. Pega o post de alcance normal que
+   *     mexeu com quem viu, que é onde mora o gancho bom.
+   */
+  const reacao = (post: RadarPost) =>
+    post.views && post.views > 0 ? ((post.likes || 0) + (post.comments || 0)) * 1000 / post.views : 0
+
+  const medianaDaReacao = useMemo(() => {
+    const porPerfil = new Map<string, number[]>()
+    posts.forEach(post => {
+      const taxa = reacao(post)
+      if (!taxa) return
+      if (!porPerfil.has(post.profile_id)) porPerfil.set(post.profile_id, [])
+      porPerfil.get(post.profile_id)!.push(taxa)
+    })
+    const mapa = new Map<string, number>()
+    porPerfil.forEach((valores, perfil) => {
+      if (valores.length < 6) return
+      const ordenado = [...valores].sort((a, b) => a - b)
+      const meio = Math.floor(ordenado.length / 2)
+      mapa.set(perfil, ordenado.length % 2 ? ordenado[meio] : (ordenado[meio - 1] + ordenado[meio]) / 2)
+    })
+    return mapa
+  }, [posts])
+
+  const deuCerto = useCallback((post: RadarPost) => {
+    if (post.is_highlight) return true
+    const base = medianaDaReacao.get(post.profile_id)
+    return !!base && base > 0 && reacao(post) >= base * 2
+  }, [medianaDaReacao])
+
   const visiveis = useMemo(() => {
-    if (filtro === 'destaques') return posts.filter(post => post.is_highlight)
+    if (filtro === 'destaques') {
+      return posts.filter(deuCerto).sort((a, b) =>
+        (b.times_median || 0) - (a.times_median || 0) || reacao(b) - reacao(a))
+    }
     if (filtro === 'salvos') return posts.filter(post => idsSalvos.has(post.id))
     return posts
-  }, [posts, filtro, idsSalvos])
+  }, [posts, filtro, idsSalvos, deuCerto])
 
   /**
    * O campo aceita as duas coisas. João, 22/10/2026: "não quero por perfil e
@@ -212,29 +262,50 @@ export default function RadarReels() {
    */
   const coletarAgora = async () => {
     setColetando(true)
-    try {
-      const { data: sessao } = await supabase.auth.getSession()
-      const token = sessao.session?.access_token
-      if (!token) {
-        toast({ title: 'Sua sessão expirou', description: 'Entre de novo na Central.', variant: 'destructive' })
-        return
-      }
-      const resposta = await fetch('/api/radar-coletar', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-      const corpo = await resposta.json().catch(() => ({}))
-      if (!resposta.ok || corpo.ok === false) {
-        toast({ title: 'A coleta não rodou', description: corpo.error || corpo.message || 'tenta de novo', variant: 'destructive' })
-        return
-      }
-      toast({
-        title: `Coleta feita em ${corpo.perfis ?? 0} perfis`,
-        description: `${corpo.posts_novos ?? 0} conteúdos novos, ${corpo.destaques ?? 0} acima da média`,
-      })
-      carregar()
-    } catch {
-      toast({ title: 'A coleta não respondeu', description: 'ela leva alguns minutos, tenta de novo', variant: 'destructive' })
-    } finally {
+    const { data: sessao } = await supabase.auth.getSession()
+    const token = sessao.session?.access_token
+    if (!token) {
       setColetando(false)
+      toast({ title: 'Sua sessão expirou', description: 'Entre de novo na Central.', variant: 'destructive' })
+      return
     }
+    const desde = Date.now()
+    // Dispara e solta. João, 22/10/2026: "se eu saio e vou pra outra aba, ele
+    // para de pesquisar". A coleta roda no servidor e grava no banco; o
+    // navegador não precisa ficar segurando a resposta pra ela terminar.
+    fetch('/api/radar-coletar', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+      .catch(() => { /* o resultado vem do banco, não daqui */ })
+    toast({
+      title: 'Coleta rodando',
+      description: 'Leva alguns minutos. Pode sair desta tela, que ela continua.',
+    })
+
+    // O resultado é lido do banco, então vale mesmo que esta tela seja fechada.
+    let voltas = 0
+    const olho = setInterval(async () => {
+      voltas += 1
+      const { data } = await supabase
+        .from('radar_collections')
+        .select('started_at, profiles_count, posts_new, highlights')
+        .order('started_at', { ascending: false })
+        .limit(1)
+      const ultima = data?.[0]
+      if (ultima && new Date(ultima.started_at).getTime() >= desde - 60000) {
+        clearInterval(olho)
+        setColetando(false)
+        toast({
+          title: `Coleta feita em ${ultima.profiles_count ?? 0} perfis`,
+          description: `${ultima.posts_new ?? 0} conteúdos novos, ${ultima.highlights ?? 0} acima da média`,
+        })
+        carregar()
+        return
+      }
+      if (voltas >= 30) {
+        clearInterval(olho)
+        setColetando(false)
+        carregar()
+      }
+    }, 15000)
   }
 
   const adicionarPerfil = async () => {
@@ -300,7 +371,7 @@ export default function RadarReels() {
     toast({ title: 'Salvo', description: 'A equipe vê o que você marcou.' })
   }
 
-  const destaques = posts.filter(post => post.is_highlight).length
+  const destaques = posts.filter(deuCerto).length
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -415,7 +486,7 @@ export default function RadarReels() {
           {/* Filtros */}
           <div className="flex flex-wrap items-center gap-2">
             {([
-              ['destaques', `Acima do padrão (${destaques})`],
+              ['destaques', `Deu certo (${destaques})`],
               ['todos', `Tudo que entrou (${posts.length})`],
               ['salvos', `Salvos (${saves.length})`],
             ] as const).map(([id, texto]) => (

@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ExternalLink, Plus, RefreshCw, Tag, X } from 'lucide-react'
+import { ExternalLink, Link2, Plus, RefreshCw, Tag, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
+
+/** De dez em dez minutos, como o João pediu: o Arthur cola e o quadro se vira. */
+const RELOGIO = 10 * 60 * 1000
 
 /**
  * Quadro do que já foi garimpado, uma coluna por cliente.
@@ -85,6 +91,9 @@ export default function QuadroPorCliente() {
   const [editando, setEditando] = useState<string | null>(null)
   const [novaTag, setNovaTag] = useState('')
   const [carregando, setCarregando] = useState(true)
+  const [destino, setDestino] = useState('')
+  const [link, setLink] = useState('')
+  const [guardando, setGuardando] = useState(false)
 
   const carregar = useCallback(async () => {
     setCarregando(true)
@@ -107,6 +116,57 @@ export default function QuadroPorCliente() {
   }, [])
 
   useEffect(() => { carregar() }, [carregar])
+
+  // O quadro se atualiza sozinho. Antes, quem colava um link em outra máquina
+  // só aparecia aqui depois de alguém lembrar de apertar Atualizar.
+  useEffect(() => {
+    const relogio = setInterval(() => { carregar() }, RELOGIO)
+    return () => clearInterval(relogio)
+  }, [carregar])
+
+  /**
+   * Guardar referência sem sair do quadro.
+   *
+   * João, 22/10/2026: "quero jogar o link e já aparecer preview". Antes o campo
+   * vivia só na aba de garimpo, atrás de escolher o cliente, e quem estava
+   * olhando o quadro não tinha onde colar.
+   */
+  const guardarLink = async () => {
+    const endereco = link.trim()
+    if (!endereco || !destino) {
+      toast({ title: 'Falta alguma coisa', description: 'Escolhe o cliente e cola o link do post.', variant: 'destructive' })
+      return
+    }
+    setGuardando(true)
+    try {
+      const { data: sessao } = await supabase.auth.getSession()
+      const token = sessao.session?.access_token
+      if (!token) {
+        toast({ title: 'Sua sessão expirou', description: 'Entre de novo na Central.', variant: 'destructive' })
+        return
+      }
+      const resposta = await fetch('/api/radar-salvar-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ url: endereco, client_id: destino }),
+      })
+      const corpo = await resposta.json().catch(() => ({}))
+      if (!resposta.ok) {
+        toast({ title: 'Não deu pra guardar', description: corpo.error || 'tenta de novo', variant: 'destructive' })
+        return
+      }
+      setLink('')
+      toast({
+        title: `Guardado de @${corpo.handle}`,
+        description: corpo.leitura?.o_que_fazer || 'já está no quadro',
+      })
+      await carregar()
+    } catch {
+      toast({ title: 'Não consegui falar com a Central', variant: 'destructive' })
+    } finally {
+      setGuardando(false)
+    }
+  }
 
   const nomeDoCliente = useMemo(() => new Map(clientes.map(c => [c.id, c.name])), [clientes])
   const handlePorPerfil = useMemo(() => new Map(perfis.map(p => [p.id, p.handle])), [perfis])
@@ -205,6 +265,34 @@ export default function QuadroPorCliente() {
             Quem garimpou: {porPessoa.map(([quem, quanto]) => `${quem} (${quanto})`).join(' · ')}
           </p>
         )}
+      </div>
+
+      {/* Caixa de entrada do quadro: cola o link, escolhe de quem é, e pronto. */}
+      <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Link2 className="w-4 h-4 text-primary" />
+          <h2 className="font-semibold">Guardar referência</h2>
+          <span className="text-xs text-muted-foreground">link de reel, foto ou carrossel do Instagram</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Select value={destino} onValueChange={setDestino}>
+            <SelectTrigger className="w-56"><SelectValue placeholder="Para qual cliente..." /></SelectTrigger>
+            <SelectContent>
+              {clientes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Input
+            value={link}
+            onChange={e => setLink(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') guardarLink() }}
+            placeholder="cole o link do conteúdo que deu bom"
+            className="flex-1 min-w-[240px]"
+            maxLength={600}
+          />
+          <Button onClick={guardarLink} disabled={guardando || !link.trim() || !destino} className="gap-2">
+            <Plus className="w-4 h-4" /> {guardando ? 'Lendo o post...' : 'Guardar'}
+          </Button>
+        </div>
       </div>
 
       {todasAsTags.length > 0 && (
