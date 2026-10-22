@@ -81,7 +81,8 @@ function alertas(contas: Conta[]): Alerta[] {
     }
     const agora = custo(semana), antes = custo(c.periodos['7d_ant'])
     const v = variacao(agora, antes)
-    if (v != null && v >= 30 && semana.conversas >= 5) {
+    // Base pequena vira ruído: 1 conversa na semana anterior não serve de régua.
+    if (v != null && v >= 30 && semana.conversas >= 5 && c.periodos['7d_ant'].conversas >= 5) {
       lista.push({ conta: c.nome, texto: `custo por conversa subiu ${Math.round(v)}% na semana (${brl(antes!)} para ${brl(agora!)})`, grave: false, ordem: 20 })
     }
     if (horaBrasilia >= 12 && c.periodos.hoje.gasto === 0 && c.periodos.ontem.gasto > 0 && !(c.saldo != null && c.saldo <= 1)) {
@@ -291,7 +292,8 @@ function CartaoConta({ conta: c, periodo, anterior, aberta, alternar }: {
                 antes={a && custo(a) ? brl(custo(a)!) : undefined}
               />
               {n.leads > 0 ? (
-                <Metrica rotulo="Leads" valor={`${n.leads} · ${brl(n.gasto / n.leads)}`} />
+                // Sem custo por lead: o gasto da conta mistura campanha de conversa e de formulário.
+                <Metrica rotulo="Leads" valor={n.leads.toLocaleString('pt-BR')} />
               ) : (
                 <Metrica
                   rotulo="Responderam"
