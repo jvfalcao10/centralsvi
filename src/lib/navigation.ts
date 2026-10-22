@@ -33,6 +33,10 @@ export const NAV_AREAS: NavigationArea[] = [
     { title: 'Moldes de post', url: '/content/moldes', minRole: 'executor', section: 'Conteúdo' },
     { title: 'Cadência do mês', url: '/content/cadencia', minRole: 'executor', section: 'Conteúdo' },
     { title: 'Datas estratégicas', url: '/content/datas', minRole: 'executor', section: 'Conteúdo' },
+    // Voltou ao menu em 22/10/2026, a pedido do João: a página existia desde 13/09 e
+    // só dava para chegar nela pela URL, então ninguém usava. Estava com um perfil
+    // vigiado e nenhum post salvo.
+    { title: 'Radar de reels', url: '/content/reels', minRole: 'executor', section: 'Conteúdo' },
     { title: 'Criador de carrossel', url: '/conteudo/criador-carrossel', minRole: 'admin', section: 'Conteúdo' },
   ] },
   { id: 'comercial', title: 'Comercial', icon: 'commercial', items: [
@@ -207,7 +211,6 @@ const CONTEXTUAL_BREADCRUMBS: { path: string; breadcrumb: string[] }[] = [
   { path: '/reports/overview', breadcrumb: ['Resultados', 'Visão geral'] },
   { path: '/content/cadencia', breadcrumb: ['Operação', 'Cadência do mês'] },
   { path: '/content/radar', breadcrumb: ['Operação', 'Radar'] },
-  { path: '/content/reels', breadcrumb: ['Operação', 'Reels em alta'] },
   { path: '/activity', breadcrumb: ['Recursos', 'Histórico de atividades'] },
   { path: '/lista-espera', breadcrumb: ['Administração', 'Lista de espera'] },
   { path: '/admin/paineis', breadcrumb: ['Administração', 'Painéis de clientes'] },

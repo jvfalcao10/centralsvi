@@ -18,8 +18,8 @@ describe('Áreas de navegação', () => {
 
   it('mantém a operação principal e retira os nove atalhos solicitados', () => {
     const urls = urlsFor('admin')
-    expect(urls).toEqual(expect.arrayContaining(['/content/social', '/tarefas', '/clients', '/content/datas', '/admin/approvals']))
-    for (const removed of ['/onboarding', '/documentos', '/content/organizador', '/content/aprovacoes', '/content/posts', '/content/pautas', '/content/reels', '/content/producao', 'https://postagens.svicompany.com.br']) {
+    expect(urls).toEqual(expect.arrayContaining(['/content/social', '/tarefas', '/clients', '/content/datas', '/content/reels', '/admin/approvals']))
+    for (const removed of ['/onboarding', '/documentos', '/content/organizador', '/content/aprovacoes', '/content/posts', '/content/pautas', '/content/producao', 'https://postagens.svicompany.com.br']) {
       expect(urls).not.toContain(removed)
     }
     expect(new Set(urls).size).toBe(urls.length)
@@ -36,7 +36,7 @@ describe('Áreas de navegação', () => {
   it('separa o acesso comercial do vendedor e do executor sem grupos vazios', () => {
     expect(urlsFor('seller')).toContain('/pipeline')
     const executor = urlsFor('executor')
-    expect(executor).toEqual(expect.arrayContaining(['/scripts', '/tarefas', '/content/social', '/clients']))
+    expect(executor).toEqual(expect.arrayContaining(['/scripts', '/tarefas', '/content/social', '/clients', '/content/reels']))
     for (const forbidden of ['/pipeline', '/catalogo', '/onboarding', '/dashboard', '/operacional/carga', '/team', '/admin/approvals']) expect(executor).not.toContain(forbidden)
     const navigation = getVisibleNavigation({ can: canFor('executor') })
     expect(navigation.footer).toEqual([])
