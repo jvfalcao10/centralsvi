@@ -4,7 +4,7 @@ import type {SocialAsset} from './social-domain.js'
 import type {PublicationJob} from './social-publication-domain.js'
 import {ordemDasLaminas} from './social-publication-domain.js'
 import {publicationGraph,publicationToken,friendlyPublicationError,MetaPublicationError} from './social-publication-meta.js'
-import {driveVideoRange} from './social-drive.js'
+import {driveVideoRange,driveVideoFull} from './social-drive.js'
 class LostLease extends Error {}
 export function allowedUploadURI(raw:string,id:string){try{const u=new URL(raw);return u.protocol==='https:'&&u.hostname==='rupload.facebook.com'&&new RegExp(`^/ig-api-upload/v[0-9]{1,2}\\.[0-9]{1,2}/${id}$`).test(u.pathname)&&!u.username&&!u.password}catch{return false}}
 async function persist(db:SupabaseClient,j:PublicationJob,patch:Record<string,unknown>){
@@ -84,13 +84,53 @@ async function uploadDrive(a:SocialAsset,uri:string,id:string){
  // dar por bom, para não seguir com um vídeo pela metade.
  if(await offsetNoInstagram(uri)<total)throw new Error('Mídia: o Instagram não recebeu o vídeo completo. Tente novamente.')
 }
+/** Pasta dos espelhos: vídeo do Drive copiado para o storage só para o Instagram buscar. */
+export const caminhoDoEspelho=(a:SocialAsset)=>`publicacao/${a.drive_id}.mp4`
+
+/**
+ * O vídeo do Drive vai para o storage, e o Instagram BUSCA de lá.
+ *
+ * Até 21/10/2026 o vídeo subia direto para o `rupload` do Meta, em pedaços.
+ * Naquele dia essa porta passou a recusar **todo vídeo acima de uns 50 s**, com
+ * `ProcessingFailedError` no último pedaço, e a prova é que o arquivo do GM Gás
+ * que publicou normalmente em 20/10 falhou igual ao ser reenviado. Cortes do
+ * mesmo arquivo passavam até 45 s e falhavam de 55 s para cima, e um arquivo de
+ * 36,5 MB com 18 s passava enquanto um de 32,6 MB com 58 s falhava: não era
+ * tamanho, nem codec, nem conta.
+ *
+ * Pela outra porta, `video_url`, o mesmo arquivo de 58,6 s processa e publica.
+ * Foi assim que o reel da Norte Capital foi ao ar naquela noite, na mão.
+ *
+ * O espelho tem o nome do arquivo no Drive, então reel e story da mesma peça
+ * reaproveitam a cópia, e a faxina leva o que passou de três dias.
+ */
+async function espelharDoDrive(db:SupabaseClient,a:SocialAsset){
+ if(!a.drive_id||!a.bytes||a.bytes>500*1024*1024)throw new Error('Mídia: vídeo do Drive inválido para publicação.')
+ const caminho=caminhoDoEspelho(a)
+ const {data:existe}=await db.storage.from('central-social').info(caminho)
+ if(existe&&Number((existe as {size?:number}).size)===a.bytes)return caminho
+ const r=await driveVideoFull(a.drive_id,240000)
+ if(!r.ok){await r.body?.cancel();throw new Error('Mídia: não foi possível ler o vídeo no Drive.')}
+ const bytes=new Uint8Array(await r.arrayBuffer())
+ if(bytes.length!==a.bytes)throw new Error('Mídia: o vídeo veio incompleto do Drive.')
+ const {error}=await db.storage.from('central-social').upload(caminho,bytes,{contentType:'video/mp4',upsert:true})
+ if(error)throw new Error('Mídia: não foi possível preparar o vídeo para o Instagram.')
+ return caminho
+}
+
+/** Espelho é cópia de trabalho: o que passou de três dias já serviu. */
+export async function faxinaDosEspelhos(db:SupabaseClient,agora=Date.now()){
+ const {data}=await db.storage.from('central-social').list('publicacao',{limit:100,sortBy:{column:'created_at',order:'asc'}})
+ const velhos=(data||[]).filter(f=>agora-Date.parse(f.created_at||'')>3*86400000).slice(0,10).map(f=>`publicacao/${f.name}`)
+ if(velhos.length)await db.storage.from('central-social').remove(velhos)
+ return velhos.length
+}
 async function container(db:SupabaseClient,j:PublicationJob,a:SocialAsset,index:number,child:boolean){
  const video=a.type.startsWith('video/'),drive=video&&a.storage==='drive'
  const params:Record<string,string>={...(child?{is_carousel_item:'true'}:{caption:j.format==='story'?'':j.caption})}
  if(video)params.media_type=child?'VIDEO':j.format==='story'?'STORIES':'REELS'
  else if(j.format==='story')params.media_type='STORIES'
- if(drive)params.upload_type='resumable'
- else if(video)params.video_url=await signed(db,a.path)
+ if(video)params.video_url=await signed(db,drive?caminhoDoEspelho(a):a.path)
  else params.image_url=await imageURL(db,j,a,index)
  if(!child&&j.format==='reel'){
   params.share_to_feed='true'
@@ -99,7 +139,7 @@ async function container(db:SupabaseClient,j:PublicationJob,a:SocialAsset,index:
  }
  const created=await publicationGraph('POST',`${j.account_id}/media`,params)
  if(!/^\d+$/.test(created.id||''))throw new Error('Mídia: o Instagram não criou a publicação.')
- return {id:String(created.id),uri:drive?String(created.uri||''):null,uploaded:!drive}
+ return {id:String(created.id),uri:null,uploaded:true}
 }
 async function finish(db:SupabaseClient,j:PublicationJob,media:string|null){
  let permalink:string|null=null
@@ -147,7 +187,8 @@ const TENTATIVAS_DE_ENVIO=6
 const TENTATIVAS_INCERTAS=36
 
 export async function processPublications(db:SupabaseClient){
- const {data,error}=await db.rpc('central_social_publication_claim');if(error)throw error;if(!data)return {processed:0}
+ const {data,error}=await db.rpc('central_social_publication_claim');if(error)throw error
+ if(!data){await faxinaDosEspelhos(db).catch(()=>0);return {processed:0}}
  const j=data as PublicationJob
  try{
   if(['publishing','uncertain'].includes(j.status)){
@@ -188,7 +229,15 @@ export async function processPublications(db:SupabaseClient){
    for(const child of children){const status=await publicationGraph('GET',child.id,{fields:'status_code'});if(['ERROR','EXPIRED'].includes(status.status_code))throw new Error('Mídia: um arquivo do carrossel foi recusado pelo Instagram.');if(status.status_code!=='FINISHED'){await persist(db,j,later());return {processed:1,status:'processing'}}}
    if(!progress.container){const c=await publicationGraph('POST',`${j.account_id}/media`,{media_type:'CAROUSEL',children:children.map(c=>c.id).join(','),caption:j.caption});if(!c.id)throw new Error('Mídia: carrossel não foi criado.');progress.container={id:String(c.id),uploaded:true};await persist(db,j,{status:'processing',progress,...later()});return {processed:1,status:'processing'}}
   }else{
-   if(!progress.container){progress.container=await container(db,j,j.assets[0],0,false);await persist(db,j,{progress})}
+   const unico=j.assets[0]
+   // O espelho é um passo só dele: baixar do Drive e subir no storage pode levar
+   // dezenas de segundos num arquivo de 180 MB, e cada rodada do operário faz um passo.
+   if(!progress.container&&unico.type.startsWith('video/')&&unico.storage==='drive'&&!progress.espelho){
+    progress.espelho=await espelharDoDrive(db,unico)
+    await persist(db,j,{progress,status:'preparing',...later(5)})
+    return {processed:1,status:'preparing'}
+   }
+   if(!progress.container){progress.container=await container(db,j,unico,0,false);await persist(db,j,{progress})}
    if(!progress.container.uploaded){await uploadDrive(j.assets[0],progress.container.uri,progress.container.id);progress.container={...progress.container,uploaded:true};await persist(db,j,{progress,status:'processing',...later()});return {processed:1,status:'processing'}}
   }
   if(j.status!=='processing')await persist(db,j,{status:'processing'})
