@@ -22,6 +22,7 @@ const MINIMO_PARA_BASELINE = 6;
 const PERFIS_POR_RODADA = 8;
 const POSTS_POR_PERFIL_PRIMEIRA_VEZ = 30;
 const POSTS_POR_PERFIL_DEPOIS = 12;
+const EQUIPE = ['admin', 'manager', 'seller', 'executor', 'traffic', 'social', 'design'];
 
 type PerfilRow = {
   id: string;
@@ -145,17 +146,28 @@ async function guardarCapa(admin: any, externalId: string, origem: string | null
 }
 
 export async function handleRadarColetar(req: VercelRequest, res: VercelResponse) {
-  // Distingue os dois casos: sem segredo no servidor é configuração faltando,
-  // segredo diferente é chamada não autorizada. Nenhum dos dois devolve o valor.
-  const segredo = (process.env.CRON_SECRET || '').trim();
-  if (!segredo) {
-    return res.status(503).json({ ok: false, error: 'cron_secret_ausente' });
-  }
+  // Duas portas: o cron, que manda o segredo, e a equipe pelo botão "Coletar
+  // agora" da Central. João, 22/10/2026: cadastrou dez perfis, abriu o quadro e
+  // não tinha nada, porque a coleta só roda às 9h. Esperar até o dia seguinte
+  // para ver se o perfil que você acabou de pôr presta é tempo jogado fora.
   const enviado = (req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
-  if (enviado !== segredo) {
-    // Só o tamanho do que chegou, para separar "não mandou nada" de "mandou errado".
-    // Nada do segredo do servidor entra na resposta.
-    return res.status(401).json({ ok: false, error: 'nao_autorizado', recebido_tamanho: enviado.length });
+  const segredo = (process.env.CRON_SECRET || '').trim();
+  const ehCron = !!segredo && enviado === segredo;
+  if (!ehCron) {
+    if (!enviado) {
+      return res.status(401).json({ ok: false, error: 'nao_autorizado', recebido_tamanho: 0 });
+    }
+    const autenticador = createAdminClient();
+    const { data: sessao } = await autenticador.auth.getUser(enviado);
+    if (!sessao?.user) {
+      // Só o tamanho do que chegou, para separar "não mandou nada" de "mandou errado".
+      // Nada do segredo do servidor entra na resposta.
+      return res.status(401).json({ ok: false, error: 'nao_autorizado', recebido_tamanho: enviado.length });
+    }
+    const { data: papeis } = await autenticador.from('user_roles').select('role').eq('user_id', sessao.user.id);
+    if (!papeis?.some((p: any) => EQUIPE.includes(p.role))) {
+      return res.status(403).json({ ok: false, error: 'acesso_restrito' });
+    }
   }
 
   const apifyToken = process.env.APIFY_TOKEN || '';

@@ -96,6 +96,7 @@ export default function RadarReels() {
   const [aba, setAba] = useState<'garimpo' | 'quadro'>('garimpo')
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
+  const [coletando, setColetando] = useState(false)
 
   useEffect(() => {
     (async () => {
@@ -199,6 +200,39 @@ export default function RadarReels() {
     carregar()
   }
 
+  /**
+   * Rodar a coleta na hora. O cron passa às 9h, e quem acabou de pôr um perfil
+   * não tem por que esperar o dia seguinte pra saber se ele presta. A rodada
+   * pega até oito perfis, os que estão há mais tempo sem coleta primeiro, então
+   * com mais de oito perfis vale clicar de novo.
+   */
+  const coletarAgora = async () => {
+    setColetando(true)
+    try {
+      const { data: sessao } = await supabase.auth.getSession()
+      const token = sessao.session?.access_token
+      if (!token) {
+        toast({ title: 'Sua sessão expirou', description: 'Entre de novo na Central.', variant: 'destructive' })
+        return
+      }
+      const resposta = await fetch('/api/radar-coletar', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+      const corpo = await resposta.json().catch(() => ({}))
+      if (!resposta.ok || corpo.ok === false) {
+        toast({ title: 'A coleta não rodou', description: corpo.error || corpo.message || 'tenta de novo', variant: 'destructive' })
+        return
+      }
+      toast({
+        title: `Coleta feita em ${corpo.perfis ?? 0} perfis`,
+        description: `${corpo.posts_novos ?? 0} conteúdos novos, ${corpo.destaques ?? 0} acima da média`,
+      })
+      carregar()
+    } catch {
+      toast({ title: 'A coleta não respondeu', description: 'ela leva alguns minutos, tenta de novo', variant: 'destructive' })
+    } finally {
+      setColetando(false)
+    }
+  }
+
   const adicionarPerfil = async () => {
     const entrada = novoPerfil.trim()
     if (!entrada) return
@@ -284,6 +318,9 @@ export default function RadarReels() {
               </SelectContent>
             </Select>
           )}
+          <Button size="sm" variant="outline" onClick={coletarAgora} disabled={coletando} className="gap-2">
+            <Radar className="w-4 h-4" /> {coletando ? 'Coletando, pode demorar...' : 'Coletar agora'}
+          </Button>
           <Button size="sm" variant="outline" onClick={carregar} className="gap-2">
             <RefreshCw className="w-4 h-4" /> Atualizar
           </Button>
