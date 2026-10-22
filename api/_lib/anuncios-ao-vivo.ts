@@ -194,6 +194,18 @@ async function lerConjuntos(token: string, conta: string, periodo: Periodo) {
 }
 
 export async function handleAnunciosAoVivo(req: VercelRequest, res: VercelResponse) {
+  // Conferência da chave sem login: diz só quantas contas ela enxerga, nenhum número de cliente.
+  if (req.query.saude === '1') {
+    const chave = (process.env.META_ADS_TOKEN || process.env.SOCIAL_IG_ACCESS_TOKEN || '').trim();
+    if (!chave) return res.status(503).json({ ok: false, erro: 'sem chave' });
+    try {
+      const r = await graph('me/adaccounts', { fields: 'account_id', limit: '200' }, chave);
+      return res.status(200).json({ ok: true, contas: (r.data || []).length });
+    } catch (e: any) {
+      return res.status(200).json({ ok: false, erro: String(e?.message || e).slice(0, 120) });
+    }
+  }
+
   const db = createAdminClient();
   const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   if (!bearer) return res.status(401).json({ error: 'Entre na Central para ver os anúncios.' });
