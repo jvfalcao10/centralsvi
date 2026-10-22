@@ -11,6 +11,8 @@ vi.mock('@/lib/supabase', () => ({ supabase: {
     let escrita: Record<string, unknown> | null = null
     query.select = () => query
     query.order = () => query
+    query.limit = () => query
+    query.in = () => query
     query.update = (payload: Record<string, unknown>) => { escrita = payload; return query }
     query.eq = (_coluna: string, valor: unknown) => {
       if (escrita) fake.updates({ tabela, id: valor, payload: escrita })
@@ -55,6 +57,11 @@ function montarBanco() {
       { client_id: 'c2', profile_id: 'perfil-1' }, { client_id: 'c3', profile_id: 'perfil-3' },
     ],
     radar_profiles: [{ id: 'perfil-1', handle: 'drmaurochoi' }, { id: 'perfil-2', handle: 'fisiophfontenele' }],
+    radar_posts: [
+      { id: 'p9', profile_id: 'perfil-3', url: 'https://instagram.com/reel/novo1', caption: 'sugestao do radar',
+        views: 310000, likes: 12000, comments: 410, thumb_url: 'https://cdn/sug.jpg',
+        published_at: '2026-10-21T12:00:00Z', times_median: 3.2, is_highlight: true },
+    ],
     profiles: [{ user_id: 'u-arthur', name: 'Arthur SVI' }],
   }
 }
@@ -80,8 +87,11 @@ describe('Quadro do radar por cliente', () => {
     await waitFor(() => expect(screen.getByText('Dr. Brenno')).toBeInTheDocument())
     const brenno = screen.getByText('Dr. Brenno').closest('div')!.parentElement!
     expect(within(brenno).getByText('2 perfis no radar')).toBeInTheDocument()
+    // A Números não salvou nada, mas vigia um perfil, então a coluna existe e
+    // mostra o que a coleta achou em vez de ficar vazia.
     expect(screen.getByText('Números')).toBeInTheDocument()
-    expect(screen.getByText('nada salvo ainda')).toBeInTheDocument()
+    expect(screen.getByText('do radar, ainda não guardado')).toBeInTheDocument()
+    expect(screen.queryByText('nada salvo ainda')).not.toBeInTheDocument()
   })
 
   it('mostra preview, número do post e a leitura contra a mediana', async () => {
@@ -104,6 +114,17 @@ describe('Quadro do radar por cliente', () => {
     expect(screen.getByText('reel')).toBeInTheDocument()
     // O que não foi lido cai na legenda, em vez de ficar com o espaço vazio.
     expect(screen.getAllByText('gancho da peça').length).toBeGreaterThan(0)
+  })
+
+  // João, 22/10/2026: "cadê as preview mano". O quadro nascia vazio mesmo com
+  // 250 posts coletados, porque só mostrava o que alguém já tinha guardado.
+  it('mostra o que a coleta achou como sugestão na coluna do cliente', async () => {
+    montarBanco()
+    render(<QuadroPorCliente />)
+    await waitFor(() => expect(screen.getByText('do radar, ainda não guardado')).toBeInTheDocument())
+    expect(screen.getByText('310 mil views')).toBeInTheDocument()
+    expect(screen.getByText('3,2x')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Guardar para Números/ })).toBeInTheDocument()
   })
 
   it('filtra por tag e some com quem não tem a tag', async () => {

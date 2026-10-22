@@ -58,6 +58,11 @@ interface SaveRow {
   radar_posts: PostDoRadar | null
 }
 
+interface PostColetado extends PostDoRadar {
+  id: string
+  profile_id: string
+}
+
 interface ClienteRow { id: string; name: string }
 interface PerfilRow { id: string; handle: string }
 interface PessoaRow { user_id: string; name: string }
@@ -87,6 +92,7 @@ export default function QuadroPorCliente() {
   const [perfis, setPerfis] = useState<PerfilRow[]>([])
   const [pessoas, setPessoas] = useState<PessoaRow[]>([])
   const [vigiados, setVigiados] = useState<{ client_id: string; profile_id: string }[]>([])
+  const [coletados, setColetados] = useState<PostColetado[]>([])
   const [tagAtiva, setTagAtiva] = useState<string | null>(null)
   const [editando, setEditando] = useState<string | null>(null)
   const [novaTag, setNovaTag] = useState('')
@@ -107,6 +113,23 @@ export default function QuadroPorCliente() {
       supabase.from('radar_profiles').select('id, handle'),
       supabase.from('profiles').select('user_id, name'),
     ])
+    // O que a coleta já trouxe e deu certo entra no quadro como sugestão. Sem
+    // isso o quadro nasce vazio mesmo com 250 posts no banco, e o João abre a
+    // tela e pergunta cadê a prévia.
+    const idsVigiados = [...new Set(((vigia.data || []) as any[]).map(v => v.profile_id))]
+    if (idsVigiados.length) {
+      const { data: reels } = await supabase
+        .from('radar_posts')
+        .select('id, profile_id, url, caption, views, likes, comments, thumb_url, published_at, times_median, is_highlight')
+        .in('profile_id', idsVigiados)
+        .eq('is_highlight', true)
+        .order('times_median', { ascending: false })
+        .limit(200)
+      setColetados((reels || []) as PostColetado[])
+    } else {
+      setColetados([])
+    }
+
     setSaves((marcados.data || []) as unknown as SaveRow[])
     setClientes((carteira.data || []) as ClienteRow[])
     setVigiados((vigia.data || []) as { client_id: string; profile_id: string }[])
@@ -131,6 +154,37 @@ export default function QuadroPorCliente() {
    * vivia só na aba de garimpo, atrás de escolher o cliente, e quem estava
    * olhando o quadro não tinha onde colar.
    */
+  /** Guardar um post pela URL dele, que é o mesmo caminho do link colado. */
+  const guardarPost = async (url: string, cliente: string) => {
+    const { data: sessao } = await supabase.auth.getSession()
+    const token = sessao.session?.access_token
+    if (!token) {
+      toast({ title: 'Sua sessão expirou', description: 'Entre de novo na Central.', variant: 'destructive' })
+      return false
+    }
+    const resposta = await fetch('/api/radar-salvar-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ url, client_id: cliente }),
+    })
+    const corpo = await resposta.json().catch(() => ({}))
+    if (!resposta.ok) {
+      toast({ title: 'Não deu pra guardar', description: corpo.error || 'tenta de novo', variant: 'destructive' })
+      return false
+    }
+    toast({
+      title: `Guardado de @${corpo.handle}`,
+      description: corpo.leitura?.o_que_fazer || 'já está no quadro',
+    })
+    await carregar()
+    return true
+  }
+
+  const guardarSugestao = async (post: PostColetado, cliente: string) => {
+    setGuardando(true)
+    try { await guardarPost(post.url, cliente) } finally { setGuardando(false) }
+  }
+
   const guardarLink = async () => {
     const endereco = link.trim()
     if (!endereco || !destino) {
@@ -183,20 +237,31 @@ export default function QuadroPorCliente() {
     [saves, tagAtiva],
   )
 
+  const idsSalvos = useMemo(() => new Set(saves.map(s => s.post_id)), [saves])
+
   /** Uma coluna por cliente que tem alguma coisa: salvo ou perfil vigiado. */
   const colunas = useMemo(() => {
     const perfilPorCliente = new Map<string, number>()
     vigiados.forEach(v => perfilPorCliente.set(v.client_id, (perfilPorCliente.get(v.client_id) || 0) + 1))
     const ids = new Set<string>([...filtrados.map(s => s.client_id), ...(tagAtiva ? [] : perfilPorCliente.keys())])
     return [...ids]
-      .map(id => ({
-        id,
-        nome: nomeDoCliente.get(id) || 'cliente fora da carteira',
-        perfis: perfilPorCliente.get(id) || 0,
-        itens: filtrados.filter(s => s.client_id === id),
-      }))
+      .map(id => {
+        const perfisDoCliente = new Set(vigiados.filter(v => v.client_id === id).map(v => v.profile_id))
+        return {
+          id,
+          nome: nomeDoCliente.get(id) || 'cliente fora da carteira',
+          perfis: perfilPorCliente.get(id) || 0,
+          itens: filtrados.filter(s => s.client_id === id),
+          // Sugestão é o que a coleta trouxe e ainda não foi guardado nem
+          // descartado por este cliente. Seis por coluna: o quadro é pra
+          // escolher, não pra rolar sem fim.
+          sugestoes: tagAtiva ? [] : coletados
+            .filter(post => perfisDoCliente.has(post.profile_id) && !idsSalvos.has(post.id))
+            .slice(0, 6),
+        }
+      })
       .sort((a, b) => b.itens.length - a.itens.length || a.nome.localeCompare(b.nome))
-  }, [filtrados, vigiados, nomeDoCliente, tagAtiva])
+  }, [filtrados, vigiados, nomeDoCliente, tagAtiva, coletados, idsSalvos])
 
   const recentes = useMemo(
     () => saves.filter(s => Date.now() - new Date(s.created_at).getTime() < SETE_DIAS).length,
@@ -340,9 +405,13 @@ export default function QuadroPorCliente() {
                   : `${coluna.perfis} perfis no radar`}
               </p>
 
-              {coluna.itens.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-6 text-center">nada salvo ainda</p>
-              ) : coluna.itens.map(save => {
+              {coluna.itens.length === 0 && coluna.sugestoes.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-6 text-center">
+                  {coluna.perfis ? 'a coleta ainda não achou nada acima do padrão' : 'nada salvo ainda'}
+                </p>
+              ) : null}
+
+              {coluna.itens.map(save => {
                 const post = save.radar_posts
                 return (
                   <div key={save.id} className="bg-card border border-border rounded-lg overflow-hidden">
@@ -450,6 +519,57 @@ export default function QuadroPorCliente() {
                   </div>
                 )
               })}
+
+              {coluna.sugestoes.length > 0 && (
+                <>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground pt-2">
+                    do radar, ainda não guardado
+                  </p>
+                  {coluna.sugestoes.map(post => (
+                    <div key={post.id} className="bg-card/60 border border-dashed border-border rounded-lg overflow-hidden">
+                      {post.thumb_url && (
+                        <a href={post.url} target="_blank" rel="noreferrer" className="block">
+                          <img
+                            src={post.thumb_url}
+                            alt={`capa do post de @${handlePorPerfil.get(post.profile_id) || 'perfil'}`}
+                            loading="lazy"
+                            className="w-full h-32 object-cover opacity-90"
+                          />
+                        </a>
+                      )}
+                      <div className="p-3 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-medium truncate">
+                            @{handlePorPerfil.get(post.profile_id) || 'perfil'}
+                          </span>
+                          {post.times_median ? (
+                            <Badge variant="outline" className="text-[10px]">
+                              {post.times_median.toFixed(1).replace('.', ',')}x
+                            </Badge>
+                          ) : null}
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-2">
+                          {post.caption || 'sem legenda'}
+                        </p>
+                        <div className="flex flex-wrap gap-x-3 text-xs">
+                          <span>{formatarNumero(post.views)} views</span>
+                          <span>{formatarNumero(post.likes)} curt.</span>
+                          <span>{formatarNumero(post.comments)} com.</span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="w-full h-7 text-xs gap-1"
+                          disabled={guardando}
+                          onClick={() => guardarSugestao(post, coluna.id)}
+                        >
+                          <Plus className="w-3 h-3" /> Guardar para {coluna.nome.split(' ')[0]}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           ))}
         </div>
