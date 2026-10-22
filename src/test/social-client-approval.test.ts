@@ -13,6 +13,29 @@ describe('client wording (real replies from the client groups)',()=>{
  it('reads praise',()=>{for(const t of ['Amei','Bom dia Perfeito','Ficou ótimo','Amei todossssss'])expect(clientVerdict(t)).toBe('praise')})
  it('reads change requests, including mixed messages',()=>{for(const t of ['Bom dia Ainda não pode postar','muda a cor e pode postar','o 1 troca a música, o resto aprovado','João, deixa as legendas mais finas, se possível.'])expect(clientVerdict(t)).toBe('change')})
  it('ignores questions and conditions',()=>{for(const t of ['Se tiver aprovado sim','Material está aprovado?','Já pode postar ?','foi aprovado semana passada','Bom dia','ok'])expect(clientVerdict(t)).toBe('')})
+
+ // 22/10/2026: a Exatta perguntou no grupo se os avisos de LEAD chegavam no
+ // celular, a Central leu como alteração pedida na peça da escada e o grupo do
+ // Matheus recebeu "ALTERAÇÃO SOLICITADA". A única palavra que disparou foi "não".
+ it('pergunta com "nao" solto nao e pedido de mudanca',()=>{
+  for(const t of [
+   'Esses q vc tá enviando aq não chegam no celular certo?',
+   'não chegou nada aqui não, é normal?',
+   'ainda não recebi, vc mandou?',
+  ])expect(clientVerdict(t)).toBe('')
+ })
+
+ // O verbo de mudança decide sozinho, inclusive em pergunta: aí o cliente está
+ // mesmo pedindo retrabalho.
+ it('pergunta COM verbo de mudanca continua sendo pedido',()=>{
+  for(const t of ['dá pra trocar a música?','consegue tirar o telefone do final?','muda a cor do fundo?'])
+   expect(clientVerdict(t)).toBe('change')
+ })
+
+ // Sem pergunta, "não" e "ainda" seguem valendo: é a fala que segurou post em 03/10.
+ it('"nao" fora de pergunta continua sendo pedido',()=>{
+  for(const t of ['Bom dia Ainda não pode postar','não gostei desse'])expect(clientVerdict(t)).toBe('change')
+ })
  it('separates team from client',()=>{expect(isTeamSender(LETICIA)).toBe(true);expect(isTeamSender({sender_pn:'5594933005199@s.whatsapp.net'})).toBe(true);expect(isTeamSender(CLIENTE)).toBe(false)})
  it('matches ClickUp tasks by client',()=>{expect(matchesClient({name:'[ESPAÇO SORAIA] Post'},['soraia'])).toBe(true);expect(matchesClient({name:'[GM GÁS] Post'},['soraia'])).toBe(false)})
 })

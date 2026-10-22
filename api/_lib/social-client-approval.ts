@@ -55,14 +55,25 @@ export function isTeamSender(m:Record<string,any>) {
  * do "não", e as duas pedem gente, não retrabalho de designer. Mandar isso pro
  * grupo do José como alteração pedida seria inventar serviço.
  */
-const SOBRE_O_LINK=/\b(link|abrir|abre|abriu|abrindo|acess\w*|senha|carreg\w*|pagina|site)\b/
-const CHANGE=/\b(nao|ainda|ajust\w*|mud\w*|troc\w*|alter\w*|corrig\w*|refaz\w*|tira|tirar|falt\w*|errad\w*|errou|menor|maior|coloc\w*|aument\w*|diminu\w*|deix\w*|tir\w*)\b/
+const SOBRE_O_LINK=/\b(link|abrir|abre|abriu|abrindo|acess\w*|senha|carreg\w*|pagina|site|cheg\w*|celular|aparelho|notific\w*)\b/
+/**
+ * Pedido de mudança de verdade tem VERBO de mudança.
+ *
+ * "nao" e "ainda" sozinhos não pedem nada: aparecem em pergunta, em desabafo e
+ * em conversa que nem é sobre a peça. Em 22/10/2026 a Exatta perguntou no grupo
+ * "Esses q vc tá enviando aq não chegam no celular certo?", falando dos avisos
+ * de lead, e isso virou alteração pedida no grupo do Matheus. Por isso o verbo
+ * forte decide sozinho, e a palavra fraca só vale fora de pergunta.
+ */
+const MUDANCA_FORTE=/\b(ajust\w*|mud\w*|troc\w*|alter\w*|corrig\w*|refaz\w*|tira|tirar|falt\w*|errad\w*|errou|menor|maior|coloc\w*|aument\w*|diminu\w*|deix\w*|tir\w*)\b/
+const MUDANCA_FRACA=/\b(nao|ainda)\b/
 export function clientVerdict(raw:string):'explicit'|'praise'|'change'|'' {
  const t=normalized(raw)
  if(!t||t.length>300)return ''
- if(CHANGE.test(t))return 'change'
+ if(MUDANCA_FORTE.test(t))return 'change'
  if(raw.includes('?')||t.length>140)return ''
  if(/^se\b|\bse (tiver|estiver|for|ficar)\b|\b(sera|semana passada|foi aprovad\w*)\b/.test(t))return ''
+ if(MUDANCA_FRACA.test(t))return 'change'
  if(/\b(aprovad[oa]s?|aprovo|liberad[oa]s?|pode (postar|publicar|subir|soltar|mandar|rodar)|esse ok|ok pode)\b/.test(t))return 'explicit'
  if(/\b(perfeit[oa]s?|amei|adorei|gostei|lind[oa]s?|maravilhos[oa]s?|top|show|otim[oa]s?|excelente|incrivel|sensacional|massa|ficou (bom|boa|bonit[oa]))\b/.test(t))return 'praise'
  return ''
