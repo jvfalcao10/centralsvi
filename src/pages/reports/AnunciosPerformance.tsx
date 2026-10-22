@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
+import AnunciosAoVivo from './AnunciosAoVivo'
 
 interface Report {
   id: number
@@ -51,7 +52,35 @@ const fmtDate = (d: string) => {
   return `${dd}/${m}`
 }
 
+/**
+ * Duas visões: "Ao vivo" lê a Meta na hora e é a padrão (João, 22/10/2026:
+ * "deve aparecer lá tudo pra não ter que ficar perguntando"); "Relatórios de
+ * sexta" é a fila de aprovação do relatório que a Sofia manda ao cliente.
+ */
 export default function AnunciosPerformance() {
+  const [visao, setVisao] = useState<'vivo' | 'semanal'>('vivo')
+  return (
+    <div className="space-y-5 animate-fade-in">
+      <div>
+        <h1 className="text-xl font-semibold">Performance de Anúncios</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          {visao === 'vivo'
+            ? 'Todas as contas, lidas direto da Meta. Atualiza sozinho a cada 5 minutos.'
+            : 'Relatórios semanais de tráfego. O que for aprovado aqui a Sofia manda pro grupo do cliente.'}
+        </p>
+      </div>
+      <Tabs value={visao} onValueChange={v => setVisao(v as 'vivo' | 'semanal')}>
+        <TabsList className="overflow-x-auto flex-nowrap">
+          <TabsTrigger value="vivo">Ao vivo</TabsTrigger>
+          <TabsTrigger value="semanal">Relatórios de sexta</TabsTrigger>
+        </TabsList>
+      </Tabs>
+      {visao === 'vivo' ? <AnunciosAoVivo /> : <RelatoriosSemanais />}
+    </div>
+  )
+}
+
+function RelatoriosSemanais() {
   const [semana, setSemana] = useState<string>('')
   const [statusFiltro, setStatusFiltro] = useState<string>('todos')
 
@@ -109,17 +138,11 @@ export default function AnunciosPerformance() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6">
       <div className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-xl font-semibold">Performance de Anúncios</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Todos os relatórios semanais de tráfego. Revise e aprove aqui — o aprovado a Sofia manda pro grupo do cliente.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <Select value={semanaAtiva} onValueChange={setSemana}>
-            <SelectTrigger className="w-[210px]">
+            <SelectTrigger className="w-full sm:w-[210px]">
               <SelectValue placeholder="Semana" />
             </SelectTrigger>
             <SelectContent>

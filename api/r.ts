@@ -11,6 +11,7 @@ import { handleRadarSalvarLink } from './_lib/radar-salvar-link.js';
 import { handleAgenda } from './_lib/agenda.js';
 import { handleAgendaShare } from './_lib/agenda-share.js';
 import { handleEquipeDia } from './_lib/equipe-dia.js';
+import { handleAnunciosAoVivo } from './_lib/anuncios-ao-vivo.js';
 
 const CSS = `
 *{box-sizing:border-box;margin:0;padding:0}
@@ -123,6 +124,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   if (req.query.__rota === 'radar-trends') {
     return handleRadarTrends(req, res);
+  }
+
+  // Performance de anúncios lida da Meta na hora, para a aba Anúncios.
+  if (req.query.__rota === 'anuncios-ao-vivo') {
+    return handleAnunciosAoVivo(req, res);
   }
 
   // Referencia salva pelo link do post, direto no cliente.
