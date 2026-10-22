@@ -4,7 +4,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { guardarRota, ultimaRota } from "@/lib/ultima-rota";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -116,6 +117,28 @@ const ParaOSite = () => {
   return null
 }
 
+/**
+ * Guarda a página em que a pessoa está, a cada troca de rota.
+ *
+ * Fica dentro do BrowserRouter de propósito: é o único lugar onde dá pra ouvir
+ * a navegação sem pendurar efeito em cada tela.
+ */
+function GuardaOndeParou() {
+  const location = useLocation();
+  useEffect(() => { guardarRota(location.pathname); }, [location.pathname]);
+  return null;
+}
+
+/**
+ * O atalho instalado abre em "/". Antes isso caía direto no login, que mandava
+ * pra home do papel, e quem só tinha saído do app por dois segundos perdia onde
+ * estava. Agora volta pra última página, e quem nunca entrou segue pro login.
+ */
+function Abertura() {
+  const destino = ultimaRota();
+  return <Navigate to={destino || "/login"} replace />;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -124,6 +147,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <GuardaOndeParou />
             <Routes>
               {/* O domínio de aprovação só serve as telas do cliente. As rotas
                   entram antes porque "/:slug/:token" casaria com caminhos da
@@ -141,7 +165,7 @@ const App = () => (
                 <Route path="/:slug/:token" element={<SocialClientApprove />} />
                 <Route path="*" element={<ParaOSite />} />
               </>}
-              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/" element={<Abertura />} />
 
               {/* Public */}
               <Route path="/r/trafego/:slug" element={<TrafegoReport />} />

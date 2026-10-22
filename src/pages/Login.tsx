@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Eye, EyeOff, Lock, Mail, User, Sparkles } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth, defaultRouteForRole } from '@/contexts/AuthContext'
+import { ultimaRota } from '@/lib/ultima-rota'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -58,7 +59,9 @@ export default function Login() {
       if (firstPainelSlug) return <Navigate to={`/cliente/${firstPainelSlug}`} replace />
       return <Navigate to="/minha-area" replace />
     }
-    if (isStaff) return <Navigate to={defaultRouteForRole(role)} replace />
+    // Quem já está logado e cai no login voltou pelo atalho: devolve pra onde
+    // estava, e só então pra home do papel.
+    if (isStaff) return <Navigate to={ultimaRota() || defaultRouteForRole(role)} replace />
     if (signupStatus) return <Navigate to="/pending-approval" replace />
     return <Navigate to="/pending-approval" replace />
   }
