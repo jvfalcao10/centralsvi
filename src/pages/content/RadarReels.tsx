@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import QuadroPorCliente from '@/components/radar/QuadroPorCliente'
 import { Input } from '@/components/ui/input'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -81,7 +82,7 @@ function diasAtras(iso: string | null): string {
 }
 
 export default function RadarReels() {
-  const { isClient, isStaff } = useAuth()
+  const { isClient, isStaff, user } = useAuth()
   const { toast } = useToast()
 
   const [clientId, setClientId] = useState<string | null>(null)
@@ -92,6 +93,7 @@ export default function RadarReels() {
   const [saves, setSaves] = useState<SaveRow[]>([])
   const [novoPerfil, setNovoPerfil] = useState('')
   const [filtro, setFiltro] = useState<'destaques' | 'todos' | 'salvos'>('destaques')
+  const [aba, setAba] = useState<'garimpo' | 'quadro'>('garimpo')
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
 
@@ -167,7 +169,8 @@ export default function RadarReels() {
     if (!entrada) return
     setSalvando(true)
     // O cliente não escreve direto na tabela de perfis: a função cuida disso.
-    const { error } = await supabase.rpc('radar_add_profile', { p_handle: entrada, p_reason: null })
+    const { error } = await supabase.rpc('radar_add_profile',
+      { p_handle: entrada, p_reason: null, p_client_id: isClient ? null : activeClientId })
     setSalvando(false)
     if (error) {
       const limite = error.message?.includes('limite')
@@ -189,7 +192,8 @@ export default function RadarReels() {
   }
 
   const removerPerfil = async (profileId: string) => {
-    const { error } = await supabase.rpc('radar_remove_profile', { p_profile_id: profileId })
+    const { error } = await supabase.rpc('radar_remove_profile',
+      { p_profile_id: profileId, p_client_id: isClient ? null : activeClientId })
     if (error) {
       toast({ title: 'Não foi possível remover', variant: 'destructive' })
       return
@@ -207,7 +211,7 @@ export default function RadarReels() {
     }
     const { data, error } = await supabase
       .from('radar_saves')
-      .insert({ client_id: activeClientId, post_id: post.id })
+      .insert({ client_id: activeClientId, post_id: post.id, saved_by: user?.id ?? null })
       .select('id, post_id, status')
       .single()
     if (error) {
@@ -230,7 +234,7 @@ export default function RadarReels() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {isStaff && (
+          {isStaff && aba === 'garimpo' && (
             <Select value={selectedStaffClientId} onValueChange={setSelectedStaffClientId}>
               <SelectTrigger className="w-56"><SelectValue placeholder="Selecionar cliente..." /></SelectTrigger>
               <SelectContent>
@@ -246,7 +250,25 @@ export default function RadarReels() {
         </div>
       </div>
 
-      {isStaff && !selectedStaffClientId ? (
+      {isStaff && (
+        <div className="flex gap-1 border-b border-border">
+          {([['garimpo', 'Garimpo do cliente'], ['quadro', 'Quadro por cliente']] as const).map(([chave, titulo]) => (
+            <button
+              key={chave}
+              onClick={() => setAba(chave)}
+              className={`px-3 py-2 text-sm border-b-2 -mb-px ${
+                aba === chave ? 'border-primary font-medium' : 'border-transparent text-muted-foreground'
+              }`}
+            >
+              {titulo}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {isStaff && aba === 'quadro' ? (
+        <QuadroPorCliente />
+      ) : isStaff && !selectedStaffClientId ? (
         <div className="bg-card border border-border rounded-xl p-10 text-center text-muted-foreground">
           Selecione um cliente para ver o radar dele.
         </div>
