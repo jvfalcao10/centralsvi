@@ -164,10 +164,50 @@ export default function RadarReels() {
     return posts
   }, [posts, filtro, idsSalvos])
 
+  /**
+   * O campo aceita as duas coisas. João, 22/10/2026: "não quero por perfil e
+   * sim link de conteúdo que deu bom". Link de post vai pro caminho que lê
+   * aquele post e pendura no cliente; @perfil continua virando perfil vigiado.
+   */
+  const ehLinkDePost = (texto: string) =>
+    /instagram\.com\/(?:[A-Za-z0-9._]+\/)?(reel|reels|p|tv)\//i.test(texto)
+
+  const salvarLink = async (endereco: string) => {
+    const { data: sessao } = await supabase.auth.getSession()
+    const token = sessao.session?.access_token
+    if (!token) {
+      toast({ title: 'Sua sessão expirou', description: 'Entre de novo na Central.', variant: 'destructive' })
+      return
+    }
+    const resposta = await fetch('/api/radar-salvar-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ url: endereco, client_id: activeClientId }),
+    })
+    const corpo = await resposta.json().catch(() => ({}))
+    if (!resposta.ok) {
+      toast({ title: 'Não deu pra guardar', description: corpo.error || 'tenta de novo', variant: 'destructive' })
+      return
+    }
+    setNovoPerfil('')
+    toast({
+      title: `Guardado de @${corpo.handle}`,
+      description: corpo.views
+        ? `${formatarNumero(corpo.views)} visualizações, ${formatarNumero(corpo.likes)} curtidas`
+        : `${formatarNumero(corpo.likes)} curtidas, ${formatarNumero(corpo.comments)} comentários`,
+    })
+    carregar()
+  }
+
   const adicionarPerfil = async () => {
     const entrada = novoPerfil.trim()
     if (!entrada) return
     setSalvando(true)
+    if (ehLinkDePost(entrada)) {
+      await salvarLink(entrada)
+      setSalvando(false)
+      return
+    }
     // O cliente não escreve direto na tabela de perfis: a função cuida disso.
     const { error } = await supabase.rpc('radar_add_profile',
       { p_handle: entrada, p_reason: null, p_client_id: isClient ? null : activeClientId })
@@ -278,8 +318,8 @@ export default function RadarReels() {
           <div className="bg-card border border-border rounded-xl p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Radar className="w-4 h-4 text-primary" />
-              <h2 className="font-semibold">Quem está no meu radar</h2>
-              <span className="text-xs text-muted-foreground">até 8 perfis</span>
+              <h2 className="font-semibold">Guardar referência</h2>
+              <span className="text-xs text-muted-foreground">link do post, ou @perfil pra vigiar todo dia (até 8)</span>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -287,12 +327,12 @@ export default function RadarReels() {
                 value={novoPerfil}
                 onChange={e => setNovoPerfil(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') adicionarPerfil() }}
-                placeholder="@perfil que você quer acompanhar"
-                className="flex-1 min-w-[220px]"
-                maxLength={120}
+                placeholder="cole o link do conteúdo que deu bom, ou @perfil"
+                className="flex-1 min-w-[260px]"
+                maxLength={600}
               />
               <Button onClick={adicionarPerfil} disabled={salvando || !novoPerfil.trim()} className="gap-2">
-                <Plus className="w-4 h-4" /> Colocar no radar
+                <Plus className="w-4 h-4" /> Guardar
               </Button>
             </div>
 

@@ -151,6 +151,10 @@
    "destination": "/api/r?__rota=radar-coletar"
   },
   {
+   "source": "/api/radar-salvar-link",
+   "destination": "/api/r?__rota=radar-salvar-link"
+  },
+  {
    "source": "/api/aprovar-conteudo",
    "destination": "/api/r?__rota=aprovar-conteudo"
   },

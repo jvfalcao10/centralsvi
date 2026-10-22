@@ -7,6 +7,7 @@ import { handleAprovarConteudo } from './_lib/aprovar-conteudo.js';
 import { handleVagaTrafego } from './_lib/vaga-trafego.js';
 import { handleRadarColetar } from './_lib/radar-coletar.js';
 import { handleRadarTrends } from './_lib/radar-trends.js';
+import { handleRadarSalvarLink } from './_lib/radar-salvar-link.js';
 import { handleAgenda } from './_lib/agenda.js';
 import { handleAgendaShare } from './_lib/agenda-share.js';
 import { handleEquipeDia } from './_lib/equipe-dia.js';
@@ -122,6 +123,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   if (req.query.__rota === 'radar-trends') {
     return handleRadarTrends(req, res);
+  }
+
+  // Referencia salva pelo link do post, direto no cliente.
+  if (req.query.__rota === 'radar-salvar-link') {
+    return handleRadarSalvarLink(req, res);
   }
 
 
