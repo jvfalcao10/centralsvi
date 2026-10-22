@@ -32,6 +32,23 @@ describe('client wording (real replies from the client groups)',()=>{
    expect(clientVerdict(t)).toBe('change')
  })
 
+ // 22/10/2026, 16h11: a Suzy da Exatta pediu mídia no grupo, "Pode colocar pra
+ // rodar aq em Redenção pra nós?", e o grupo do Matheus recebeu ALTERAÇÃO
+ // SOLICITADA da peça. A única palavra que disparou foi "colocar".
+ it('pergunta com verbo ambiguo nao e pedido de mudanca',()=>{
+  for(const t of [
+   'Pode colocar pra rodar aq em Redenção pra nós?',
+   'dá pra aumentar a verba essa semana?',
+   'deixa rodando até sexta?',
+  ])expect(clientVerdict(t)).toBe('')
+ })
+
+ // Fora de pergunta o verbo ambíguo continua pedindo trabalho.
+ it('verbo ambiguo fora de pergunta continua sendo pedido',()=>{
+  for(const t of ['João, deixa as legendas mais finas, se possível.','faltou o telefone no final','coloca o logo maior'])
+   expect(clientVerdict(t)).toBe('change')
+ })
+
  // Sem pergunta, "não" e "ainda" seguem valendo: é a fala que segurou post em 03/10.
  it('"nao" fora de pergunta continua sendo pedido',()=>{
   for(const t of ['Bom dia Ainda não pode postar','não gostei desse'])expect(clientVerdict(t)).toBe('change')

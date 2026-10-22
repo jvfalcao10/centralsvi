@@ -65,13 +65,29 @@ const SOBRE_O_LINK=/\b(link|abrir|abre|abriu|abrindo|acess\w*|senha|carreg\w*|pa
  * de lead, e isso virou alteração pedida no grupo do Matheus. Por isso o verbo
  * forte decide sozinho, e a palavra fraca só vale fora de pergunta.
  */
-const MUDANCA_FORTE=/\b(ajust\w*|mud\w*|troc\w*|alter\w*|corrig\w*|refaz\w*|tira|tirar|falt\w*|errad\w*|errou|menor|maior|coloc\w*|aument\w*|diminu\w*|deix\w*|tir\w*)\b/
+const MUDANCA_FORTE=/\b(ajust\w*|mud\w*|troc\w*|alter\w*|corrig\w*|refaz\w*|tir\w*|errad\w*|errou)\b/
+/**
+ * Verbo que serve pra pedir peça e pra pedir qualquer outra coisa.
+ *
+ * Em 22/10/2026, 16h11, a Suzy da Exatta escreveu no grupo "Pode colocar pra
+ * rodar aq em Redenção pra nós?". É pedido de mídia, do tráfego. O "colocar"
+ * bateu no verbo forte e o recado saiu como ALTERAÇÃO SOLICITADA no grupo do
+ * Matheus, que edita vídeo. Segunda vez no mesmo dia, mesmo cliente.
+ *
+ * Então o verbo ambíguo só decide fora de pergunta. "deixa as legendas mais
+ * finas" continua sendo trabalho; "pode colocar pra rodar em Redenção?" não é.
+ * O verbo que só existe pra mexer na peça segue decidindo até em pergunta,
+ * porque "consegue tirar o telefone do final?" é retrabalho de verdade.
+ */
+const MUDANCA_AMBIGUA=/\b(coloc\w*|aument\w*|diminu\w*|deix\w*|falt\w*|menor|maior)\b/
 const MUDANCA_FRACA=/\b(nao|ainda)\b/
 export function clientVerdict(raw:string):'explicit'|'praise'|'change'|'' {
  const t=normalized(raw)
  if(!t||t.length>300)return ''
+ const pergunta=raw.includes('?')
  if(MUDANCA_FORTE.test(t))return 'change'
- if(raw.includes('?')||t.length>140)return ''
+ if(!pergunta&&MUDANCA_AMBIGUA.test(t))return 'change'
+ if(pergunta||t.length>140)return ''
  if(/^se\b|\bse (tiver|estiver|for|ficar)\b|\b(sera|semana passada|foi aprovad\w*)\b/.test(t))return ''
  if(MUDANCA_FRACA.test(t))return 'change'
  if(/\b(aprovad[oa]s?|aprovo|liberad[oa]s?|pode (postar|publicar|subir|soltar|mandar|rodar)|esse ok|ok pode)\b/.test(t))return 'explicit'
